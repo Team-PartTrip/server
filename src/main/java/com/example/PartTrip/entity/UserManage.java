@@ -16,23 +16,23 @@ public class UserManage {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "user_id")
+    @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Column(name = "user_pwd", nullable = false, unique = true)
+    @Column(name = "user_pwd", nullable = false)
     private String userPwd;
 
     @Column(name = "user_mail", nullable = false, unique = true)
     private String userMail;
+
+    @Column(name = "nick_name", nullable = false, unique = true)
+    private String nickName;
 
     @Column(name = "signup_division")
     private String signUpDivision;
 
     @Column(name = "phn_number")
     private String phnNumber;
-
-    @Column(name = "nick_name", nullable = false, unique = true)
-    private String nickName;
 
     @Column(name = "my_country")
     private String myCountry;
