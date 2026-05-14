@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @Table(name = "user_manage")
 @Getter
 @Setter
-@NoArgsConstructor
+@NoArgsConstructor // 제발 되라 부탁이다 제발 제발
 public class UserManage {
 
     @Id
