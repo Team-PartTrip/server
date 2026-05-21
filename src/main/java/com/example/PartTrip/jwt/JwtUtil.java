@@ -55,5 +55,10 @@ public class JwtUtil {
         return getClaims(token).get("userId", Long.class);
     }
 
+    // 토큰에서 이메일 정보를 꺼내오는 코드
+    public String getUserMail(String token) {
+        return getClaims(token).getSubject();
+    }
+
 
 }
