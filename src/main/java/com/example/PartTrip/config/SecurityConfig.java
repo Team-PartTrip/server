@@ -23,8 +23,12 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfig.corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
+                                "/api/auth/signup",
+                                "/api/auth/login"
 
-                        )
+                        ).permitAll()
+
+                        .anyRequest().authenticated()
                 )
     }
 }
