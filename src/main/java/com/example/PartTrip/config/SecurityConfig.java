@@ -30,5 +30,11 @@ public class SecurityConfig {
 
                         .anyRequest().authenticated()
                 )
+
+                .formLogin(form -> form.disable())
+
+                .httpBasic(form -> form.disable());
+
+        return http.build();
     }
 }
