@@ -1,5 +1,6 @@
 package com.example.PartTrip.jwt;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import org.springframework.stereotype.Component;
@@ -37,5 +38,15 @@ public class JwtUtil {
                 .setExpiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_TIME))
                 .signWith(SignatureAlgorithm.HS256, SECRET_KEY)
                 .compact();
+    }
+
+    public Claims getClaims(String token) {
+        // 토큰을 해석하는 객체 생성
+        return Jwts.parser()
+                // 토큰을 검증하기 위한 시크릿 키
+                .setSigningKey(SECRET_KEY)
+                // 토큰 검사
+                .parseClaimsJws(token)
+                .getBody();
     }
 }
