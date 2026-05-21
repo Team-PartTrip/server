@@ -60,5 +60,15 @@ public class JwtUtil {
         return getClaims(token).getSubject();
     }
 
+    // 토큰이 만료되었는지 확인하는 코드
+    public boolean isExpired(String token) {
+        // 토큰 안의 데이터를 가져옴
+        return getClaims(token)
+                // 토큰의 만료 시간을 꺼냄
+                .getExpiration()
+                // 현재 시간보다 이전 시간인지 검사
+                .before(new Date());
+    }
+
 
 }
