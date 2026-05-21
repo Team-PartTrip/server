@@ -49,4 +49,11 @@ public class JwtUtil {
                 .parseClaimsJws(token)
                 .getBody();
     }
+
+    // 토큰에서 UserId를 가져와서 long 타입으로 변환
+    public Long getUserId(String token) {
+        return getClaims(token).get("userId", Long.class);
+    }
+
+
 }
