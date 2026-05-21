@@ -15,11 +15,17 @@ public class JwtUtil {
 
     public String createAccessToken(Long userId, String userMail) {
         return Jwts.builder()
+                // 토큰의 대표 사용자 정보를 userMail로 설정
                 .setSubject(userMail)
+                // 토큰을 보고 식별이 가능하게 식별값을 넣음
                 .claim("userId", userId)
+                // 토큰 생성 시간
                 .setIssuedAt(new Date())
+                // 토큰 만료 시간
                 .setExpiration(new Date(System.currentTimeMillis() + ACCESS_TOKEN_TIME))
+                // 토큰 검사(HS256 방식을 사용)
                 .signWith(SignatureAlgorithm.HS256, SECRET_KEY)
+                // 문자열로 압축
                 .compact();
     }
 }
