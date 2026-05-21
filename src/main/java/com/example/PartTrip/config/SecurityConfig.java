@@ -3,6 +3,8 @@ package com.example.PartTrip.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsUtils;
 
@@ -41,5 +43,11 @@ public class SecurityConfig {
 
         // 설정 완료된 SecurityFilterChain 반환
         return http.build();
+    }
+
+    @Bean
+    // 비밀번호 암호화
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 }
