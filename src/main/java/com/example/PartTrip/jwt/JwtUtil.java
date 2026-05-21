@@ -28,4 +28,14 @@ public class JwtUtil {
                 // 문자열로 압축
                 .compact();
     }
+
+    public String createRefreshToken(Long userId, String userMail) {
+        return Jwts.builder()
+                .setSubject(userMail)
+                .claim("userId", userId)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_TIME))
+                .signWith(SignatureAlgorithm.HS256, SECRET_KEY)
+                .compact();
+    }
 }
