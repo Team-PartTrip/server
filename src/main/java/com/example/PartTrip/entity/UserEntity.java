@@ -16,7 +16,7 @@ public class UserEntity {
 
     @Id
     @Column(name = "user_id", nullable = false, unique = true)
-    private Long userId;
+    private String userId;
 
     @Column(name = "user_pwd", nullable = false)
     private String userPwd;
