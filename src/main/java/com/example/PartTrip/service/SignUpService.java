@@ -1,7 +1,7 @@
 package com.example.PartTrip.service;
 
 
-import com.example.PartTrip.dto.UserManageDto;
+import com.example.PartTrip.dto.SignUpRequestDto;
 import com.example.PartTrip.entity.UserEntity;
 import com.example.PartTrip.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -9,14 +9,14 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class UserService {
+public class SignUpService {
 
 
     private final UserRepository userRepository;
 
     // 회원 가입
 
-    public UserEntity saveUser(UserManageDto dto) {
+    public UserEntity saveUser(SignUpRequestDto dto) {
         UserEntity user = new UserEntity();
 
         user.setUserPwd(dto.getUserPwd());
