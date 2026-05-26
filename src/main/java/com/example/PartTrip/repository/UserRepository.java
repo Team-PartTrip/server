@@ -1,8 +1,13 @@
 package com.example.PartTrip.repository;
 
-import com.example.PartTrip.entity.UserManage;
+import com.example.PartTrip.entity.UserEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface UserRepository extends JpaRepository<UserManage, Long > {
+import java.util.Optional;
 
+public interface UserRepository extends JpaRepository<UserEntity, String> {
+
+    Optional<UserEntity> findByUserId(String userId);
+
+    Optional<UserEntity> findByUserMail(String userMail);
 }

@@ -10,8 +10,8 @@ import java.time.LocalDateTime;
 @Data // getter + setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserManageDto {
-    private Long userId;
+public class SignUpRequestDto {
+    private String userId;
     private String userPwd;
     private String userMail;
     private String nickName;
