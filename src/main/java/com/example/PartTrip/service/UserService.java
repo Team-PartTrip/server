@@ -2,7 +2,7 @@ package com.example.PartTrip.service;
 
 
 import com.example.PartTrip.dto.UserManageDto;
-import com.example.PartTrip.entity.UserManage;
+import com.example.PartTrip.entity.UserEntity;
 import com.example.PartTrip.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,8 +16,8 @@ public class UserService {
 
     // 회원 가입
 
-    public UserManage saveUser(UserManageDto dto) {
-        UserManage user = new UserManage();
+    public UserEntity saveUser(UserManageDto dto) {
+        UserEntity user = new UserEntity();
 
         user.setUserPwd(dto.getUserPwd());
         user.setUserMail(dto.getUserMail());
