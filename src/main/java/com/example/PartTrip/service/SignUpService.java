@@ -19,6 +19,11 @@ public class SignUpService {
     // 회원가입
     public UserEntity saveUser(SignUpRequestDto dto) {
 
+        // 아이디 중복 검사
+        if(userRepository.existsByUserId(dto.getUserId())) {
+            throw new IllegalArgumentException("이미 존재하는 아이디입니다.");
+        }
+
         // UserEntity 객체 생성
         UserEntity user = new UserEntity();
 
