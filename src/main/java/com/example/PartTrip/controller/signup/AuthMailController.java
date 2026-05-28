@@ -1,6 +1,7 @@
 package com.example.PartTrip.controller.signup;
 
 import com.example.PartTrip.dto.signup.EmailSendRequestDto;
+import com.example.PartTrip.dto.signup.EmailVerifyRequestDto;
 import com.example.PartTrip.service.signup.MailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,6 +22,15 @@ public class AuthMailController {
         mailService.sendCode(dto.getEmail());
 
         return "인증번호가 전송되었습니다.";
+
+    }
+
+    @PostMapping("/verify")
+    public String verifyCode(@RequestBody EmailVerifyRequestDto dto) {
+
+        mailService.verifyCode(dto);
+
+        return "이메일 인증이 완료되었습니다..";
 
     }
 
