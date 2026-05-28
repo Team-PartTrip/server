@@ -1,6 +1,6 @@
-package com.example.PartTrip.repository;
+package com.example.PartTrip.repository.signup;
 
-import com.example.PartTrip.entity.UserEntity;
+import com.example.PartTrip.entity.signup.UserEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

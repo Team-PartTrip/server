@@ -1,4 +1,4 @@
-package com.example.PartTrip.entity;
+package com.example.PartTrip.entity.signup;
 
 import jakarta.persistence.*;
 import lombok.Getter;

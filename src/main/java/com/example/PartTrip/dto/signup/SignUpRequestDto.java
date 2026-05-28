@@ -1,4 +1,4 @@
-package com.example.PartTrip.dto;
+package com.example.PartTrip.dto.signup;
 
 
 import lombok.AllArgsConstructor;
