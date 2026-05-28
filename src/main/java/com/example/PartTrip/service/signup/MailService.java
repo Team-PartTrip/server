@@ -49,6 +49,16 @@ public class MailService {
 
         EmailVerificationEntity entity = emailVerificationRepository.findById(dto.getEmail())
                 .orElseThrow(() -> new IllegalArgumentException("인증번호를 먼저 요청해주세요."));
+
+        // DB에 저장된 만료 시간을 가져오고 현재 시간을 가져와서 비교
+        if (entity.getExpiredAt().isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("인증번호가 만료되었습니다.");
+        }
+
+        // 사용자가 입력한 인증 코드와 DB에 저장된 인증 코드가 다르다면 예외 출력
+        if (!entity.getCode().equals(dto.getCode())) {
+            throw new IllegalArgumentException("인증번호가 일치하지 않습니다.");
+        }
     }
 
 }
