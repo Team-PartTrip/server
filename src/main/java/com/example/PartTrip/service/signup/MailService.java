@@ -65,4 +65,12 @@ public class MailService {
 
     }
 
+    public boolean isVerified(String email) {
+        // DB에서 해당 이메일 인증 정보를 찾음
+        return emailVerificationRepository.findById(email)
+                // 찾으면 그 Entity의 verified값을 꺼냄
+                .map(EmailVerificationEntity::isVerified)
+                .orElse(false);
+    }
+
 }
