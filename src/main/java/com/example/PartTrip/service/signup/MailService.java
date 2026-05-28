@@ -1,8 +1,10 @@
 package com.example.PartTrip.service.signup;
 
+import com.example.PartTrip.dto.signup.EmailVerifyRequestDto;
 import com.example.PartTrip.entity.signup.EmailVerificationEntity;
 import com.example.PartTrip.repository.signup.EmailVerificationRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
@@ -31,6 +33,22 @@ public class MailService {
         // 인증 만료 시간(현재 시간에서 5분 더한 시간)
         entity.setExpiredAt(LocalDateTime.now().plusMinutes(5));
         emailVerificationRepository.save(entity);
+
+        SimpleMailMessage message = new SimpleMailMessage();
+
+        message.setTo(email);
+        message.setSubject("[PartTrip] 이메일 인증번호]");
+        message.setText("인증번호는 " + code + " + 입니다. 5분 안에 입력해주세요");
+
+        mailSender.send(message);
+    }
+
+
+    // 이메일로 받은 인증번호를 입력했을 때 실행됨
+    public void verifyCode(EmailVerifyRequestDto dto) {
+
+        EmailVerificationEntity entity = emailVerificationRepository.findById(dto.getEmail())
+                .orElseThrow(() -> new IllegalArgumentException("인증번호를 먼저 요청해주세요."));
     }
 
 }
