@@ -59,6 +59,10 @@ public class MailService {
         if (!entity.getCode().equals(dto.getCode())) {
             throw new IllegalArgumentException("인증번호가 일치하지 않습니다.");
         }
+
+        entity.setVerified(true);
+        emailVerificationRepository.save(entity);
+
     }
 
 }
