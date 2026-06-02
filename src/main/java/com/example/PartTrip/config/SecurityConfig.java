@@ -33,11 +33,9 @@ public class SecurityConfig {
                 // URL 접근 권한 설정
                 .authorizeHttpRequests(auth -> auth
 
-                        // /api/auth 로 시작하는 요청은 모두 허용
-                        .requestMatchers("/api/auth/**").permitAll()
-
-                        // 나머지 요청은 인증 필요
-                        .anyRequest().authenticated()
+                        // 모든 요청 허용
+                        // 현재는 프론트-백 연결 테스트 단계이므로 전부 허용
+                        .anyRequest().permitAll()
                 )
 
                 // Spring 기본 로그인 페이지 비활성화
