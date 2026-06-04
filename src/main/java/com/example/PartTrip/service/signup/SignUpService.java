@@ -1,8 +1,8 @@
 package com.example.PartTrip.service.signup;
 
 import com.example.PartTrip.dto.signup.SignUpRequestDto;
-import com.example.PartTrip.entity.signup.UserEntity;
-import com.example.PartTrip.repository.signup.UserRepository;
+import com.example.PartTrip.entity.UserEntity;
+import com.example.PartTrip.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;

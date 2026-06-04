@@ -1,4 +1,4 @@
-package com.example.PartTrip.entity;
+package com.example.PartTrip.entity.login;
 
 import jakarta.persistence.*;
 import lombok.Getter;

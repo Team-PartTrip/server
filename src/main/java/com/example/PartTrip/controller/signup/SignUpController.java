@@ -1,7 +1,7 @@
 package com.example.PartTrip.controller.signup;
 
 import com.example.PartTrip.dto.signup.SignUpRequestDto;
-import com.example.PartTrip.entity.signup.UserEntity;
+import com.example.PartTrip.entity.UserEntity;
 import com.example.PartTrip.service.signup.SignUpService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

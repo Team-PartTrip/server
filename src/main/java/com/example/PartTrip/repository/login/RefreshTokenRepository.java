@@ -1,6 +1,6 @@
-package com.example.PartTrip.repository;
+package com.example.PartTrip.repository.login;
 
-import com.example.PartTrip.entity.RefreshToken;
+import com.example.PartTrip.entity.login.RefreshToken;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
