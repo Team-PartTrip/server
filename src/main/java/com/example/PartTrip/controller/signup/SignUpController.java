@@ -1,7 +1,6 @@
 package com.example.PartTrip.controller.signup;
 
 import com.example.PartTrip.dto.signup.SignUpRequestDto;
-import com.example.PartTrip.entity.UserEntity;
 import com.example.PartTrip.service.signup.SignUpService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -13,9 +12,13 @@ public class SignUpController {
 
     private final SignUpService signUpService;
 
+    // 임시 저장 + 이메일 인증번호 전송을 함
     @PostMapping("/signup")
-    public UserEntity signup(@RequestBody SignUpRequestDto dto) {
+    public String signup(@RequestBody SignUpRequestDto dto) {
 
-        return signUpService.saveUser(dto);
+        // 회원가입 정보 임시 저장 + 인증번호 전송
+        signUpService.startSignUp(dto);
+
+        return "인증번호가 전송되었습니다.";
     }
 }
