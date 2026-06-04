@@ -57,5 +57,41 @@ public class SignUpService {
         mailService.sendCode(dto.getUserMail());
     }
 
+    // 이메일 인증 성공 후 진짜 회원가입 완료
+    public UserEntity completeSignUp(String email) {
+
+        // pending_signup에서 임시 회원가입 정보 조회
+        PendingSignUpEntity pending = pendingSignUpRepository.findById(email)
+                .orElseThrow(() -> new IllegalArgumentException("회원가입 정보를 먼저 입력해주세요."));
+
+        // 임시 회원가입 시간이 만료됐는지 확인
+        if (pending.getExpiredAt().isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("회원가입 시간이 만료되었습니다. 다시 시도해주세요.");
+        }
+
+        // 진짜 회원 테이블에 저장할 UserEntity 생성
+        UserEntity user = new UserEntity();
+
+        // 임시 저장소에 있던 값을 진짜 회원 Entity에 넣음
+        user.setUserId(pending.getUserId());
+        user.setUserPwd(pending.getUserPwd());
+        user.setUserMail(pending.getUserMail());
+        user.setSignUpDivision(pending.getSignupDivision());
+        user.setMyCountry(pending.getMyCountry());
+        // 닉네임 자동 생성
+        user.setNickName("사용자 " + (userRepository.count() + 1));
+
+        // 가입 날짜 저장
+        user.setCreateDate(LocalDateTime.now());
+
+        // user_manage 테이블에 진짜 회원 저장
+        UserEntity savedUser = userRepository.save(user);
+
+        // 회원가입 완료됐으니 임시 데이터 삭제
+        pendingSignUpRepository.delete(pending);
+
+        return savedUser;
+    }
+
 
 }
