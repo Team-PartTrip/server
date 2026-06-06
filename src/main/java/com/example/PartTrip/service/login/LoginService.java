@@ -27,5 +27,9 @@ public class LoginService {
         // 1. 사용자가 입력한 아이디로 DB에서 회원 찾기
         UserEntity user = userRepository.findByUserId(dto.getUserId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 아이디입니다."));
+
+        if (!passwordEncoder.matches(dto.getUserPwd(), user.getUserPwd())) {
+            throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
+        }
     }
 }
