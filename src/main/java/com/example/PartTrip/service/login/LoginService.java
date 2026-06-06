@@ -31,5 +31,17 @@ public class LoginService {
         if (!passwordEncoder.matches(dto.getUserPwd(), user.getUserPwd())) {
             throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
         }
+
+        // AccessToken 생성
+        String accessToken = jwtUtil.createAccessToken(
+                user.getUserId(),
+                user.getUserMail()
+        );
+
+        // RefreshToken 생성
+        String refreshToken = jwtUtil.createRefreshToken(
+                user.getUserId(),
+                user.getUserMail()
+        );
     }
 }
