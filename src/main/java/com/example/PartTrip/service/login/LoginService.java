@@ -22,6 +22,7 @@ public class LoginService {
     private final RefreshTokenRepository refreshTokenRepositor;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     // 로그인 처리
     public TokenResponseDto login(LoginRequestDto dto) {
@@ -55,5 +56,9 @@ public class LoginService {
         tokenEntity.setRefreshToken(refreshToken);
         tokenEntity.setExpiredAt(LocalDateTime.now().plusDays(7));
         tokenEntity.setCreateDate(LocalDateTime.now());
+
+        refreshTokenRepository.save(tokenEntity);
+
+        return new TokenResponseDto(accessToken, refreshToken);
     }
 }
