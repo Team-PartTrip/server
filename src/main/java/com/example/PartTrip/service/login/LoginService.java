@@ -2,6 +2,7 @@ package com.example.PartTrip.service.login;
 
 import com.example.PartTrip.dto.login.LoginRequestDto;
 import com.example.PartTrip.dto.login.TokenResponseDto;
+import com.example.PartTrip.entity.login.RefreshTokenEntity;
 import com.example.PartTrip.entity.signup.UserEntity;
 import com.example.PartTrip.jwt.JwtUtil;
 import com.example.PartTrip.repository.login.RefreshTokenRepository;
@@ -10,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Service
@@ -43,5 +45,15 @@ public class LoginService {
                 user.getUserId(),
                 user.getUserMail()
         );
+
+        // 사용자의 Refrsh token이 DB에 있는지 확인
+        RefreshTokenEntity tokenEntity = refreshTokenRepositor.findByUserId(user.getUserId())
+                .orElse(new RefreshTokenEntity());
+
+        // Refresh token 정보 저장
+        tokenEntity.setUserId(user.getUserId());
+        tokenEntity.setRefreshToken(refreshToken);
+        tokenEntity.setExpiredAt(LocalDateTime.now().plusDays(7));
+        tokenEntity.setCreateDate(LocalDateTime.now());
     }
 }
