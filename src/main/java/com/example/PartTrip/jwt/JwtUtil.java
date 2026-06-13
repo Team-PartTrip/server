@@ -9,8 +9,17 @@ import io.jsonwebtoken.Jwts;
 // JWT 암호화 방식(HS256)을 사용하기 위한 클래스
 import io.jsonwebtoken.SignatureAlgorithm;
 
+// JWT Key 생성용 클래스
+import io.jsonwebtoken.security.Keys;
+
 // 스프링이 관리하는 객체(Bean)로 등록
 import org.springframework.stereotype.Component;
+
+// 문자열을 바이트로 변환
+import java.nio.charset.StandardCharsets;
+
+// JWT 암호화 Key 객체
+import java.security.Key;
 
 // 날짜와 시간을 사용하기 위한 클래스
 import java.util.Date;
@@ -21,7 +30,14 @@ public class JwtUtil {
 
     // JWT를 암호화하고 검증할 때 사용하는 비밀키
     // 서버만 알고 있어야 함
-    private final String SECRET_KEY = "parttrip-secret-key-parttrip-secret-key";
+    private final String SECRET_KEY =
+            "parttrip-secret-key-parttrip-secret-key-1234567890";
+
+    // SECRET_KEY를 JWT에서 사용할 Key 객체로 변환
+    private final Key key =
+            Keys.hmacShaKeyFor(
+                    SECRET_KEY.getBytes(StandardCharsets.UTF_8)
+            );
 
     // Access Token 유효 시간
     // 1000ms = 1초
@@ -60,10 +76,10 @@ public class JwtUtil {
                 )
 
                 // HS256 방식으로 암호화
-                // SECRET_KEY를 이용해 서명
+                // key를 이용해 서명
                 .signWith(
-                        SignatureAlgorithm.HS256,
-                        SECRET_KEY
+                        key,
+                        SignatureAlgorithm.HS256
                 )
 
                 // JWT 문자열 생성
@@ -95,8 +111,8 @@ public class JwtUtil {
 
                 // 암호화
                 .signWith(
-                        SignatureAlgorithm.HS256,
-                        SECRET_KEY
+                        key,
+                        SignatureAlgorithm.HS256
                 )
 
                 // 문자열 생성
@@ -109,8 +125,8 @@ public class JwtUtil {
         // JWT를 해석
         return Jwts.parser()
 
-                // SECRET_KEY로 검증
-                .setSigningKey(SECRET_KEY)
+                // key로 검증
+                .setSigningKey(key)
 
                 // JWT 분석
                 .parseClaimsJws(token)
