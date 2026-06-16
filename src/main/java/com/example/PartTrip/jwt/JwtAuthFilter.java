@@ -40,7 +40,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 response.getWriter().write("Access Token이 만료되었습니다.");
                 return;
             }
+
+            // 토큰 안에서 userId 꺼냄
+            String userId = jwtUtil.getUserId(token);
+
+        } catch (Exception e) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("유효하지 않은 Access Token입니다.");
+            return;
         }
+
+        // 토큰이 정상이라면 다음 필터 또는 컨트롤러로 넘김
+        filterChain.doFilter(request, response);
 
     }
 }
