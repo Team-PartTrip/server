@@ -1,0 +1,18 @@
+package com.example.PartTrip.dto.profile;
+
+import jakarta.validation.constraints.NotBlank;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Getter
+@Setter
+@NoArgsConstructor
+public class ProfileUpdateRequestDto {
+
+    @NotBlank(message = "닉네임은 필수입니다.")
+    private String nickName;
+
+    @NotBlank(message = "여행 타입은 필수입니다.")
+    private String travelType;
+}
