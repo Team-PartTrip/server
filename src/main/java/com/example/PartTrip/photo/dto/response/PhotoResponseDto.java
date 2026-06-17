@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -17,7 +18,7 @@ public class PhotoResponseDto {
     private String photoId;
     private String travelId;
     private String userId;
-    private String imageFile;
+    private MultipartFile imageFile;
     private String latitude;
     private String longitude;
     private String commTitle;

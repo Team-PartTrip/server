@@ -9,12 +9,8 @@ import org.springframework.web.multipart.MultipartFile;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PhotoUploadRequestDto {
-    private String photoId;
     private String travelId;
-    private String userId;
     private MultipartFile imageFile;
     private String latitude;
     private String longitude;
-    private String commTitle;
-    private String commContent;
 }
