@@ -5,10 +5,13 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Collections;
 
 @Component // 스프링이 자동으로 관리하는 객체 등록
 @RequiredArgsConstructor
@@ -26,7 +29,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         String authorizationHeader = request.getHeader("Authorization");
 
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+        // Authorization 헤더가 없거나
+        // Bearer 토큰 형식이 아니면
+        // 다음 필터로 넘김
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -43,6 +49,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
             // 토큰 안에서 userId 꺼냄
             String userId = jwtUtil.getUserId(token);
+
+            // Spring Security에 인증 정보 등록
+            UsernamePasswordAuthenticationToken authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            userId,
+                            null,
+                            Collections.emptyList()
+                    );
+
+            SecurityContextHolder
+                    .getContext()
+                    .setAuthentication(authentication);
 
         } catch (Exception e) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
