@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -30,9 +31,8 @@ public class PhotoEntity {
     @JoinColumn(name="user_id", nullable = false)
     private UserEntity user;
 
-    @Column(name="image_url", nullable = false)
-    private String imageUrl;
-
+    @Column(name="image_file", nullable = false)
+    private MultipartFile imageFile;
 
     @Column(name="latitude", nullable = false)
     private String latitude;

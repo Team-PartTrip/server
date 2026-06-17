@@ -1,21 +1,18 @@
-package com.example.PartTrip.photo.dto;
+package com.example.PartTrip.photo.dto.request;
 
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import org.springframework.web.multipart.MultipartFile;
 
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class PhotoCreateRequestDto {
+public class PhotoUploadRequestDto {
     private String photoId;
     private String travelId;
     private String userId;
-    private String imageUrl;
+    private MultipartFile imageFile;
     private String latitude;
     private String longitude;
     private String commTitle;

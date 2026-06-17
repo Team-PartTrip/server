@@ -1,4 +1,4 @@
-package com.example.PartTrip.photo.dto;
+package com.example.PartTrip.photo.dto.response;
 
 import com.example.PartTrip.photo.entity.PhotoEntity;
 import lombok.AllArgsConstructor;
@@ -17,7 +17,7 @@ public class PhotoResponseDto {
     private String photoId;
     private String travelId;
     private String userId;
-    private String imageUrl;
+    private String imageFile;
     private String latitude;
     private String longitude;
     private String commTitle;
@@ -30,7 +30,7 @@ public class PhotoResponseDto {
                 .photoId(photo.getPhotoId())
                 // .travelId(photo.getTravel().getTravelId())  // TravelEntity 연결 후 활성화
                 .userId(photo.getUser().getUserId())
-                .imageUrl(photo.getImageUrl())
+                .imageFile(photo.getImageFile())
                 .photoDate(photo.getPhotoDate())
                 .latitude(photo.getLatitude())
                 .longitude(photo.getLongitude())
