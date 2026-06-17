@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
 @Table(name="photo_manage")
 public class PhotoEntity {
     @Id
-    @GeneratedValue(strategy= GenerationType.IDENTITY)
+    @Column(name = "photo_id", nullable = false)
     private String photoId;
 
 //    @ManyToOne
@@ -39,6 +39,9 @@ public class PhotoEntity {
 
     @Column(name = "longitude", nullable = false)
     private String longitude;
+
+    @Column(name="ai_commentary", nullable = false)
+    private String aiCommentary;
 
     @Column(name="comm_title")
     private String commTitle;
