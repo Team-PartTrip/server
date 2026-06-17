@@ -1,10 +1,12 @@
 package com.example.PartTrip.photo.dto;
 
+import com.example.PartTrip.photo.entity.PhotoEntity;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
@@ -12,12 +14,29 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class PhotoResponseDto {
-    private Long photoId;
-    private Long travelId;
-    private Long userId;
+    private String photoId;
+    private String travelId;
+    private String userId;
+    private String imageUrl;
     private String latitude;
     private String longitude;
     private String commTitle;
     private String commContent;
+    private LocalDate photoDate;
     private LocalDateTime createDate;
+
+    public static PhotoResponseDto from(PhotoEntity photo) {
+        return PhotoResponseDto.builder()
+                .photoId(photo.getPhotoId())
+                // .travelId(photo.getTravel().getTravelId())  // TravelEntity 연결 후 활성화
+                .userId(photo.getUser().getUserId())
+                .imageUrl(photo.getImageUrl())
+                .photoDate(photo.getPhotoDate())
+                .latitude(photo.getLatitude())
+                .longitude(photo.getLongitude())
+                .commTitle(photo.getCommTitle())
+                .commContent(photo.getCommContent())
+                .createDate(photo.getCreateDate())
+                .build();
+    }
 }

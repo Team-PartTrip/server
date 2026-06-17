@@ -20,7 +20,7 @@ import java.time.LocalDateTime;
 public class PhotoEntity {
     @Id
     @GeneratedValue(strategy= GenerationType.IDENTITY)
-    private Long photoId;
+    private String photoId;
 
 //    @ManyToOne
 //    @JoinColumn(name="travel_id", nullable = false)
