@@ -11,8 +11,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 public class PhotoAnalysisResponse {
-    private String analysisId;
-    private String photoId;
+    private Long analysisId;
+    private Long photoId;
     private String title;
     private String era;
     private String designation;

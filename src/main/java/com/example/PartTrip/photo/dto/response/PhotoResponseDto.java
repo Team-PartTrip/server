@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class PhotoResponseDto {
-    private String photoId;
+    private Long photoId;
     private String travelId;
     private String userId;
     private String imgUrl;
