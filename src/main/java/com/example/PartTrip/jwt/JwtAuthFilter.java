@@ -27,6 +27,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
 
+        // 현재 요청 URL 가져오기
+        String requestURI = request.getRequestURI();
+
+        // 회원가입, 로그인, 이메일 인증 등
+        // 인증이 필요 없는 API는 필터 검사 없이 통과
+        if (requestURI.startsWith("/api/auth/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String authorizationHeader = request.getHeader("Authorization");
 
         // Authorization 헤더가 없거나
@@ -37,9 +47,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
 
+        // "Bearer " 제거 후 실제 토큰만 추출
         String token = authorizationHeader.substring(7);
 
         try {
+
             // 토큰이 만료되었는지 확인
             if (jwtUtil.isExpired(token)) {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -63,6 +75,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     .setAuthentication(authentication);
 
         } catch (Exception e) {
+
+            // 토큰이 위조되었거나
+            // 형식이 잘못되었을 경우
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.getWriter().write("유효하지 않은 Access Token입니다.");
             return;
