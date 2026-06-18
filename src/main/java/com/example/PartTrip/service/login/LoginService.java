@@ -75,5 +75,12 @@ public class LoginService {
         if (jwtUtil.isExpired(tokenEntity.getRefreshToken())) {
             throw new IllegalArgumentException("Refresh Token이 만료되었습니다. 다시 로그인 해주세요.");
         }
+
+        String userId = jwtUtil.getUserId(dto.getRefreshToken());
+        String userMail = jwtUtil.getUserMail(dto.getRefreshToken());
+
+        String newAccessToken = jwtUtil.createAccessToken(userId, userMail);
+
+        return new TokenResponseDto(newAccessToken, dto.getRefreshToken());
     }
 }
