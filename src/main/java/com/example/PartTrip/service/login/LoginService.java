@@ -71,5 +71,9 @@ public class LoginService {
         if (tokenEntity.getExpiredAt().isBefore(LocalDateTime.now())) {
             throw new IllegalArgumentException("Refresh Token이 만료되었습니다. 다시 로그인 해주세요.");
         }
+
+        if (jwtUtil.isExpired(tokenEntity.getRefreshToken())) {
+            throw new IllegalArgumentException("Refresh Token이 만료되었습니다. 다시 로그인 해주세요.");
+        }
     }
 }
