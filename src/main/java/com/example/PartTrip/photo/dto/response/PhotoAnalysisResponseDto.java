@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class PhotoAnalysisResponse {
+public class PhotoAnalysisResponseDto {
     private Long analysisId;
     private Long photoId;
     private String title;
