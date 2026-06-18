@@ -1,6 +1,7 @@
 package com.example.PartTrip.service.login;
 
 import com.example.PartTrip.dto.login.LoginRequestDto;
+import com.example.PartTrip.dto.login.RefreshRequestDto;
 import com.example.PartTrip.dto.login.TokenResponseDto;
 import com.example.PartTrip.entity.login.RefreshTokenEntity;
 import com.example.PartTrip.entity.signup.UserEntity;
@@ -60,5 +61,26 @@ public class LoginService {
         refreshTokenRepository.save(tokenEntity);
 
         return new TokenResponseDto(accessToken, refreshToken);
+    }
+
+    public TokenResponseDto refresh(RefreshRequestDto dto) {
+
+        RefreshTokenEntity tokenEntity = refreshTokenRepository.findByRefreshToken(dto.getRefreshToken())
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 Refresh Token 입니다."));
+
+        if (tokenEntity.getExpiredAt().isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Refresh Token이 만료되었습니다. 다시 로그인 해주세요.");
+        }
+
+        if (jwtUtil.isExpired(tokenEntity.getRefreshToken())) {
+            throw new IllegalArgumentException("Refresh Token이 만료되었습니다. 다시 로그인 해주세요.");
+        }
+
+        String userId = jwtUtil.getUserId(dto.getRefreshToken());
+        String userMail = jwtUtil.getUserMail(dto.getRefreshToken());
+
+        String newAccessToken = jwtUtil.createAccessToken(userId, userMail);
+
+        return new TokenResponseDto(newAccessToken, dto.getRefreshToken());
     }
 }

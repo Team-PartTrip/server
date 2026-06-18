@@ -1,11 +1,13 @@
 package com.example.PartTrip.config;
 
+import com.example.PartTrip.jwt.JwtAuthFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 public class SecurityConfig {
@@ -13,9 +15,16 @@ public class SecurityConfig {
     // CorsConfig 객체 가져오기
     private final CorsConfig corsConfig;
 
-    // 생성자를 통해 CorsConfig 주입
-    public SecurityConfig(CorsConfig corsConfig) {
+    // JwtAuthFilter 객체 가져오기
+    private final JwtAuthFilter jwtAuthFilter;
+
+    // 생성자를 통해 객체 주입
+    public SecurityConfig(
+            CorsConfig corsConfig,
+            JwtAuthFilter jwtAuthFilter
+    ) {
         this.corsConfig = corsConfig;
+        this.jwtAuthFilter = jwtAuthFilter;
     }
 
     @Bean
@@ -33,16 +42,30 @@ public class SecurityConfig {
                 // URL 접근 권한 설정
                 .authorizeHttpRequests(auth -> auth
 
-                        // 모든 요청 허용
-                        // 현재는 프론트-백 연결 테스트 단계이므로 전부 허용
-                        .anyRequest().permitAll()
+                        // 회원가입 허용
+                        .requestMatchers("/api/auth/signup").permitAll()
+
+                        // 로그인 허용
+                        .requestMatchers("/api/auth/login").permitAll()
+
+                        // 이메일 인증 관련 API 허용
+                        .requestMatchers("/api/auth/**").permitAll()
+
+                        // 나머지 요청은 로그인 필요
+                        .anyRequest().authenticated()
                 )
 
                 // Spring 기본 로그인 페이지 비활성화
                 .formLogin(form -> form.disable())
 
                 // HTTP Basic 인증 비활성화
-                .httpBasic(basic -> basic.disable());
+                .httpBasic(basic -> basic.disable())
+
+                // JwtAuthFilter를 UsernamePasswordAuthenticationFilter보다 먼저 실행
+                .addFilterBefore(
+                        jwtAuthFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                );
 
         // Security 설정 완료 후 반환
         return http.build();

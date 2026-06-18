@@ -1,6 +1,7 @@
 package com.example.PartTrip.controller.login;
 
 import com.example.PartTrip.dto.login.LoginRequestDto;
+import com.example.PartTrip.dto.login.RefreshRequestDto;
 import com.example.PartTrip.dto.login.TokenResponseDto;
 import com.example.PartTrip.service.login.LoginService;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,11 @@ public class LoginController {
     @PostMapping("/login")
     public TokenResponseDto login(@RequestBody LoginRequestDto dto) {
         return loginService.login(dto);
+    }
+
+    @PostMapping("/refresh")
+    public TokenResponseDto refresh(@RequestBody RefreshRequestDto dto) {
+        return loginService.refresh(dto);
     }
 
 }
