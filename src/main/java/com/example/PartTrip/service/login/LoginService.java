@@ -67,5 +67,9 @@ public class LoginService {
 
         RefreshTokenEntity tokenEntity = refreshTokenRepository.findByRefreshToken(dto.getRefreshToken())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 Refresh Token 입니다."));
+
+        if (tokenEntity.getExpiredAt().isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Refresh Token이 만료되었습니다. 다시 로그인 해주세요.");
+        }
     }
 }
