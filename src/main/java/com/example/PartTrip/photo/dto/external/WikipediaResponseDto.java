@@ -3,11 +3,10 @@ package com.example.PartTrip.photo.dto.external;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+// TODO: 한국 문화재는 공공데이터포털 API로 대체 예정
 @Getter
 @NoArgsConstructor
-public class VisionApiResponseDto {
-    // 사진 분석 결과 이름
+public class WikipediaResponseDto {
     private String recognizedName;
-    // 분석 정확도
-    private float confidence;
+    private String content;
 }

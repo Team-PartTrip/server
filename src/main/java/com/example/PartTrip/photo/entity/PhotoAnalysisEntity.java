@@ -2,16 +2,14 @@ package com.example.PartTrip.photo.entity;
 
 import com.example.PartTrip.photo.enums.PhotoAnalysisAccuracyCategory;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 @Entity
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 @Table(name="photo_analysis")
 public class PhotoAnalysisEntity {
     @Id
