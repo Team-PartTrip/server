@@ -38,5 +38,6 @@ public class PhotoAnalysisResponseDto {
                 .source(photoAnalysis.getSource())
                 .photoAnalysisAccuracyCategory(photoAnalysis.getPhotoAnalysisAccuracyCategory())
                 .build();
+    }
 }
 
