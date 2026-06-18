@@ -1,5 +1,6 @@
 package com.example.PartTrip.mission.entity;
 
+import com.example.PartTrip.mission.enums.MissionCategory;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -22,7 +23,7 @@ public class Mission {
 
     @Enumerated(EnumType.STRING)
     @Column(name="mission_category", nullable = false)
-    private String MissionCategory;
+    private MissionCategory missionCategory;
 
     @Column(name="mission_point")
     private int point;

@@ -54,8 +54,4 @@ public class PhotoEntity {
     @Column(name="create_date", nullable = false)
     private LocalDateTime createDate;
 
-    // ERD에 있어서 작성, 보류로 해둠
-//    @Column(name="ai_commentary", nullable = false)
-//    private String aiCommentary;
-
 }
