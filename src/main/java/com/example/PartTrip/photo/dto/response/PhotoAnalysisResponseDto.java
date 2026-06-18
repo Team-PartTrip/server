@@ -21,7 +21,8 @@ public class PhotoAnalysisResponseDto {
     private String background;
     private String features;
     private String current_status;
-    private String source;
+    private String sourceName;
+    private String sourceUrl;
     private PhotoAnalysisAccuracyCategory photoAnalysisAccuracyCategory;
 
     public static PhotoAnalysisResponseDto from(PhotoAnalysisEntity photoAnalysis) {
@@ -35,7 +36,8 @@ public class PhotoAnalysisResponseDto {
                 .background(photoAnalysis.getBackground())
                 .features(photoAnalysis.getFeatures())
                 .current_status(photoAnalysis.getCurrentStatus())
-                .source(photoAnalysis.getSource())
+                .sourceName(photoAnalysis.getSourceName())
+                .sourceUrl(photoAnalysis.getSourceUrl())
                 .photoAnalysisAccuracyCategory(photoAnalysis.getPhotoAnalysisAccuracyCategory())
                 .build();
     }

@@ -48,9 +48,13 @@ public class PhotoAnalysisEntity {
     @Column(name="current_status", nullable = false)
     private String currentStatus;
 
-    // ai 결과 출처
-    @Column(name="source", nullable = false)
-    private String source;
+    // ai 결과 출처 이름
+    @Column(name="source_name", nullable = false)
+    private String sourceName;
+
+    // ai 결과 출처 링크
+    @Column(name="source_url", nullable = false)
+    private String sourceUrl;
 
     // ai 분석 결과 정확도의 정도
     // vision에서 confidece(정확도?)를 전달받음 그거의 정도에 따라 정확도 단계를 구별하기 위함
