@@ -10,7 +10,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name="mission_db")
-public class Mission {
+public class MissionEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long mission_id;
