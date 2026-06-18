@@ -7,8 +7,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
-import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -38,13 +38,10 @@ public class PhotoEntity {
     private String latitude;
 
     @Column(name = "longitude", nullable = false)
-    private String longitude;
-
-    @Column(name="ai_commentary", nullable = false)
-    private String aiCommentary;
+    private BigDecimal longitude;
 
     @Column(name="comm_title")
-    private String commTitle;
+    private BigDecimal commTitle;
 
     @Column(name="comm_content")
     private String commContent;

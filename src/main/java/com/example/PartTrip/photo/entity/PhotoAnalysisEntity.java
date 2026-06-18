@@ -1,9 +1,6 @@
 package com.example.PartTrip.photo.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -19,6 +16,10 @@ public class PhotoAnalysisEntity {
     @Id
     @Column(name="analysis_id", nullable = false)
     private String analysisId;
+
+    @OneToOne
+    @JoinColumn(name="photo_id", nullable = false)
+    private PhotoEntity photo;
 
     // ai 결과 제목
     @Column(name="title", nullable = false)

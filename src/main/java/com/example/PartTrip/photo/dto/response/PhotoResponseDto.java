@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -19,8 +20,8 @@ public class PhotoResponseDto {
     private String travelId;
     private String userId;
     private String imgUrl;
-    private String latitude;
-    private String longitude;
+    private BigDecimal latitude;
+    private BigDecimal longitude;
     private String commTitle;
     private String commContent;
     private LocalDate photoDate;
