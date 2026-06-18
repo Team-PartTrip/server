@@ -1,6 +1,7 @@
 package com.example.PartTrip.service.login;
 
 import com.example.PartTrip.dto.login.LoginRequestDto;
+import com.example.PartTrip.dto.login.LogoutRequestDto;
 import com.example.PartTrip.dto.login.RefreshRequestDto;
 import com.example.PartTrip.dto.login.TokenResponseDto;
 import com.example.PartTrip.entity.login.RefreshTokenEntity;
@@ -83,4 +84,19 @@ public class LoginService {
 
         return new TokenResponseDto(newAccessToken, dto.getRefreshToken());
     }
+
+    // 로그아웃
+    public String logout(LogoutRequestDto dto) {
+
+        RefreshTokenEntity tokenEntity = refreshTokenRepository.findByRefreshToken(dto.getRefreshToken())
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 Refresh Token 입니다."));
+
+
+        // Refresh Token 삭제
+        refreshTokenRepository.delete(tokenEntity);
+
+        return "로그아웃 완료";
+    }
+
+
 }
