@@ -31,7 +31,7 @@ public class PhotoResponseDto {
                 .photoId(photo.getPhotoId())
                 // .travelId(photo.getTravel().getTravelId())  // TravelEntity 연결 후 활성화
                 .userId(photo.getUser().getUserId())
-                .imageFile(photo.getImageFile())
+                .imgUrl(photo.getImgUrl())
                 .photoDate(photo.getPhotoDate())
                 .latitude(photo.getLatitude())
                 .longitude(photo.getLongitude())
