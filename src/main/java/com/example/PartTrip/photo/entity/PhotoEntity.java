@@ -31,8 +31,8 @@ public class PhotoEntity {
     @JoinColumn(name="user_id", nullable = false)
     private UserEntity user;
 
-    @Column(name="image_file", nullable = false)
-    private MultipartFile imageFile;
+    @Column(name="img_url", nullable = false)
+    private String imgUrl;
 
     @Column(name="latitude", nullable = false)
     private String latitude;

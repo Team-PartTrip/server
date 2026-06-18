@@ -18,7 +18,7 @@ public class PhotoResponseDto {
     private String photoId;
     private String travelId;
     private String userId;
-    private MultipartFile imageFile;
+    private String imgUrl;
     private String latitude;
     private String longitude;
     private String commTitle;

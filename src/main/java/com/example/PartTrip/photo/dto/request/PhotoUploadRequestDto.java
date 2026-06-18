@@ -10,7 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 @AllArgsConstructor
 public class PhotoUploadRequestDto {
     private String travelId;
-    private MultipartFile imageFile;
+    private String imgUrl;
     private String latitude;
     private String longitude;
 }
