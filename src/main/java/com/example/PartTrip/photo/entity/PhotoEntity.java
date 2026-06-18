@@ -35,13 +35,13 @@ public class PhotoEntity {
     private String imgUrl;
 
     @Column(name="latitude", nullable = false)
-    private String latitude;
+    private BigDecimal latitude;
 
     @Column(name = "longitude", nullable = false)
     private BigDecimal longitude;
 
     @Column(name="comm_title")
-    private BigDecimal commTitle;
+    private String commTitle;
 
     @Column(name="comm_content")
     private String commContent;
