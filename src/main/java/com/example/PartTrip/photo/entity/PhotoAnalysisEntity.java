@@ -15,8 +15,8 @@ import lombok.Setter;
 @Table(name="photo_analysis")
 public class PhotoAnalysisEntity {
     @Id
-    @Column(name="analysis_id", nullable = false)
-    private String analysisId;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long analysisId;
 
     @OneToOne
     @JoinColumn(name="photo_id", nullable = false)

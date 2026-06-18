@@ -20,8 +20,8 @@ import java.time.LocalDateTime;
 @Table(name="photo_manage")
 public class PhotoEntity {
     @Id
-    @Column(name = "photo_id", nullable = false)
-    private String photoId;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long photoId;
 
 //    @ManyToOne
 //    @JoinColumn(name="travel_id", nullable = false)
