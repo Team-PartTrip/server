@@ -10,13 +10,16 @@ public class ProfileResponseDto {
 
     private String userId;
     private String nickName;
-    private String travelType;
+    private String imgUrl;
+    private String characterId;
+
 
     public static ProfileResponseDto from(UserProfileEntity user) {
         return new ProfileResponseDto(
                 user.getUserId(),
                 user.getNickName(),
-                user.getTravelType()
+                user.getImgUrl(),
+                user.getCharacterId()
         );
     }
 }

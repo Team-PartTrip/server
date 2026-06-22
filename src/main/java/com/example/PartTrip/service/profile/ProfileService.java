@@ -1,7 +1,6 @@
 package com.example.PartTrip.service.profile;
 
 import com.example.PartTrip.dto.profile.ProfileResponseDto;
-import com.example.PartTrip.dto.profile.ProfileUpdateRequestDto;
 import com.example.PartTrip.entity.profile.UserProfileEntity;
 import com.example.PartTrip.repository.profile.UserProfileRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,17 +19,18 @@ public class ProfileService {
         return ProfileResponseDto.from(user);
     }
 
-    @Transactional
-    public ProfileResponseDto updateProfile(String userId, ProfileUpdateRequestDto requestDto) {
-        UserProfileEntity user = findUserProfile(userId);
-
-        if (userProfileRepository.existsByNickNameAndUserIdNot(requestDto.getNickName(), userId)) {
-            throw new IllegalArgumentException("이미 사용 중인 닉네임입니다.");
-        }
-
-        user.updateProfile(requestDto.getNickName(), requestDto.getTravelType());
-        return ProfileResponseDto.from(user);
-    }
+//
+//    @Transactional
+//    public ProfileResponseDto updateProfile(String userId, ProfileUpdateRequestDto requestDto) {
+//        UserProfileEntity user = findUserProfile(userId);
+//
+//        if (userProfileRepository.existsByNickNameAndUserIdNot(requestDto.getNickName(), userId)) {
+//            throw new IllegalArgumentException("이미 사용 중인 닉네임입니다.");
+//        }
+//
+//        user.updateProfile(requestDto.getNickName(), requestDto.getTravelType());
+//        return ProfileResponseDto.from(user);
+//    }
 
     private UserProfileEntity findUserProfile(String userId) {
         return userProfileRepository.findById(userId)
