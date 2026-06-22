@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -11,6 +12,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "user_manage")
 @Getter
 @NoArgsConstructor
+@AllArgsConstructor
 public class UserProfileEntity {
 
     @Id
@@ -20,11 +22,10 @@ public class UserProfileEntity {
     @Column(name = "nick_name", nullable = false)
     private String nickName;
 
-    @Column(name = "travel_type")
-    private String travelType;
+    @Column(name = "img_url")
+    private String imgUrl;
 
-    public void updateProfile(String nickName, String travelType) {
-        this.nickName = nickName;
-        this.travelType = travelType;
-    }
+    @Column(name = "character_id")
+    private String characterId;
+
 }
