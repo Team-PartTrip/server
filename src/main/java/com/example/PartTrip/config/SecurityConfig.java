@@ -42,6 +42,13 @@ public class SecurityConfig {
                 // URL 접근 권한 설정
                 .authorizeHttpRequests(auth -> auth
 
+                        // Swagger 접속 허용
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**"
+                        ).permitAll()
+
                         // 회원가입 허용
                         .requestMatchers("/api/auth/signup").permitAll()
 
