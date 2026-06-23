@@ -30,9 +30,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         // 현재 요청 URL 가져오기
         String requestURI = request.getRequestURI();
 
-        // 회원가입, 로그인, 이메일 인증 등
+        // 회원가입, 로그인, 이메일 인증, Swagger 등
         // 인증이 필요 없는 API는 필터 검사 없이 통과
-        if (requestURI.startsWith("/api/auth/")) {
+        if (
+                requestURI.startsWith("/api/auth/")
+                        || requestURI.startsWith("/swagger-ui")
+                        || requestURI.startsWith("/v3/api-docs")
+        ) {
             filterChain.doFilter(request, response);
             return;
         }
