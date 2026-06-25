@@ -1,4 +1,4 @@
-package com.example.PartTrip.entity.home;
+package com.example.PartTrip.entity.main;
 
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -30,13 +30,13 @@ public class CountryInfoEntity {
     @Column(name = "image_url")
     private String imageUrl;
 
-    // 환율 표시
-    @Column(name = "exchange_rate_text")
-    private String exchangeRateText;
-
-    // 현지 시간
-    @Column(name = "local_time_text")
-    private String localTimeText;
+//    // 환율 표시
+//    @Column(name = "exchange_rate_text")
+//    private String exchangeRateText;
+//
+//    // 현지 시간
+//    @Column(name = "local_time_text")
+//    private String localTimeText;
 
     // 문화 요약
     @Column(name = "summary", length = 1000)
