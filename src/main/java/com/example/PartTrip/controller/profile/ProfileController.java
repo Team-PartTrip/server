@@ -4,6 +4,7 @@ import com.example.PartTrip.dto.profile.ProfileResponseDto;
 import com.example.PartTrip.service.profile.ProfileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,9 +20,10 @@ public class ProfileController {
 
 
     @GetMapping("/myInfo")
-    public ResponseEntity<ProfileResponseDto> getProfile(@AuthenticationPrincipal UserDetails userDetails ){
+    public ResponseEntity<ProfileResponseDto> getProfile(Authentication authentication){
 
-        ProfileResponseDto resDto = profileService.getProfile(userDetails.getUsername());
+        String userId = (String) authentication.getPrincipal();
+        ProfileResponseDto resDto = profileService.getProfile(userId);
 
         return ResponseEntity.ok(resDto);
     }

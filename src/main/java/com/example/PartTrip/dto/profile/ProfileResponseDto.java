@@ -1,6 +1,7 @@
 package com.example.PartTrip.dto.profile;
 
 import com.example.PartTrip.entity.profile.UserProfileEntity;
+import com.example.PartTrip.entity.signup.UserEntity;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -10,16 +11,16 @@ public class ProfileResponseDto {
 
     private String userId;
     private String nickName;
-    private String imgUrl;
-    private String characterId;
+ //   private String imgUrl;
+//    private String characterId;
 
 
-    public static ProfileResponseDto from(UserProfileEntity user) {
+    public static ProfileResponseDto from(UserEntity user) {
         return new ProfileResponseDto(
                 user.getUserId(),
-                user.getNickName(),
-                user.getImgUrl(),
-                user.getCharacterId()
+                user.getNickName()
+              //  user.getImgUrl(),
+              //  user.getCharacterId()
         );
     }
 }

@@ -2,6 +2,7 @@ package com.example.PartTrip.service.profile;
 
 import com.example.PartTrip.dto.profile.ProfileResponseDto;
 import com.example.PartTrip.entity.profile.UserProfileEntity;
+import com.example.PartTrip.entity.signup.UserEntity;
 import com.example.PartTrip.repository.profile.UserProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,7 +16,9 @@ public class ProfileService {
 
     @Transactional(readOnly = true)
     public ProfileResponseDto getProfile(String userId) {
-        UserProfileEntity user = findUserProfile(userId);
+        UserEntity user = userProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
         return ProfileResponseDto.from(user);
     }
 
@@ -32,8 +35,8 @@ public class ProfileService {
 //        return ProfileResponseDto.from(user);
 //    }
 
-    private UserProfileEntity findUserProfile(String userId) {
-        return userProfileRepository.findById(userId)
+    private UserEntity findUserProfile(String userId) {
+        return userProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
     }
 }
