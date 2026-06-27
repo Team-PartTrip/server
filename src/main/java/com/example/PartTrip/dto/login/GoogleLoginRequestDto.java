@@ -7,6 +7,9 @@ import lombok.Setter;
 @Setter
 public class GoogleLoginRequestDto {
 
-    // 앱에서 Google 로그인 후 받은 idToken
+    // 앱(네이티브)에서 보내는 Google idToken
     private String idToken;
+
+    // 웹에서 보내는 Google auth code
+    private String code;
 }
