@@ -6,12 +6,14 @@ import com.example.PartTrip.enums.photo.PhotoAnalysisAccuracyCategory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriUtils;
@@ -25,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+@Slf4j
 @Primary
 @Component
 @RequiredArgsConstructor
@@ -55,6 +58,11 @@ public class OpenAiWikipediaPhotoAnalyzer implements PhotoAnalyzer {
 
         try {
             VisionCandidate candidate = recognizeImage(imageFile);
+
+            // ▼▼▼ Vision API 인식 결과를 콘솔에서 확인하기 위한 로그 ▼▼▼
+            log.info("[Vision 인식 결과] description='{}', score={}", candidate.description(), candidate.score());
+            // ▲▲▲
+
             if (candidate.score() < MIN_CONFIDENCE) {
                 return failedAnalysis(photo, "사진 속 대상을 정확하게 특정하지 못했습니다.");
             }
@@ -80,6 +88,7 @@ public class OpenAiWikipediaPhotoAnalyzer implements PhotoAnalyzer {
                     .photoAnalysisAccuracyCategory(toAccuracyCategory(candidate.score()))
                     .build();
         } catch (RuntimeException exception) {
+            exception.printStackTrace();
             return failedAnalysis(photo, "사진 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
         }
     }
@@ -104,6 +113,10 @@ public class OpenAiWikipediaPhotoAnalyzer implements PhotoAnalyzer {
                 .retrieve()
                 .body(JsonNode.class);
 
+        // ▼▼▼ Vision API 원본 응답 전체를 보고 싶으면 이 줄 주석 해제 ▼▼▼
+        // log.info("[Vision 원본 응답] {}", response);
+        // ▲▲▲
+
         JsonNode firstResponse = response == null ? objectMapper.createObjectNode() : response.path("responses").path(0);
         if (!firstResponse.path("error").isMissingNode()) {
             throw new IllegalArgumentException("Google Vision API 분석에 실패했습니다.");
@@ -114,6 +127,10 @@ public class OpenAiWikipediaPhotoAnalyzer implements PhotoAnalyzer {
         addCandidates(candidates, firstResponse.path("webDetection").path("webEntities"), "description");
         addCandidates(candidates, firstResponse.path("labelAnnotations"), "description");
         addBestGuessCandidates(candidates, firstResponse.path("webDetection").path("bestGuessLabels"));
+
+        // ▼▼▼ 인식된 모든 후보를 보고 싶으면 이 로그 확인 ▼▼▼
+        log.info("[Vision 전체 후보] {}", candidates);
+        // ▲▲▲
 
         return candidates.stream()
                 .filter(candidate -> StringUtils.hasText(candidate.description()))
@@ -172,22 +189,28 @@ public class OpenAiWikipediaPhotoAnalyzer implements PhotoAnalyzer {
 
     private Optional<WikipediaArticle> getWikipediaSummary(String language, String title) {
         String encodedTitle = UriUtils.encodePathSegment(title, StandardCharsets.UTF_8);
-        JsonNode summary = restClient.get()
-                .uri("https://{language}.wikipedia.org/api/rest_v1/page/summary/{title}", language, encodedTitle)
-                .header(HttpHeaders.USER_AGENT, USER_AGENT)
-                .retrieve()
-                .body(JsonNode.class);
+        try {
+            JsonNode summary = restClient.get()
+                    .uri("https://{language}.wikipedia.org/api/rest_v1/page/summary/{title}", language, encodedTitle)
+                    .header(HttpHeaders.USER_AGENT, USER_AGENT)
+                    .retrieve()
+                    .body(JsonNode.class);
 
-        if (summary == null || !StringUtils.hasText(summary.path("extract").asText(""))) {
+            if (summary == null || !StringUtils.hasText(summary.path("extract").asText(""))) {
+                return Optional.empty();
+            }
+
+            String sourceUrl = summary.path("content_urls").path("desktop").path("page").asText("");
+            return Optional.of(new WikipediaArticle(
+                    summary.path("title").asText(title),
+                    summary.path("extract").asText(""),
+                    sourceUrl
+            ));
+        } catch (HttpClientErrorException.NotFound notFound) {
+            // 위키백과 요약 문서가 없는 경우(리다이렉트/중의성 등) -> 실패로 죽이지 말고 빈 결과로 처리
+            log.info("[위키백과 404] language={}, title={}", language, title);
             return Optional.empty();
         }
-
-        String sourceUrl = summary.path("content_urls").path("desktop").path("page").asText("");
-        return Optional.of(new WikipediaArticle(
-                summary.path("title").asText(title),
-                summary.path("extract").asText(""),
-                sourceUrl
-        ));
     }
 
     private JsonNode formatWithOpenAi(VisionCandidate candidate, WikipediaArticle article) {
