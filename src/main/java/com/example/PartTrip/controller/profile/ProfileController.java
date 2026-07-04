@@ -1,15 +1,14 @@
 package com.example.PartTrip.controller.profile;
 
+import com.example.PartTrip.dto.profile.CharacterInfoResponseDto;
 import com.example.PartTrip.dto.profile.ProfileResponseDto;
+import com.example.PartTrip.dto.profile.ProfileUpdateRequestDto;
 import com.example.PartTrip.service.profile.ProfileService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -18,26 +17,30 @@ public class ProfileController {
 
     private final ProfileService profileService;
 
-
     @GetMapping("/myInfo")
-    public ResponseEntity<ProfileResponseDto> getProfile(Authentication authentication){
-
+    public ResponseEntity<ProfileResponseDto> getProfile(Authentication authentication) {
         String userId = (String) authentication.getPrincipal();
         ProfileResponseDto resDto = profileService.getProfile(userId);
-
         return ResponseEntity.ok(resDto);
     }
 
-//    @GetMapping("/myInfo")
-//    public ProfileResponseDto getProfile(@PathVariable String userId) {
-//        return profileService.getProfile(userId);
-//    }
+    @PutMapping
+    public ResponseEntity<ProfileResponseDto> updateProfile(
+            Authentication authentication,
+            @Valid @RequestBody ProfileUpdateRequestDto requestDto
+    ) {
+        String userId = (String) authentication.getPrincipal();
+        ProfileResponseDto resDto = profileService.updateProfile(userId, requestDto);
+        return ResponseEntity.ok(resDto);
+    }
 
-//    @PatchMapping("/{userId}")
-//    public ProfileResponseDto updateProfile(
-//            @PathVariable String userId,
-//            @Valid @RequestBody ProfileUpdateRequestDto requestDto
-//    ) {
-//        return profileService.updateProfile(userId, requestDto);
-//    }
+    // TODO: 캐릭터 미선택 유저 처리 보류
+    // 심리테스트 기능 미구현 상태에서 character_id가 null인 유저가 존재할 수 있음
+    // 심리테스트 완료 후 character_id가 null이면 강제로 심리테스트 화면으로 이동 처리 필요
+    @GetMapping("/character")
+    public ResponseEntity<CharacterInfoResponseDto> getCharacterInfo(Authentication authentication) {
+        String userId = (String) authentication.getPrincipal();
+        CharacterInfoResponseDto resDto = profileService.getCharacterInfo(userId);
+        return ResponseEntity.ok(resDto);
+    }
 }
