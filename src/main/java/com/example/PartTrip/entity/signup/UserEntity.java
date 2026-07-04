@@ -42,4 +42,13 @@ public class UserEntity {
 
     @Column(name = "img_url")
     private String imgUrl;
+
+    @Column(name = "character_id")
+    private String characterId;
+
+    @Column(name = "user_level")
+    private Integer userLevel;
+
+    @Column(name = "character_point")
+    private Integer characterPoint;
 }
