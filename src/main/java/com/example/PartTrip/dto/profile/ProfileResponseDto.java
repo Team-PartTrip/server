@@ -1,6 +1,5 @@
 package com.example.PartTrip.dto.profile;
 
-import com.example.PartTrip.entity.profile.UserProfileEntity;
 import com.example.PartTrip.entity.signup.UserEntity;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

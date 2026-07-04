@@ -1,7 +1,5 @@
 package com.example.PartTrip.repository.profile;
 
-import com.example.PartTrip.entity.login.RefreshTokenEntity;
-import com.example.PartTrip.entity.profile.UserProfileEntity;
 import com.example.PartTrip.entity.signup.UserEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
