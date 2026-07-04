@@ -12,7 +12,5 @@ public class ProfileUpdateRequestDto {
 
     @NotBlank(message = "닉네임은 필수입니다.")
     private String nickName;
-
-    @NotBlank(message = "여행 타입은 필수입니다.")
-    private String travelType;
+    private String imgUrl;
 }
