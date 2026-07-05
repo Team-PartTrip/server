@@ -1,8 +1,10 @@
 package com.example.PartTrip.service.main;
 
 import com.example.PartTrip.dto.main.CountryInfoResponseDto;
+import com.example.PartTrip.dto.main.FestivalResponseDto;
 import com.example.PartTrip.dto.main.PopulationInfoResponseDto;
 import com.example.PartTrip.entity.main.CountryInfoEntity;
+import com.example.PartTrip.entity.main.FestivalEntity;
 import com.example.PartTrip.entity.main.PopulationInfoEntity;
 import com.example.PartTrip.repository.main.CountryInfoRepository;
 import com.example.PartTrip.repository.main.FestivalRepository;
@@ -46,6 +48,25 @@ public class MainService {
                         population.getNationCode(),
                         population.getNationName(),
                         population.getPercent()
+                ))
+                .toList();
+    }
+
+    // 축제 조회
+    public List<FestivalResponseDto> getFestivals(String countryName) {
+
+        List<FestivalEntity> festivals =
+                festivalRepository.findByCountryName(countryName);
+
+        return festivals.stream()
+                .map(festival -> new FestivalResponseDto(
+                        festival.getTitle(),
+                        festival.getCategory(),
+                        festival.getDescription(),
+                        festival.getStartDate(),
+                        festival.getStartTime(),
+                        festival.getLocation(),
+                        festival.getImageUrl()
                 ))
                 .toList();
     }
