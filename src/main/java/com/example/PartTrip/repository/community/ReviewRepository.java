@@ -1,15 +1,18 @@
 package com.example.PartTrip.repository.community;
 
 import com.example.PartTrip.entity.community.ReviewEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-
-import java.util.List;
 
 public interface ReviewRepository extends JpaRepository<ReviewEntity, Long> {
 
     // 특정 여행지의 리뷰를 최신순으로 조회
-    List<ReviewEntity> findByCountryInfoIdOrderByCreateDateDesc(Long countryInfoId);
+    Page<ReviewEntity> findByCountryInfoIdOrderByCreateDateDesc(Long countryInfoId, Pageable pageable);
 
     // 전체 리뷰를 최신순으로 조회 (커뮤니티 피드용)
-    List<ReviewEntity> findAllByOrderByCreateDateDesc();
+    Page<ReviewEntity> findAllByOrderByCreateDateDesc(Pageable pageable);
+
+    // 내가 작성한 리뷰 목록
+    Page<ReviewEntity> findByUserIdOrderByCreateDateDesc(String userId, Pageable pageable);
 }

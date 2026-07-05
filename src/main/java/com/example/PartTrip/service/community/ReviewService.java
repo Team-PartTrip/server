@@ -1,15 +1,23 @@
 package com.example.PartTrip.service.community;
 
+import com.example.PartTrip.dto.community.PageResponseDto;
 import com.example.PartTrip.dto.community.ReviewRequestDto;
 import com.example.PartTrip.dto.community.ReviewResponseDto;
+import com.example.PartTrip.entity.community.PostImageEntity;
 import com.example.PartTrip.entity.community.ReviewEntity;
 import com.example.PartTrip.entity.main.CountryInfoEntity;
 import com.example.PartTrip.entity.signup.UserEntity;
+import com.example.PartTrip.repository.community.CommentRepository;
+import com.example.PartTrip.repository.community.LikeRepository;
+import com.example.PartTrip.repository.community.PostImageRepository;
 import com.example.PartTrip.repository.community.ReviewRepository;
 import com.example.PartTrip.repository.main.CountryInfoRepository;
 import com.example.PartTrip.repository.signup.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,11 +25,17 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class ReviewService {
+
+    private static final String TARGET_TYPE = "REVIEW";
 
     private final ReviewRepository reviewRepository;
     private final CountryInfoRepository countryInfoRepository;
     private final UserRepository userRepository;
+    private final LikeRepository likeRepository;
+    private final PostImageRepository postImageRepository;
+    private final CommentRepository commentRepository;
 
     // 여행지 별점 리뷰 작성
     public ReviewResponseDto createReview(String userId, ReviewRequestDto dto) {
@@ -44,31 +58,36 @@ public class ReviewService {
 
         ReviewEntity saved = reviewRepository.save(review);
 
-        return toDto(saved);
+        saveImages(saved.getReviewId(), dto.getImages());
+
+        return toDto(saved, userId);
     }
 
     // 리뷰 단건 조회
-    public ReviewResponseDto getReview(Long reviewId) {
+    public ReviewResponseDto getReview(Long reviewId, String currentUserId) {
         ReviewEntity review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 리뷰입니다."));
 
-        return toDto(review);
+        return toDto(review, currentUserId);
     }
 
-    // 특정 여행지의 리뷰 목록 (최신순)
-    public List<ReviewResponseDto> getReviews(Long countryInfoId) {
-        return reviewRepository.findByCountryInfoIdOrderByCreateDateDesc(countryInfoId)
-                .stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+    // 특정 여행지의 리뷰 목록 (최신순, 페이지네이션)
+    public PageResponseDto<ReviewResponseDto> getReviews(Long countryInfoId, String currentUserId, int page, int size) {
+        Page<ReviewEntity> result =
+                reviewRepository.findByCountryInfoIdOrderByCreateDateDesc(countryInfoId, PageRequest.of(page, size));
+        return toPageDto(result, currentUserId);
     }
 
-    // 전체 리뷰 목록 (커뮤니티 피드, 최신순)
-    public List<ReviewResponseDto> getAllReviews() {
-        return reviewRepository.findAllByOrderByCreateDateDesc()
-                .stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+    // 전체 리뷰 목록 (커뮤니티 피드, 최신순, 페이지네이션)
+    public PageResponseDto<ReviewResponseDto> getAllReviews(String currentUserId, int page, int size) {
+        Page<ReviewEntity> result = reviewRepository.findAllByOrderByCreateDateDesc(PageRequest.of(page, size));
+        return toPageDto(result, currentUserId);
+    }
+
+    // 내가 쓴 리뷰 목록
+    public PageResponseDto<ReviewResponseDto> getMyReviews(String userId, int page, int size) {
+        Page<ReviewEntity> result = reviewRepository.findByUserIdOrderByCreateDateDesc(userId, PageRequest.of(page, size));
+        return toPageDto(result, userId);
     }
 
     // 리뷰 수정 (본인 리뷰만 가능)
@@ -89,7 +108,10 @@ public class ReviewService {
 
         ReviewEntity saved = reviewRepository.save(review);
 
-        return toDto(saved);
+        postImageRepository.deleteByTargetTypeAndTargetId(TARGET_TYPE, reviewId);
+        saveImages(reviewId, dto.getImages());
+
+        return toDto(saved, userId);
     }
 
     // 리뷰 삭제 (본인 리뷰만 가능)
@@ -102,7 +124,24 @@ public class ReviewService {
             throw new IllegalArgumentException("본인이 작성한 리뷰만 삭제할 수 있습니다.");
         }
 
+        commentRepository.deleteByTargetTypeAndTargetId(TARGET_TYPE, reviewId);
+        likeRepository.deleteByTargetTypeAndTargetId(TARGET_TYPE, reviewId);
+        postImageRepository.deleteByTargetTypeAndTargetId(TARGET_TYPE, reviewId);
         reviewRepository.delete(review);
+    }
+
+    private void saveImages(Long reviewId, List<String> images) {
+        if (images == null) return;
+        int order = 0;
+        for (String url : images) {
+            if (url == null || url.isBlank()) continue;
+            PostImageEntity image = new PostImageEntity();
+            image.setTargetType(TARGET_TYPE);
+            image.setTargetId(reviewId);
+            image.setImageUrl(url);
+            image.setSortOrder(order++);
+            postImageRepository.save(image);
+        }
     }
 
     // 작성/수정 공통 검증
@@ -118,8 +157,23 @@ public class ReviewService {
         }
     }
 
-    // Entity -> Dto 변환 (국가정보 + 닉네임 포함)
-    private ReviewResponseDto toDto(ReviewEntity review) {
+    private PageResponseDto<ReviewResponseDto> toPageDto(Page<ReviewEntity> page, String currentUserId) {
+        List<ReviewResponseDto> content = page.getContent().stream()
+                .map(r -> toDto(r, currentUserId))
+                .collect(Collectors.toList());
+
+        return new PageResponseDto<>(
+                content,
+                page.getNumber(),
+                page.getSize(),
+                page.getTotalElements(),
+                page.getTotalPages(),
+                page.hasNext()
+        );
+    }
+
+    // Entity -> Dto 변환 (국가정보 + 닉네임 + 이미지 + 좋아요 + 댓글수 포함)
+    private ReviewResponseDto toDto(ReviewEntity review, String currentUserId) {
 
         CountryInfoEntity country = countryInfoRepository.findById(review.getCountryInfoId())
                 .orElse(null);
@@ -127,6 +181,18 @@ public class ReviewService {
         String nickName = userRepository.findByUserId(review.getUserId())
                 .map(UserEntity::getNickName)
                 .orElse("알 수 없음");
+
+        long likeCount = likeRepository.countByTargetTypeAndTargetId(TARGET_TYPE, review.getReviewId());
+        boolean liked = currentUserId != null && likeRepository
+                .findByTargetTypeAndTargetIdAndUserId(TARGET_TYPE, review.getReviewId(), currentUserId)
+                .isPresent();
+        long commentCount = commentRepository.countByTargetTypeAndTargetId(TARGET_TYPE, review.getReviewId());
+
+        List<String> images = postImageRepository
+                .findByTargetTypeAndTargetIdOrderBySortOrderAsc(TARGET_TYPE, review.getReviewId())
+                .stream()
+                .map(PostImageEntity::getImageUrl)
+                .collect(Collectors.toList());
 
         return new ReviewResponseDto(
                 review.getReviewId(),
@@ -138,6 +204,10 @@ public class ReviewService {
                 review.getTitle(),
                 review.getRating(),
                 review.getContent(),
+                images,
+                likeCount,
+                liked,
+                commentCount,
                 review.getCreateDate()
         );
     }

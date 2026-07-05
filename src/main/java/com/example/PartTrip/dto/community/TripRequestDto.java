@@ -15,5 +15,6 @@ public class TripRequestDto {
     private LocalDate startDate;
     private LocalDate endDate;
     private String content;
+    private List<String> images;
     private List<TripPlaceRequestDto> places;
 }

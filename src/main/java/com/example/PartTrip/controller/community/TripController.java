@@ -33,4 +33,21 @@ public class TripController {
     public TripResponseDto getTrip(Authentication authentication, @PathVariable Long tripId) {
         return tripService.getTrip(authentication.getName(), tripId);
     }
+
+    // 일정 수정 (본인 것만 가능)
+    @PutMapping("/{tripId}")
+    public TripResponseDto updateTrip(
+            Authentication authentication,
+            @PathVariable Long tripId,
+            @RequestBody TripRequestDto dto
+    ) {
+        return tripService.updateTrip(authentication.getName(), tripId, dto);
+    }
+
+    // 일정 삭제 (본인 것만 가능)
+    @DeleteMapping("/{tripId}")
+    public String deleteTrip(Authentication authentication, @PathVariable Long tripId) {
+        tripService.deleteTrip(authentication.getName(), tripId);
+        return "일정이 삭제되었습니다.";
+    }
 }

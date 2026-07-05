@@ -3,6 +3,8 @@ package com.example.PartTrip.dto.community;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
+
 @Getter
 @Setter
 public class ReviewRequestDto {
@@ -11,4 +13,5 @@ public class ReviewRequestDto {
     private String title;
     private Integer rating;
     private String content;
+    private List<String> images;
 }

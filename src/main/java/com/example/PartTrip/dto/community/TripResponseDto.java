@@ -21,6 +21,10 @@ public class TripResponseDto {
     private LocalDate startDate;
     private LocalDate endDate;
     private String content;
+    private List<String> images;
+    private long likeCount;
+    private boolean liked;
+    private long commentCount;
     private Boolean isPublic;
     private LocalDateTime createDate;
     private List<TripPlaceResponseDto> places;

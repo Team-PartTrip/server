@@ -1,7 +1,11 @@
 package com.example.PartTrip.controller.community;
 
+import com.example.PartTrip.dto.community.CommentRequestDto;
+import com.example.PartTrip.dto.community.CommentResponseDto;
+import com.example.PartTrip.dto.community.PageResponseDto;
 import com.example.PartTrip.dto.community.ShareTripRequestDto;
 import com.example.PartTrip.dto.community.TripResponseDto;
+import com.example.PartTrip.service.community.CommentService;
 import com.example.PartTrip.service.community.TripService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -14,7 +18,10 @@ import java.util.List;
 @RequestMapping("/api/community/shared-trips")
 public class SharedTripController {
 
+    private static final String TARGET_TYPE = "TRIP";
+
     private final TripService tripService;
+    private final CommentService commentService;
 
     // 내 일정을 커뮤니티에 공개 공유
     @PostMapping
@@ -22,21 +29,41 @@ public class SharedTripController {
         return tripService.shareTrip(authentication.getName(), dto.getTripId());
     }
 
-    // 공유된 일정 목록 (커뮤니티 피드)
+    // 공유된 일정 목록 (커뮤니티 피드, 페이지네이션)
     @GetMapping
-    public List<TripResponseDto> listSharedTrips() {
-        return tripService.listSharedTrips();
+    public PageResponseDto<TripResponseDto> listSharedTrips(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return tripService.listSharedTrips(authentication.getName(), page, size);
     }
 
     // 공유된 일정 상세
     @GetMapping("/{tripId}")
-    public TripResponseDto getSharedTripDetail(@PathVariable Long tripId) {
-        return tripService.getSharedTripDetail(tripId);
+    public TripResponseDto getSharedTripDetail(Authentication authentication, @PathVariable Long tripId) {
+        return tripService.getSharedTripDetail(tripId, authentication.getName());
     }
 
     // 다른 사람 일정 가져오기(복사)
     @PostMapping("/{tripId}/import")
     public TripResponseDto importTrip(Authentication authentication, @PathVariable Long tripId) {
         return tripService.importTrip(authentication.getName(), tripId);
+    }
+
+    // 일정 댓글(또는 대댓글) 작성
+    @PostMapping("/{tripId}/comments")
+    public CommentResponseDto createComment(
+            Authentication authentication,
+            @PathVariable Long tripId,
+            @RequestBody CommentRequestDto dto
+    ) {
+        return commentService.createComment(authentication.getName(), TARGET_TYPE, tripId, dto);
+    }
+
+    // 일정 댓글 목록 조회
+    @GetMapping("/{tripId}/comments")
+    public List<CommentResponseDto> getComments(@PathVariable Long tripId) {
+        return commentService.getComments(TARGET_TYPE, tripId);
     }
 }
