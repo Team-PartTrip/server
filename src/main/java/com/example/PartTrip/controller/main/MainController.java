@@ -1,6 +1,7 @@
 package com.example.PartTrip.controller.main;
 
 import com.example.PartTrip.dto.main.CountryInfoResponseDto;
+import com.example.PartTrip.dto.main.FestivalResponseDto;
 import com.example.PartTrip.dto.main.PopulationInfoResponseDto;
 import com.example.PartTrip.service.main.MainService;
 import lombok.Getter;
@@ -34,6 +35,14 @@ public class MainController {
             @RequestParam String countryName
     ) {
         return mainService.getPopulationInfo(countryName);
+    }
+
+    // 축제 조회
+    @GetMapping("/festivals")
+    public List<FestivalResponseDto> getFestivals(
+            @RequestParam String countryName
+    ) {
+        return mainService.getFestivals(countryName);
     }
 
 }
