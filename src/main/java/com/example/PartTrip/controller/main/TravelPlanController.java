@@ -24,5 +24,12 @@ public class TravelPlanController {
 
         return travelPlanService.saveTravelPlan(userId, dto);
     }
+    // D-Day 조회
+    @GetMapping("/dday")
+    public DdayResponseDto getDday(Authentication authentication) {
 
+        String userId = authentication.getName();
+
+        return travelPlanService.getDday(userId);
+    }
 }
