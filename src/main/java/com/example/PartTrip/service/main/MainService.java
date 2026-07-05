@@ -29,6 +29,7 @@ public class MainService {
                 .orElseThrow(() -> new IllegalArgumentException("국가 정보를 찾을 수 없습니다."));
 
         return new CountryInfoResponseDto(
+                country.getCountryInfoId(),
                 country.getCountryName(),
                 country.getCityName(),
                 country.getImageUrl(),
