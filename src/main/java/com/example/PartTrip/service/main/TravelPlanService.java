@@ -32,4 +32,41 @@ public class TravelPlanService {
 
         return toDdayResponseDto(savedTravelPlan);
     }
+
+    // D-Day 조회
+    public DdayResponseDto getDday(String userId) {
+
+        TravelPlanEntity travelPlan = travelPlanRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("등록된 여행 일정이 없습니다."));
+
+        return toDdayResponseDto(travelPlan);
+    }
+
+    // Entity -> DdayResponseDto 변환
+    private DdayResponseDto toDdayResponseDto(TravelPlanEntity travelPlan) {
+
+        LocalDate today = LocalDate.now();
+
+        long days = ChronoUnit.DAYS.between(today, travelPlan.getStartDate());
+
+        String dday;
+
+        if (days > 0) {
+            dday = "D - " + days;
+        } else if (days == 0) {
+            dday = "D-Day";
+        } else if (!today.isAfter(travelPlan.getEndDate())) {
+            dday = "여행 중";
+        } else {
+            dday = "여행 종료";
+        }
+
+        return new DdayResponseDto(
+                travelPlan.getCountryName(),
+                travelPlan.getCityName(),
+                travelPlan.getStartDate(),
+                travelPlan.getEndDate(),
+                dday
+        );
+    }
 }
