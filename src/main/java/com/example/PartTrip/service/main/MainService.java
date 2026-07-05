@@ -1,12 +1,16 @@
 package com.example.PartTrip.service.main;
 
 import com.example.PartTrip.dto.main.CountryInfoResponseDto;
+import com.example.PartTrip.dto.main.PopulationInfoResponseDto;
 import com.example.PartTrip.entity.main.CountryInfoEntity;
+import com.example.PartTrip.entity.main.PopulationInfoEntity;
 import com.example.PartTrip.repository.main.CountryInfoRepository;
 import com.example.PartTrip.repository.main.FestivalRepository;
 import com.example.PartTrip.repository.main.PopulationInfoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +32,22 @@ public class MainService {
                 country.getImageUrl(),
                 country.getSummary()
         );
+    }
+
+
+    // 인구 구성 조회
+    public List<PopulationInfoResponseDto> getPopulationInfo(String countryName) {
+
+        List<PopulationInfoEntity> populations =
+                populationInfoRepository.findByCountryName(countryName);
+
+        return populations.stream()
+                .map(population -> new PopulationInfoResponseDto(
+                        population.getNationCode(),
+                        population.getNationName(),
+                        population.getPercent()
+                ))
+                .toList();
     }
 
 }
