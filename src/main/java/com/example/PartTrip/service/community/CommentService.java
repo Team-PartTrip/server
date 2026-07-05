@@ -2,14 +2,13 @@ package com.example.PartTrip.service.community;
 
 import com.example.PartTrip.dto.community.CommentRequestDto;
 import com.example.PartTrip.dto.community.CommentResponseDto;
-import com.example.PartTrip.entity.community.BoardEntity;
 import com.example.PartTrip.entity.community.CommentEntity;
 import com.example.PartTrip.entity.signup.UserEntity;
-import com.example.PartTrip.repository.community.BoardRepository;
 import com.example.PartTrip.repository.community.CommentRepository;
 import com.example.PartTrip.repository.signup.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,26 +16,35 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class CommentService {
 
     private final CommentRepository commentRepository;
-    private final BoardRepository boardRepository;
     private final UserRepository userRepository;
 
-    // 댓글 작성
-    public CommentResponseDto createComment(String userId, Long boardId, CommentRequestDto dto) {
+    // 댓글(또는 대댓글) 작성 (게시판/리뷰 공용)
+    public CommentResponseDto createComment(
+            String userId, String targetType, Long targetId, CommentRequestDto dto
+    ) {
         if (dto.getContent() == null || dto.getContent().isBlank()) {
             throw new IllegalArgumentException("댓글 내용을 입력해주세요.");
         }
 
-        boardRepository.findById(boardId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 게시글입니다."));
-
         userRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
 
+        if (dto.getParentCommentId() != null) {
+            CommentEntity parent = commentRepository.findById(dto.getParentCommentId())
+                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 댓글입니다."));
+            if (!parent.getTargetType().equals(targetType) || !parent.getTargetId().equals(targetId)) {
+                throw new IllegalArgumentException("잘못된 답글 요청입니다.");
+            }
+        }
+
         CommentEntity comment = new CommentEntity();
-        comment.setBoardId(boardId);
+        comment.setTargetType(targetType);
+        comment.setTargetId(targetId);
+        comment.setParentCommentId(dto.getParentCommentId());
         comment.setUserId(userId);
         comment.setContent(dto.getContent());
         comment.setCreateDate(LocalDateTime.now());
@@ -46,12 +54,32 @@ public class CommentService {
         return toDto(saved);
     }
 
-    // 게시글의 댓글 목록 (작성순)
-    public List<CommentResponseDto> getComments(Long boardId) {
-        return commentRepository.findByBoardIdOrderByCreateDateAsc(boardId)
+    // 댓글 목록 (작성순, 대댓글은 parentCommentId로 클라이언트에서 그룹핑)
+    public List<CommentResponseDto> getComments(String targetType, Long targetId) {
+        return commentRepository.findByTargetTypeAndTargetIdOrderByCreateDateAsc(targetType, targetId)
                 .stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
+    }
+
+    // 댓글 수정 (본인 댓글만 가능)
+    public CommentResponseDto updateComment(String userId, Long commentId, CommentRequestDto dto) {
+        CommentEntity comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 댓글입니다."));
+
+        if (!comment.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("본인이 작성한 댓글만 수정할 수 있습니다.");
+        }
+
+        if (dto.getContent() == null || dto.getContent().isBlank()) {
+            throw new IllegalArgumentException("댓글 내용을 입력해주세요.");
+        }
+
+        comment.setContent(dto.getContent());
+
+        CommentEntity saved = commentRepository.save(comment);
+
+        return toDto(saved);
     }
 
     // 댓글 삭제 (본인 댓글만 가능)
@@ -63,6 +91,8 @@ public class CommentService {
             throw new IllegalArgumentException("본인이 작성한 댓글만 삭제할 수 있습니다.");
         }
 
+        // 이 댓글에 달린 대댓글도 함께 삭제
+        commentRepository.deleteByParentCommentId(commentId);
         commentRepository.delete(comment);
     }
 
@@ -73,7 +103,9 @@ public class CommentService {
 
         return new CommentResponseDto(
                 comment.getCommentId(),
-                comment.getBoardId(),
+                comment.getTargetType(),
+                comment.getTargetId(),
+                comment.getParentCommentId(),
                 comment.getUserId(),
                 nickName,
                 comment.getContent(),

@@ -9,7 +9,9 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class CommentResponseDto {
     private Long commentId;
-    private Long boardId;
+    private String targetType;
+    private Long targetId;
+    private Long parentCommentId;
     private String userId;
     private String nickName;
     private String content;
