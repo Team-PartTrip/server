@@ -288,8 +288,12 @@ public class OpenAiWikipediaPhotoAnalyzer implements PhotoAnalyzer {
         String encodedTitle = UriUtils.encodePathSegment(title, StandardCharsets.UTF_8);
 
         try {
+            log.info("language = {}", language);
+            log.info("title = {}", title);
+            log.info("encodedTitle = {}", encodedTitle);
+
             JsonNode summary = restClient.get()
-                    .uri("https://{language}.wikipedia.org/api/rest_v1/page/summary/{title}", language, encodedTitle)
+                    .uri("https://{language}.wikipedia.org/api/rest_v1/page/summary/{title}", language, title)
                     .header(HttpHeaders.USER_AGENT, USER_AGENT)
                     .retrieve()
                     .body(JsonNode.class);
@@ -372,22 +376,34 @@ public class OpenAiWikipediaPhotoAnalyzer implements PhotoAnalyzer {
                 "temperature", 0.2
         );
 
-        JsonNode response = restClient.post()
-                .uri("https://api.openai.com/v1/chat/completions")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + openAiApiKey)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(requestBody)
-                .retrieve()
-                .body(JsonNode.class);
-
-        String content = response == null
-                ? "{}"
-                : response.path("choices").path(0).path("message").path("content").asText("{}");
-
         try {
-            return objectMapper.readTree(content);
-        } catch (IOException exception) {
-            throw new IllegalArgumentException("OpenAI API 응답을 해석하지 못했습니다.");
+            JsonNode response = restClient.post()
+                    .uri("https://api.openai.com/v1/chat/completions")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + openAiApiKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(requestBody)
+                    .retrieve()
+                    .body(JsonNode.class);
+
+            String content = response == null
+                    ? "{}"
+                    : response.path("choices")
+                    .path(0)
+                    .path("message")
+                    .path("content")
+                    .asText("{}");
+
+            try {
+                return objectMapper.readTree(content);
+            } catch (IOException exception) {
+                throw new IllegalArgumentException("OpenAI API 응답을 해석하지 못했습니다.", exception);
+            }
+
+        } catch (HttpClientErrorException e) {
+            log.error("=== OpenAI API Error ===");
+            log.error("Status: {}", e.getStatusCode());
+            log.error("Response: {}", e.getResponseBodyAsString());
+            throw e;
         }
     }
 
