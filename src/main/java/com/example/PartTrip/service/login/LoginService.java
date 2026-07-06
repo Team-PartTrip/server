@@ -61,7 +61,7 @@ public class LoginService {
 
         refreshTokenRepository.save(tokenEntity);
 
-        return new TokenResponseDto(accessToken, refreshToken);
+        return new TokenResponseDto(accessToken, refreshToken, user.isSurveyCompleted());
     }
 
     public TokenResponseDto refresh(RefreshRequestDto dto) {
@@ -82,7 +82,10 @@ public class LoginService {
 
         String newAccessToken = jwtUtil.createAccessToken(userId, userMail);
 
-        return new TokenResponseDto(newAccessToken, dto.getRefreshToken());
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 아이디입니다."));
+
+        return new TokenResponseDto(newAccessToken, dto.getRefreshToken(), user.isSurveyCompleted());
     }
 
     // 로그아웃
