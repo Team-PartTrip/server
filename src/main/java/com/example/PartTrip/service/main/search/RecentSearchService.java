@@ -32,7 +32,6 @@ public class RecentSearchService {
                             search.getRecentSearchId(),
                             country.getCountryName(),
                             country.getCityName(),
-                            country.getCurrency(),
                             country.getImageUrl()
                     );
 
