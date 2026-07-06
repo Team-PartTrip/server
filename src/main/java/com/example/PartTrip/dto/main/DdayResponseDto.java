@@ -3,13 +3,19 @@ package com.example.PartTrip.dto.main;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+import java.time.LocalDate;
+
 @Getter
 @AllArgsConstructor
-public class CountryInfoResponseDto {
+public class DdayResponseDto {
 
-    private Long countryInfoId;
     private String countryName;
+
     private String cityName;
-    private String imageUrl;
-    private String summary;
+
+    private LocalDate startDate;
+
+    private LocalDate endDate;
+
+    private String dday;
 }

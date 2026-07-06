@@ -7,6 +7,7 @@ import lombok.Getter;
 @AllArgsConstructor
 public class PopulationInfoResponseDto {
 
+    private Long populationInfoId;
     private String nationCode;
     private String nationName;
     private Integer percent;

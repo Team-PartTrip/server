@@ -7,6 +7,7 @@ import lombok.Getter;
 @AllArgsConstructor
 public class FestivalResponseDto {
 
+    private Long festivalId;
     private String title;
     private String category;
     private String description;
