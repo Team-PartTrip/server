@@ -41,5 +41,19 @@ public class RecentSearchService {
 
     }
 
+    // 최근 검색 하나 삭제
+    public void deleteRecentSearch(Long recentSearchId){
+
+        recentSearchRepository.deleteById(recentSearchId);
+
+    }
+
+    // 최근 검색 전체 삭제
+    public void deleteAllRecentSearch(Long userId){
+
+        recentSearchRepository.deleteByUserId(userId);
+
+    }
+
 
 }
