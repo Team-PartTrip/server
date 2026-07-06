@@ -47,12 +47,6 @@ public class RecentSearchService {
 
     }
 
-    // 최근 검색 전체 삭제
-    public void deleteAllRecentSearch(Long userId){
-
-        recentSearchRepository.deleteByUserId(userId);
-
-    }
 
     // 최근 검색 저장
     public void saveRecentSearch(Long userId, Long countryInfoId){

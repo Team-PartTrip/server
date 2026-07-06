@@ -33,14 +33,6 @@ public class RecentSearchController {
 
     }
 
-    // 모두 지우기
-    @DeleteMapping("/recent/all")
-    public void deleteAllRecentSearch(
-            @RequestParam Long userId){
-
-        recentSearchService.deleteAllRecentSearch(userId);
-
-    }
 
     @PostMapping("/recent")
     public void saveRecentSearch(
