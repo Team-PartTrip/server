@@ -5,7 +5,8 @@ import lombok.Getter;
 @Getter
 public class RecentSearchRequestDto {
 
-    private Long userId;
+    private String userId;   // String으로 변경
+
     private Long countryInfoId;
 
 }
