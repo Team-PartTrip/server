@@ -18,7 +18,7 @@ public class RecentSearchController {
     // 최근 검색 조회
     @GetMapping("/recent")
     public List<RecentSearchResponseDto> getRecentSearch(
-            @RequestParam Long userId){
+            @RequestParam String userId) {
 
         return recentSearchService.getRecentSearch(userId);
 
@@ -27,17 +27,16 @@ public class RecentSearchController {
     // X 버튼 삭제
     @DeleteMapping("/recent/{recentSearchId}")
     public void deleteRecentSearch(
-            @PathVariable Long recentSearchId){
+            @PathVariable Long recentSearchId) {
 
         recentSearchService.deleteRecentSearch(recentSearchId);
 
     }
 
-
+    // 최근 검색 저장
     @PostMapping("/recent")
     public void saveRecentSearch(
-            @RequestBody RecentSearchRequestDto request
-    ){
+            @RequestBody RecentSearchRequestDto request) {
 
         recentSearchService.saveRecentSearch(
                 request.getUserId(),
