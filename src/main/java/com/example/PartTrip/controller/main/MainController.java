@@ -7,6 +7,7 @@ import com.example.PartTrip.entity.main.CountryInfoEntity;
 import com.example.PartTrip.repository.main.CountryInfoRepository;
 import com.example.PartTrip.service.main.MainService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -31,7 +32,7 @@ public class MainController {
     // 여행지(국가/도시) 목록 조회 - 여행지 선택 화면 등에서 사용
     @GetMapping("/countries")
     public List<CountryInfoResponseDto> getCountries() {
-        List<CountryInfoEntity> countries = countryInfoRepository.findAll();
+        List<CountryInfoEntity> countries = countryInfoRepository.findAll(Sort.by("countryName"));
 
         return countries.stream()
                 .map(c -> new CountryInfoResponseDto(
