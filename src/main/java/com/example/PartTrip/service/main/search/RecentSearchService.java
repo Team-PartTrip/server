@@ -54,5 +54,17 @@ public class RecentSearchService {
 
     }
 
+    // 최근 검색 저장
+    public void saveRecentSearch(Long userId, Long countryInfoId){
+
+        RecentSearchEntity recentSearch = RecentSearchEntity.builder()
+                .userId(userId)
+                .countryInfoId(countryInfoId)
+                .searchedAt(java.time.LocalDateTime.now())
+                .build();
+
+        recentSearchRepository.save(recentSearch);
+
+    }
 
 }

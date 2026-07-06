@@ -1,5 +1,6 @@
 package com.example.PartTrip.controller.main.search;
 
+import com.example.PartTrip.dto.main.search.RecentSearchRequestDto;
 import com.example.PartTrip.dto.main.search.RecentSearchResponseDto;
 import com.example.PartTrip.service.main.search.RecentSearchService;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,18 @@ public class RecentSearchController {
             @RequestParam Long userId){
 
         recentSearchService.deleteAllRecentSearch(userId);
+
+    }
+
+    @PostMapping("/recent")
+    public void saveRecentSearch(
+            @RequestBody RecentSearchRequestDto request
+    ){
+
+        recentSearchService.saveRecentSearch(
+                request.getUserId(),
+                request.getCountryInfoId()
+        );
 
     }
 
