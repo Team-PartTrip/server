@@ -20,8 +20,8 @@ public class TravelPlanEntity {
     @Column(name = "travel_plan_id")
     private Long travelPlanId;
 
-    // 사용자 아이디
-    @Column(name = "user_id", nullable = false)
+    // 사용자 아이디 (1인당 여행 일정 1개만 유지)
+    @Column(name = "user_id", nullable = false, unique = true)
     private String userId;
 
     // 여행 국가
