@@ -18,7 +18,7 @@ public class RecentSearchEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long recentSearchId;
 
-    private Long userId;
+    private String userId;   // String으로 변경
 
     private Long countryInfoId;
 
