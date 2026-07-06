@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.example.PartTrip.dto.photo.GuideCameraMissionCreateRequestDto;
+import com.example.PartTrip.dto.photo.GuideCameraMissionResponseDto;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -51,5 +53,12 @@ public class GuideCameraController {
     @PostMapping("/records")
     public PhotoAnalysisResponseDto saveRecord(@Valid @RequestBody GuideCameraRecordSaveRequestDto request) {
         return guideCameraService.saveRecord(request);
+    }
+
+    @PostMapping("/missions")
+    public GuideCameraMissionResponseDto createMission(
+            @Valid @RequestBody GuideCameraMissionCreateRequestDto request
+    ) {
+        return guideCameraService.createMission(request);
     }
 }
