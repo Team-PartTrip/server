@@ -22,6 +22,7 @@ public class FestivalService {
 
         return festivals.stream()
                 .map(festival -> new FestivalResponseDto(
+                        festival.getFestivalId(),
                         festival.getTitle(),
                         festival.getCategory(),
                         festival.getDescription(),
