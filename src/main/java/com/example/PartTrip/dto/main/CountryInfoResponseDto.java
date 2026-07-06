@@ -7,6 +7,7 @@ import lombok.Getter;
 @AllArgsConstructor
 public class CountryInfoResponseDto {
 
+    private Long countryInfoId;
     private String countryName;
     private String cityName;
     private String imageUrl;
