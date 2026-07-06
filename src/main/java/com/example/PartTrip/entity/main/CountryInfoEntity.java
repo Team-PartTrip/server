@@ -34,6 +34,13 @@ public class CountryInfoEntity {
     @Column(name = "currency_code")
     private String currencyCode;
 
+    // 위도/경도 - 실시간 날씨 조회에 사용
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
+
 //    // 환율 표시
 //    @Column(name = "exchange_rate_text")
 //    private String exchangeRateText;
