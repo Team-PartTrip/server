@@ -2,7 +2,9 @@ package com.example.PartTrip.service.main;
 
 import com.example.PartTrip.dto.main.DdayResponseDto;
 import com.example.PartTrip.dto.main.TravelPlanRequestDto;
+import com.example.PartTrip.entity.main.CountryInfoEntity;
 import com.example.PartTrip.entity.main.TravelPlanEntity;
+import com.example.PartTrip.repository.main.CountryInfoRepository;
 import com.example.PartTrip.repository.main.TravelPlanRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,6 +17,7 @@ import java.time.temporal.ChronoUnit;
 public class TravelPlanService {
 
     private final TravelPlanRepository travelPlanRepository;
+    private final CountryInfoRepository countryInfoRepository;
 
     // 여행 일정 등록 또는 수정
     public DdayResponseDto saveTravelPlan(String userId, TravelPlanRequestDto dto) {
@@ -68,5 +71,22 @@ public class TravelPlanService {
                 travelPlan.getEndDate(),
                 dday
         );
+    }
+
+    public void changeTravelCountry(Long travelPlanId, Long countryInfoId){
+
+        TravelPlanEntity travelPlan =
+                travelPlanRepository.findById(travelPlanId)
+                        .orElseThrow(() -> new IllegalArgumentException("여행 계획이 없습니다."));
+
+        CountryInfoEntity country =
+                countryInfoRepository.findById(countryInfoId)
+                        .orElseThrow(() -> new IllegalArgumentException("국가가 없습니다."));
+
+        travelPlan.setCountryName(country.getCountryName());
+        travelPlan.setCityName(country.getCityName());
+
+        travelPlanRepository.save(travelPlan);
+
     }
 }

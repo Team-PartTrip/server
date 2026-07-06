@@ -4,7 +4,10 @@ import com.example.PartTrip.dto.community.CommentRequestDto;
 import com.example.PartTrip.dto.community.CommentResponseDto;
 import com.example.PartTrip.entity.community.CommentEntity;
 import com.example.PartTrip.entity.signup.UserEntity;
+import com.example.PartTrip.repository.community.BoardRepository;
 import com.example.PartTrip.repository.community.CommentRepository;
+import com.example.PartTrip.repository.community.ReviewRepository;
+import com.example.PartTrip.repository.community.TripRepository;
 import com.example.PartTrip.repository.signup.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,6 +24,9 @@ public class CommentService {
 
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
+    private final BoardRepository boardRepository;
+    private final ReviewRepository reviewRepository;
+    private final TripRepository tripRepository;
 
     // 댓글(또는 대댓글) 작성 (게시판/리뷰 공용)
     public CommentResponseDto createComment(
@@ -82,18 +88,41 @@ public class CommentService {
         return toDto(saved);
     }
 
-    // 댓글 삭제 (본인 댓글만 가능)
+    // 댓글 삭제 (댓글 작성자 본인 또는 게시글 작성자 본인이면 가능)
     public void deleteComment(String userId, Long commentId) {
         CommentEntity comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 댓글입니다."));
 
-        if (!comment.getUserId().equals(userId)) {
-            throw new IllegalArgumentException("본인이 작성한 댓글만 삭제할 수 있습니다.");
+        boolean isCommentOwner = comment.getUserId().equals(userId);
+        boolean isPostOwner = isPostAuthor(userId, comment.getTargetType(), comment.getTargetId());
+
+        if (!isCommentOwner && !isPostOwner) {
+            throw new IllegalArgumentException("댓글 작성자 또는 게시글 작성자만 삭제할 수 있습니다.");
         }
 
         // 이 댓글에 달린 대댓글도 함께 삭제
         commentRepository.deleteByParentCommentId(commentId);
         commentRepository.delete(comment);
+    }
+
+    // 댓글이 달린 게시글(자유게시판/후기/일정)의 작성자인지 확인
+    private boolean isPostAuthor(String userId, String targetType, Long targetId) {
+        switch (targetType) {
+            case "BOARD":
+                return boardRepository.findById(targetId)
+                        .map(board -> board.getUserId().equals(userId))
+                        .orElse(false);
+            case "REVIEW":
+                return reviewRepository.findById(targetId)
+                        .map(review -> review.getUserId().equals(userId))
+                        .orElse(false);
+            case "TRIP":
+                return tripRepository.findById(targetId)
+                        .map(trip -> trip.getUserId().equals(userId))
+                        .orElse(false);
+            default:
+                return false;
+        }
     }
 
     private CommentResponseDto toDto(CommentEntity comment) {
