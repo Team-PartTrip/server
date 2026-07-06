@@ -22,6 +22,7 @@ public class PopulationInfoService {
 
         return populations.stream()
                 .map(population -> new PopulationInfoResponseDto(
+                        population.getPopulationInfoId(),
                         population.getNationCode(),
                         population.getNationName(),
                         population.getPercent()
