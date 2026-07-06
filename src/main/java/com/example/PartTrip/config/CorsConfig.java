@@ -20,7 +20,7 @@ public class CorsConfig {
         // 허용할 프론트 포트
         config.setAllowedOrigins(List.of(
                 "http://localhost:3000",
-                "http://localhost:5174"
+                "http://localhost:5173"
         ));
 
         // 허용할 HTTP 메서드
