@@ -30,6 +30,10 @@ public class CountryInfoEntity {
     @Column(name = "image_url")
     private String imageUrl;
 
+    // 통화 코드 (ISO 4217, 예: USD, KRW) - 환율 조회에 사용
+    @Column(name = "currency_code")
+    private String currencyCode;
+
 //    // 환율 표시
 //    @Column(name = "exchange_rate_text")
 //    private String exchangeRateText;
