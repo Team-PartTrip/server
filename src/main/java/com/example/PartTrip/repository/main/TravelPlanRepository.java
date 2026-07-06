@@ -9,4 +9,6 @@ public interface TravelPlanRepository extends JpaRepository<TravelPlanEntity, Lo
 
     // 사용자 아이디로 여행 일정 조회
     Optional<TravelPlanEntity> findByUserId(String userId);
+
+    Optional<TravelPlanEntity> findByTravelPlanId(Long travelPlanId);
 }
