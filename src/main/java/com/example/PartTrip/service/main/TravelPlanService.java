@@ -27,6 +27,13 @@ public class TravelPlanService {
         TravelPlanEntity travelPlan = travelPlanRepository.findByUserId(userId)
                 .orElse(new TravelPlanEntity());
 
+        // 처음 등록인지 확인
+        boolean isNew = (travelPlan.getUserId() == null);
+
+        // 국가 변경 여부 확인
+        boolean countryChanged = !isNew &&
+                !travelPlan.getCountryName().equals(dto.getCountryName());
+
         travelPlan.setUserId(userId);
         travelPlan.setCountryName(dto.getCountryName());
         travelPlan.setCityName(dto.getCityName());
@@ -35,11 +42,13 @@ public class TravelPlanService {
 
         TravelPlanEntity savedTravelPlan = travelPlanRepository.save(travelPlan);
 
-        // 여행 일정 등록하면 미션 자동 생성
-        missionService.resetMission(
-                userId,
-                dto.getCountryName()
-        );
+        // 처음 등록 또는 국가가 변경된 경우에만 미션 생성
+        if (isNew || countryChanged) {
+            missionService.resetMission(
+                    userId,
+                    dto.getCountryName()
+            );
+        }
 
         return toDdayResponseDto(savedTravelPlan);
     }
@@ -91,16 +100,20 @@ public class TravelPlanService {
                 countryInfoRepository.findById(countryInfoId)
                         .orElseThrow(() -> new IllegalArgumentException("국가가 없습니다."));
 
+        // 같은 나라면 아무것도 안 함
+        if (travelPlan.getCountryName().equals(country.getCountryName())) {
+            return;
+        }
+
         travelPlan.setCountryName(country.getCountryName());
         travelPlan.setCityName(country.getCityName());
 
         travelPlanRepository.save(travelPlan);
 
-        // 여행지 변경 시 미션 다시 생성
+        // 국가가 바뀐 경우에만 미션 초기화
         missionService.resetMission(
                 travelPlan.getUserId(),
                 country.getCountryName()
         );
-
     }
 }
