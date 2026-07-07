@@ -101,4 +101,13 @@ public class MissionService {
 
     }
 
+
+    // 미션 초기화
+    public void resetMission(String userId, String countryName){
+
+        missionRepository.deleteByUserId(userId);
+
+        createDefaultMission(userId, countryName);
+
+    }
 }
