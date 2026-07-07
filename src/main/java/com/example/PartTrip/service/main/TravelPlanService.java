@@ -6,6 +6,7 @@ import com.example.PartTrip.entity.main.CountryInfoEntity;
 import com.example.PartTrip.entity.main.TravelPlanEntity;
 import com.example.PartTrip.repository.main.CountryInfoRepository;
 import com.example.PartTrip.repository.main.TravelPlanRepository;
+import com.example.PartTrip.service.mission.MissionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +19,7 @@ public class TravelPlanService {
 
     private final TravelPlanRepository travelPlanRepository;
     private final CountryInfoRepository countryInfoRepository;
+    private final MissionService missionService;
 
     // 여행 일정 등록 또는 수정
     public DdayResponseDto saveTravelPlan(String userId, TravelPlanRequestDto dto) {
@@ -32,6 +34,12 @@ public class TravelPlanService {
         travelPlan.setEndDate(dto.getEndDate());
 
         TravelPlanEntity savedTravelPlan = travelPlanRepository.save(travelPlan);
+
+        // 여행 일정 등록하면 미션 자동 생성
+        missionService.resetMission(
+                userId,
+                dto.getCountryName()
+        );
 
         return toDdayResponseDto(savedTravelPlan);
     }
@@ -87,6 +95,12 @@ public class TravelPlanService {
         travelPlan.setCityName(country.getCityName());
 
         travelPlanRepository.save(travelPlan);
+
+        // 여행지 변경 시 미션 다시 생성
+        missionService.resetMission(
+                travelPlan.getUserId(),
+                country.getCountryName()
+        );
 
     }
 }
