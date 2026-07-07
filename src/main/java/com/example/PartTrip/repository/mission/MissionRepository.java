@@ -11,4 +11,6 @@ public interface MissionRepository extends JpaRepository<MissionEntity, Long> {
 
     List<MissionEntity> findByUserIdAndCompletedTrue(String userId);
 
+    void deleteByUserId(String userId);
+
 }
