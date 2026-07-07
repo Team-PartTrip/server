@@ -7,10 +7,6 @@ import java.util.List;
 
 public interface MissionRepository extends JpaRepository<MissionEntity, Long> {
 
-    List<MissionEntity> findByUserId(String userId);
-
-    List<MissionEntity> findByUserIdAndCompletedTrue(String userId);
-
-    void deleteByUserId(String userId);
+    List<MissionEntity> findByCompletedTrue();
 
 }
