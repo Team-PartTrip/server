@@ -3,7 +3,6 @@ package com.example.PartTrip.controller.mission;
 import com.example.PartTrip.dto.mission.MissionResponseDto;
 import com.example.PartTrip.service.mission.MissionService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,20 +16,18 @@ public class MissionController {
 
     // 전체 미션 조회
     @GetMapping
-    public List<MissionResponseDto> getMission(Authentication authentication) {
+    public List<MissionResponseDto> getMission() {
 
-        String userId = authentication.getName();
+        return missionService.getMission();
 
-        return missionService.getMission(userId);
     }
 
     // 완료한 미션 조회
     @GetMapping("/completed")
-    public List<MissionResponseDto> getCompletedMission(Authentication authentication) {
+    public List<MissionResponseDto> getCompletedMission() {
 
-        String userId = authentication.getName();
+        return missionService.getCompletedMission();
 
-        return missionService.getCompletedMission(userId);
     }
 
     // 미션 완료
