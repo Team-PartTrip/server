@@ -59,4 +59,46 @@ public class MissionService {
                 mission.getImgUrl()
         );
     }
+
+    // 기본 미션 생성
+    public void createDefaultMission(String userId, String countryName){
+
+        missionRepository.save(
+                MissionEntity.builder()
+                        .userId(userId)
+                        .missionTitle("현지 음식 먹기")
+                        .missionDescription("현지 음식을 먹어보세요.")
+                        .missionCountry(countryName)
+                        .completed(false)
+                        .missionCategory("DEFAULT_MISSION")
+                        .missionPoint(100)
+                        .build()
+        );
+
+        missionRepository.save(
+                MissionEntity.builder()
+                        .userId(userId)
+                        .missionTitle("유명 관광지 방문")
+                        .missionDescription("대표 관광지를 방문해보세요.")
+                        .missionCountry(countryName)
+                        .completed(false)
+                        .missionCategory("DEFAULT_MISSION")
+                        .missionPoint(100)
+                        .build()
+        );
+
+        missionRepository.save(
+                MissionEntity.builder()
+                        .userId(userId)
+                        .missionTitle("사진 찍기")
+                        .missionDescription("여행 사진을 찍어보세요.")
+                        .missionCountry(countryName)
+                        .completed(false)
+                        .missionCategory("PHOTO_MISSION")
+                        .missionPoint(200)
+                        .build()
+        );
+
+    }
+
 }
