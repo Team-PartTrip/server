@@ -2,6 +2,7 @@ package com.example.PartTrip.service.mission;
 
 import com.example.PartTrip.dto.mission.MissionResponseDto;
 import com.example.PartTrip.entity.mission.MissionEntity;
+import com.example.PartTrip.repository.main.TravelPlanRepository;
 import com.example.PartTrip.repository.mission.MissionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,17 +16,25 @@ import java.util.List;
 public class MissionService {
 
     private final MissionRepository missionRepository;
+    private final TravelPlanRepository travelPlanRepository;
 
-    // 로그인 사용자의 전체 미션 조회
+    // 현재 여행 국가의 미션 조회
     public List<MissionResponseDto> getMission(String userId) {
 
-        return missionRepository.findByUserId(userId)
+        String missionCountry = travelPlanRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("여행 일정이 없습니다."))
+                .getCountryName();
+
+        return missionRepository.findByUserIdAndMissionCountry(
+                        userId,
+                        missionCountry
+                )
                 .stream()
                 .map(this::toMissionResponseDto)
                 .toList();
     }
 
-    // 로그인 사용자의 완료 미션 조회
+    // 완료한 미션 조회
     public List<MissionResponseDto> getCompletedMission(String userId) {
 
         return missionRepository.findByUserIdAndCompletedTrue(userId)
@@ -53,7 +62,7 @@ public class MissionService {
         missionRepository.save(mission);
     }
 
-    // 기본 미션 3개 생성
+    // 기본 미션 생성
     public void createDefaultMission(String userId, String countryName) {
 
         MissionEntity foodMission = MissionEntity.builder()
@@ -94,7 +103,7 @@ public class MissionService {
         );
     }
 
-    // 기존 미션 삭제 후 새 국가 미션 생성
+    // 국가 변경 시 기존 미션 삭제 후 새 미션 생성
     @Transactional
     public void resetMission(String userId, String countryName) {
 
@@ -102,7 +111,7 @@ public class MissionService {
         createDefaultMission(userId, countryName);
     }
 
-    // 미션이 없는 사용자에게만 생성
+    // 미션이 없을 때만 생성
     public void createMissionIfMissing(String userId, String countryName) {
 
         if (!missionRepository.existsByUserId(userId)) {
@@ -110,6 +119,7 @@ public class MissionService {
         }
     }
 
+    // Entity -> DTO 변환
     private MissionResponseDto toMissionResponseDto(MissionEntity mission) {
 
         return new MissionResponseDto(
