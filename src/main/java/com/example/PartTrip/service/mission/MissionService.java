@@ -5,6 +5,7 @@ import com.example.PartTrip.entity.mission.MissionEntity;
 import com.example.PartTrip.repository.mission.MissionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -15,7 +16,7 @@ public class MissionService {
 
     private final MissionRepository missionRepository;
 
-    // 미션 조회
+    // 로그인 사용자의 전체 미션 조회
     public List<MissionResponseDto> getMission(String userId) {
 
         return missionRepository.findByUserId(userId)
@@ -24,7 +25,7 @@ public class MissionService {
                 .toList();
     }
 
-    // 완료한 미션 조회
+    // 로그인 사용자의 완료 미션 조회
     public List<MissionResponseDto> getCompletedMission(String userId) {
 
         return missionRepository.findByUserIdAndCompletedTrue(userId)
@@ -33,11 +34,18 @@ public class MissionService {
                 .toList();
     }
 
+    // 해당 사용자의 미션 존재 여부
+    public boolean hasMission(String userId) {
+        return missionRepository.existsByUserId(userId);
+    }
+
     // 미션 완료
     public void completeMission(Long missionId) {
 
         MissionEntity mission = missionRepository.findById(missionId)
-                .orElseThrow(() -> new IllegalArgumentException("미션이 존재하지 않습니다."));
+                .orElseThrow(() ->
+                        new IllegalArgumentException("미션이 존재하지 않습니다.")
+                );
 
         mission.setCompleted(true);
         mission.setCompletedDate(LocalDate.now());
@@ -45,7 +53,63 @@ public class MissionService {
         missionRepository.save(mission);
     }
 
-    // Entity -> DTO 변환
+    // 기본 미션 3개 생성
+    public void createDefaultMission(String userId, String countryName) {
+
+        MissionEntity foodMission = MissionEntity.builder()
+                .userId(userId)
+                .missionTitle("현지 음식 먹기")
+                .missionDescription("현지 음식을 먹어보세요.")
+                .missionCountry(countryName)
+                .completed(false)
+                .isPassedCheck(false)
+                .missionCategory("DEFAULT_MISSION")
+                .missionPoint(100)
+                .build();
+
+        MissionEntity placeMission = MissionEntity.builder()
+                .userId(userId)
+                .missionTitle("유명 관광지 방문")
+                .missionDescription("대표 관광지를 방문해보세요.")
+                .missionCountry(countryName)
+                .completed(false)
+                .isPassedCheck(false)
+                .missionCategory("DEFAULT_MISSION")
+                .missionPoint(100)
+                .build();
+
+        MissionEntity photoMission = MissionEntity.builder()
+                .userId(userId)
+                .missionTitle("사진 찍기")
+                .missionDescription("여행 사진을 찍어보세요.")
+                .missionCountry(countryName)
+                .completed(false)
+                .isPassedCheck(false)
+                .missionCategory("PHOTO_MISSION")
+                .missionPoint(200)
+                .build();
+
+        missionRepository.saveAll(
+                List.of(foodMission, placeMission, photoMission)
+        );
+    }
+
+    // 기존 미션 삭제 후 새 국가 미션 생성
+    @Transactional
+    public void resetMission(String userId, String countryName) {
+
+        missionRepository.deleteByUserId(userId);
+        createDefaultMission(userId, countryName);
+    }
+
+    // 미션이 없는 사용자에게만 생성
+    public void createMissionIfMissing(String userId, String countryName) {
+
+        if (!missionRepository.existsByUserId(userId)) {
+            createDefaultMission(userId, countryName);
+        }
+    }
+
     private MissionResponseDto toMissionResponseDto(MissionEntity mission) {
 
         return new MissionResponseDto(
@@ -58,56 +122,5 @@ public class MissionService {
                 mission.getMissionPoint(),
                 mission.getImgUrl()
         );
-    }
-
-    // 기본 미션 생성
-    public void createDefaultMission(String userId, String countryName){
-
-        missionRepository.save(
-                MissionEntity.builder()
-                        .userId(userId)
-                        .missionTitle("현지 음식 먹기")
-                        .missionDescription("현지 음식을 먹어보세요.")
-                        .missionCountry(countryName)
-                        .completed(false)
-                        .missionCategory("DEFAULT_MISSION")
-                        .missionPoint(100)
-                        .build()
-        );
-
-        missionRepository.save(
-                MissionEntity.builder()
-                        .userId(userId)
-                        .missionTitle("유명 관광지 방문")
-                        .missionDescription("대표 관광지를 방문해보세요.")
-                        .missionCountry(countryName)
-                        .completed(false)
-                        .missionCategory("DEFAULT_MISSION")
-                        .missionPoint(100)
-                        .build()
-        );
-
-        missionRepository.save(
-                MissionEntity.builder()
-                        .userId(userId)
-                        .missionTitle("사진 찍기")
-                        .missionDescription("여행 사진을 찍어보세요.")
-                        .missionCountry(countryName)
-                        .completed(false)
-                        .missionCategory("PHOTO_MISSION")
-                        .missionPoint(200)
-                        .build()
-        );
-
-    }
-
-
-    // 미션 초기화
-    public void resetMission(String userId, String countryName){
-
-        missionRepository.deleteByUserId(userId);
-
-        createDefaultMission(userId, countryName);
-
     }
 }
