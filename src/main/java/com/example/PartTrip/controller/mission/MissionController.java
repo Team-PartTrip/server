@@ -35,12 +35,8 @@ public class MissionController {
 
     // 미션 완료
     @PatchMapping("/{missionId}")
-    public void completeMission(
-            @PathVariable Long missionId
-    ) {
+    public void completeMission(@PathVariable Long missionId) {
 
         missionService.completeMission(missionId);
-
     }
-
 }
