@@ -7,12 +7,16 @@ import java.util.List;
 
 public interface MissionRepository extends JpaRepository<MissionEntity, Long> {
 
-    List<MissionEntity> findByUserId(String userId);
+    // 현재 여행 국가의 미션 조회
+    List<MissionEntity> findByUserIdAndMissionCountry(
+            String userId,
+            String missionCountry
+    );
 
+    // 완료한 미션 조회
     List<MissionEntity> findByUserIdAndCompletedTrue(String userId);
 
     void deleteByUserId(String userId);
 
-    // 해당 사용자의 미션이 존재하는지 확인
     boolean existsByUserId(String userId);
 }
