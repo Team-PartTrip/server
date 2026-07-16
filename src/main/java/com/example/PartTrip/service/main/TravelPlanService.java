@@ -22,17 +22,26 @@ public class TravelPlanService {
     private final MissionService missionService;
 
     // 여행 일정 등록 또는 수정
-    public DdayResponseDto saveTravelPlan(String userId, TravelPlanRequestDto dto) {
+    public DdayResponseDto saveTravelPlan(
+            String userId,
+            TravelPlanRequestDto dto
+    ) {
 
         TravelPlanEntity travelPlan = travelPlanRepository.findByUserId(userId)
-                .orElse(new TravelPlanEntity());
+                .orElse(null);
 
-        // 처음 등록인지 확인
-        boolean isNew = (travelPlan.getUserId() == null);
+        boolean isNew = travelPlan == null;
 
-        // 국가 변경 여부 확인
-        boolean countryChanged = !isNew &&
-                !travelPlan.getCountryName().equals(dto.getCountryName());
+        if (isNew) {
+            travelPlan = new TravelPlanEntity();
+        }
+
+        String previousCountry = travelPlan.getCountryName();
+
+        boolean countryChanged =
+                !isNew &&
+                        previousCountry != null &&
+                        !previousCountry.equals(dto.getCountryName());
 
         travelPlan.setUserId(userId);
         travelPlan.setCountryName(dto.getCountryName());
@@ -40,11 +49,18 @@ public class TravelPlanService {
         travelPlan.setStartDate(dto.getStartDate());
         travelPlan.setEndDate(dto.getEndDate());
 
-        TravelPlanEntity savedTravelPlan = travelPlanRepository.save(travelPlan);
+        TravelPlanEntity savedTravelPlan =
+                travelPlanRepository.save(travelPlan);
 
-        // 처음 등록 또는 국가가 변경된 경우에만 미션 생성
-        if (isNew || countryChanged) {
+        if (countryChanged) {
+            // 국가가 바뀌면 기존 미션 초기화
             missionService.resetMission(
+                    userId,
+                    dto.getCountryName()
+            );
+        } else {
+            // 신규 사용자 또는 기존 미션이 없는 사용자에게 생성
+            missionService.createMissionIfMissing(
                     userId,
                     dto.getCountryName()
             );
