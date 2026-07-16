@@ -27,6 +27,8 @@ public class TravelPlanService {
             TravelPlanRequestDto dto
     ) {
 
+        System.out.println("===== saveTravelPlan 호출 =====");
+
         TravelPlanEntity travelPlan = travelPlanRepository.findByUserId(userId)
                 .orElse(null);
 
