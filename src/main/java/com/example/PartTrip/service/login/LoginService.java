@@ -23,7 +23,6 @@ import java.util.Optional;
 public class LoginService {
 
     private final UserRepository userRepository;
-    private final RefreshTokenRepository refreshTokenRepositor;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final RefreshTokenRepository refreshTokenRepository;
@@ -52,7 +51,7 @@ public class LoginService {
         );
 
         // 사용자의 Refrsh token이 DB에 있는지 확인
-        RefreshTokenEntity tokenEntity = refreshTokenRepositor.findByUserId(user.getUserId())
+        RefreshTokenEntity tokenEntity = refreshTokenRepository.findByUserId(user.getUserId())
                 .orElse(new RefreshTokenEntity());
 
         // Refresh token 정보 저장
