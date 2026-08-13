@@ -1,0 +1,48 @@
+package com.example.PartTrip.presentation.main.search;
+
+import com.example.PartTrip.application.main.search.data.RecentSearchRequestDto;
+import com.example.PartTrip.application.main.search.data.RecentSearchResponseDto;
+import com.example.PartTrip.application.main.search.RecentSearchService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/api/main/search")
+public class RecentSearchController {
+
+    private final RecentSearchService recentSearchService;
+
+    // 최근 검색 조회
+    @GetMapping("/recent")
+    public List<RecentSearchResponseDto> getRecentSearch(
+            @RequestParam String userId) {
+
+        return recentSearchService.getRecentSearch(userId);
+
+    }
+
+    // X 버튼 삭제
+    @DeleteMapping("/recent/{recentSearchId}")
+    public void deleteRecentSearch(
+            @PathVariable Long recentSearchId) {
+
+        recentSearchService.deleteRecentSearch(recentSearchId);
+
+    }
+
+    // 최근 검색 저장
+    @PostMapping("/recent")
+    public void saveRecentSearch(
+            @RequestBody RecentSearchRequestDto request) {
+
+        recentSearchService.saveRecentSearch(
+                request.getUserId(),
+                request.getCountryInfoId()
+        );
+
+    }
+
+}
