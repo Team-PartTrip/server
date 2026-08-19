@@ -46,4 +46,19 @@ public class CountryInfoService {
                 country.getSummary()
         );
     }
+
+    public List<CountryInfoResponseDto> searchCountries(String keyword) {
+
+        return countryInfoRepository
+                .findTop20ByCountryNameContainingOrderByCountryNameAsc(keyword)
+                .stream()
+                .map(c -> new CountryInfoResponseDto(
+                        c.getCountryInfoId(),
+                        c.getCountryName(),
+                        c.getCityName(),
+                        c.getImageUrl(),
+                        c.getSummary()
+                ))
+                .toList();
+    }
 }
