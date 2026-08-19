@@ -28,4 +28,12 @@ public class CountryInfoController {
         return countryInfoService.getCountryInfo(countryName);
     }
 
+
+    @GetMapping("/countries/search")
+    public List<CountryInfoResponseDto> searchCountries(
+            @RequestParam String keyword
+    ) {
+        return countryInfoService.searchCountries(keyword);
+    }
+
 }
