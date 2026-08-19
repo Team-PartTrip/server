@@ -18,45 +18,47 @@ repositories {
 }
 
 dependencies {
-	// swagger
-	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9'
 
+	// Spring Web
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 
+	// JPA
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 
+	// Security
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 
+	// Validation
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 
-	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9'
-
-	// 이메일 인증을 위한 DI
+	// Mail
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
 
-	// Swagger API 문서
-	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9'
-
+	// MySQL
 	runtimeOnly 'com.mysql:mysql-connector-j'
 
+	// Swagger
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9'
+
+	// Lombok
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 
+	// DevTools
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
+	// JWT
 	implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
 
+	// Google API
 	implementation 'com.google.api-client:google-api-client:2.7.0'
 
+	// Test
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-
-	// 스웨거
-	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.8'
-
 }
 
 tasks.named('test') {
