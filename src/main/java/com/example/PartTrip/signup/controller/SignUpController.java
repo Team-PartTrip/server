@@ -2,6 +2,7 @@ package com.example.PartTrip.signup.controller;
 
 import com.example.PartTrip.signup.dto.SignUpRequestDto;
 import com.example.PartTrip.signup.service.SignUpService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,7 +15,7 @@ public class SignUpController {
 
     // 임시 저장 + 이메일 인증번호 전송을 함
     @PostMapping("/signup")
-    public String signup(@RequestBody SignUpRequestDto dto) {
+    public String signup(@Valid @RequestBody SignUpRequestDto dto) {
 
         // 회원가입 정보 임시 저장 + 인증번호 전송
         signUpService.startSignUp(dto);
