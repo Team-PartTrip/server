@@ -24,6 +24,9 @@ public class UserEntity {
     @Column(name = "user_mail", nullable = false)
     private String userMail;
 
+    @Column(name = "phone_number")
+    private String phoneNumber;
+
     @Column(name = "signup_division")
     private String signUpDivision;
 

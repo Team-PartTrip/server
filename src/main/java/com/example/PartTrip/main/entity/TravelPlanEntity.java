@@ -32,6 +32,10 @@ public class TravelPlanEntity {
     @Column(name = "city_name", nullable = false)
     private String cityName;
 
+    // 함께 가는 인원 수 (본인 포함)
+    @Column(name = "headcount")
+    private Integer headcount;
+
     // 여행 시작일
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;

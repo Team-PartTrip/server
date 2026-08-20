@@ -27,6 +27,9 @@ public class PendingSignUpEntity {
     @Column(name = "user_pwd", nullable = false)
     private String userPwd;
 
+    @Column(name = "phone_number")
+    private String phoneNumber;
+
     @Column(name = "signup_division")
     private String signupDivision;
 

@@ -48,6 +48,7 @@ public class TravelPlanService {
         travelPlan.setCityName(dto.getCityName());
         travelPlan.setStartDate(dto.getStartDate());
         travelPlan.setEndDate(dto.getEndDate());
+        travelPlan.setHeadcount(dto.getHeadcount());
 
         TravelPlanEntity savedTravelPlan =
                 travelPlanRepository.save(travelPlan);
@@ -102,6 +103,7 @@ public class TravelPlanService {
                 travelPlan.getCityName(),
                 travelPlan.getStartDate(),
                 travelPlan.getEndDate(),
+                travelPlan.getHeadcount(),
                 dday
         );
     }
