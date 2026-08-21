@@ -59,9 +59,6 @@ public class SecurityConfig {
                         // 이메일 인증 관련 API 허용
                         .requestMatchers("/api/auth/**").permitAll()
 
-                        // 업로드된 게시글 이미지는 인증 없이 조회 가능해야 함(앱 Image 컴포넌트가 토큰을 안 붙임)
-                        .requestMatchers("/images/**").permitAll()
-
                         // 나머지 요청은 로그인 필요
                         .anyRequest().authenticated()
                 )

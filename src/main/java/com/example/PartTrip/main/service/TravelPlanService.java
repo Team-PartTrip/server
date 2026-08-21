@@ -6,7 +6,6 @@ import com.example.PartTrip.main.entity.CountryInfoEntity;
 import com.example.PartTrip.main.entity.TravelPlanEntity;
 import com.example.PartTrip.main.repository.CountryInfoRepository;
 import com.example.PartTrip.main.repository.TravelPlanRepository;
-import com.example.PartTrip.mission.service.MissionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,7 +19,6 @@ public class TravelPlanService {
 
     private final TravelPlanRepository travelPlanRepository;
     private final CountryInfoRepository countryInfoRepository;
-    private final MissionService missionService;
 
     // 여행 일정 등록 또는 수정
     @Transactional
@@ -38,13 +36,6 @@ public class TravelPlanService {
             travelPlan = new TravelPlanEntity();
         }
 
-        String previousCountry = travelPlan.getCountryName();
-
-        boolean countryChanged =
-                !isNew &&
-                        previousCountry != null &&
-                        !previousCountry.equals(dto.getCountryName());
-
         travelPlan.setUserId(userId);
         travelPlan.setCountryName(dto.getCountryName());
         travelPlan.setCityName(dto.getCityName());
@@ -54,20 +45,6 @@ public class TravelPlanService {
 
         TravelPlanEntity savedTravelPlan =
                 travelPlanRepository.save(travelPlan);
-
-        if (countryChanged) {
-            // 국가가 바뀌면 기존 미션 초기화
-            missionService.resetMission(
-                    userId,
-                    dto.getCountryName()
-            );
-        } else {
-            // 신규 사용자 또는 기존 미션이 없는 사용자에게 생성
-            missionService.createMissionIfMissing(
-                    userId,
-                    dto.getCountryName()
-            );
-        }
 
         return toDdayResponseDto(savedTravelPlan);
     }
@@ -138,11 +115,5 @@ public class TravelPlanService {
         travelPlan.setCityName(country.getCityName());
 
         travelPlanRepository.save(travelPlan);
-
-        // 국가가 바뀐 경우에만 미션 초기화
-        missionService.resetMission(
-                travelPlan.getUserId(),
-                country.getCountryName()
-        );
     }
 }
