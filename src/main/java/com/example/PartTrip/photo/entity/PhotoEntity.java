@@ -54,4 +54,9 @@ public class PhotoEntity {
     @Column(name="create_date", nullable = false)
     private LocalDateTime createDate;
 
+
+    // 여행별 기록 관리 (Func-005-02) — 어느 여행 카드에 속한 사진인지.
+    // 여행과 연결되지 않은 사진은 null 이다.
+    @Column(name = "trip_card_id")
+    private Long tripCardId;
 }
