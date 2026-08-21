@@ -3,12 +3,15 @@ package com.example.PartTrip.profile.controller;
 import com.example.PartTrip.profile.dto.CharacterInfoResponseDto;
 import com.example.PartTrip.profile.dto.ProfileResponseDto;
 import com.example.PartTrip.profile.dto.ProfileUpdateRequestDto;
+import com.example.PartTrip.profile.dto.TravelThemeResponseDto;
 import com.example.PartTrip.profile.service.ProfileService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -42,5 +45,12 @@ public class ProfileController {
         String userId = (String) authentication.getPrincipal();
         CharacterInfoResponseDto resDto = profileService.getCharacterInfo(userId);
         return ResponseEntity.ok(resDto);
+    }
+
+    // 여행 타입 목록 조회 (Func-007-01)
+    // 프로필 수정 화면에서 선택지를 그리는 데 사용한다
+    @GetMapping("/themes")
+    public ResponseEntity<List<TravelThemeResponseDto>> getTravelThemes() {
+        return ResponseEntity.ok(profileService.getTravelThemes());
     }
 }
