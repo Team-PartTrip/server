@@ -11,4 +11,7 @@ public interface TravelPlanRepository extends JpaRepository<TravelPlanEntity, Lo
     Optional<TravelPlanEntity> findByUserId(String userId);
 
     Optional<TravelPlanEntity> findByTravelPlanId(Long travelPlanId);
+
+    // 수정 시 소유자까지 함께 확인한다 (다른 사용자의 여행 계획을 바꿀 수 없도록)
+    Optional<TravelPlanEntity> findByTravelPlanIdAndUserId(Long travelPlanId, String userId);
 }
