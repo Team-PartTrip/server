@@ -5,9 +5,11 @@ import com.example.PartTrip.signup.entity.PendingSignUpEntity;
 import com.example.PartTrip.signup.entity.UserEntity;
 import com.example.PartTrip.signup.repository.PendingSignUpRepository;
 import com.example.PartTrip.signup.repository.UserRepository;
+import com.example.PartTrip.signup.support.NickNameGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
@@ -19,8 +21,10 @@ public class SignUpService {
     private final PendingSignUpRepository pendingSignUpRepository;
     private final PasswordEncoder passwordEncoder;
     private final MailService mailService;
+    private final NickNameGenerator nickNameGenerator;
 
-    // 회원가입 정부 입력 후 이메일 인증번호 발송
+    // 회원가입 정보 입력 후 이메일 인증번호 발송
+    @Transactional
     public void startSignUp(SignUpRequestDto dto) {
 
         // 이미 가입된 아이디인지 검사
@@ -61,6 +65,7 @@ public class SignUpService {
     }
 
     // 이메일 인증 성공 후 진짜 회원가입 완료
+    @Transactional
     public UserEntity completeSignUp(String email) {
 
         // pending_signup에서 임시 회원가입 정보 조회
@@ -82,8 +87,8 @@ public class SignUpService {
         user.setPhoneNumber(pending.getPhoneNumber());
         user.setSignUpDivision(pending.getSignupDivision());
         user.setMyCountry(pending.getMyCountry());
-        // 닉네임 자동 생성
-        user.setNickName("사용자 " + (userRepository.count() + 1));
+        // 닉네임 자동 생성 (랜덤 접미사 · 중복 확인 포함)
+        user.setNickName(nickNameGenerator.generate());
 
         // 가입 날짜 저장
         user.setCreateDate(LocalDateTime.now());

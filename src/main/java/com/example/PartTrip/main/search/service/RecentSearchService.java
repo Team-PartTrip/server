@@ -7,6 +7,7 @@ import com.example.PartTrip.main.repository.CountryInfoRepository;
 import com.example.PartTrip.main.search.repository.RecentSearchRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -19,6 +20,7 @@ public class RecentSearchService {
     private final CountryInfoRepository countryInfoRepository;
 
     // 최근 검색 조회
+    @Transactional(readOnly = true)
     public List<RecentSearchResponseDto> getRecentSearch(String userId) {
 
         return recentSearchRepository.findByUserIdOrderBySearchedAtDesc(userId)
@@ -40,6 +42,7 @@ public class RecentSearchService {
     }
 
     // 최근 검색 저장
+    @Transactional
     public void saveRecentSearch(String userId, Long countryInfoId) {
 
         RecentSearchEntity recentSearch = RecentSearchEntity.builder()
@@ -52,6 +55,7 @@ public class RecentSearchService {
     }
 
     // 최근 검색 삭제 (X 버튼)
+    @Transactional
     public void deleteRecentSearch(Long recentSearchId) {
 
         recentSearchRepository.deleteById(recentSearchId);

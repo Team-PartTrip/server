@@ -9,6 +9,7 @@ import com.example.PartTrip.main.repository.TravelPlanRepository;
 import com.example.PartTrip.mission.service.MissionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -22,6 +23,7 @@ public class TravelPlanService {
     private final MissionService missionService;
 
     // 여행 일정 등록 또는 수정
+    @Transactional
     public DdayResponseDto saveTravelPlan(
             String userId,
             TravelPlanRequestDto dto
@@ -71,6 +73,7 @@ public class TravelPlanService {
     }
 
     // D-Day 조회
+    @Transactional(readOnly = true)
     public DdayResponseDto getDday(String userId) {
 
         TravelPlanEntity travelPlan = travelPlanRepository.findByUserId(userId)
@@ -114,6 +117,7 @@ public class TravelPlanService {
         );
     }
 
+    @Transactional
     public void changeTravelCountry(Long travelPlanId, Long countryInfoId){
 
         TravelPlanEntity travelPlan =
