@@ -30,7 +30,7 @@ public class UserEntity {
     @Column(name = "signup_division")
     private String signUpDivision;
 
-    @Column(name = "nick_name", nullable = false)
+    @Column(name = "nick_name", nullable = false, unique = true)
     private String nickName;
 
     @Column(name = "my_country")

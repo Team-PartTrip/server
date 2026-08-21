@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Random;
@@ -18,6 +19,7 @@ public class MailService {
     private final JavaMailSender mailSender;
     private final EmailVerificationRepository emailVerificationRepository;
 
+    @Transactional
     public void sendCode(String email) {
 
         // 숫자를 랜덤으로 뽑아 인증 코드 생성 + 인증 코드를 문자열로 변환
@@ -45,6 +47,7 @@ public class MailService {
 
 
     // 이메일로 받은 인증번호를 입력했을 때 실행됨
+    @Transactional
     public void verifyCode(EmailVerifyRequestDto dto) {
 
         EmailVerificationEntity entity = emailVerificationRepository.findById(dto.getEmail())
@@ -65,6 +68,7 @@ public class MailService {
 
     }
 
+    @Transactional(readOnly = true)
     public boolean isVerified(String email) {
         // DB에서 해당 이메일 인증 정보를 찾음
         return emailVerificationRepository.findById(email)
