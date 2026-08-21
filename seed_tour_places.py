@@ -29,10 +29,14 @@ import urllib.request
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
 
 # 시딩 대상 도시 (기능명세서 Func-008-02 인기 여행지 기준)
+# bbox 는 관광 중심가로 좁게 잡는다. 넓게 잡으면 외곽 동네 가게가 섞여 들어온다.
 CITIES = [
-    {"country": "일본",   "city": "오사카",   "bbox": (34.60, 135.40, 34.75, 135.58)},
-    {"country": "태국",   "city": "방콕",     "bbox": (13.68, 100.45, 13.82, 100.62)},
-    {"country": "베트남", "city": "다낭",     "bbox": (16.02, 108.15, 16.10, 108.27)},
+    # 우메다 ~ 난바 ~ 신세카이 (오사카성 포함)
+    {"country": "일본",   "city": "오사카", "bbox": (34.64, 135.48, 34.71, 135.54)},
+    # 왕궁 ~ 시암 ~ 수쿰윗
+    {"country": "태국",   "city": "방콕",   "bbox": (13.72, 100.48, 13.78, 100.58)},
+    # 한강 ~ 미케비치 ~ 손트라
+    {"country": "베트남", "city": "다낭",   "bbox": (16.03, 108.20, 16.09, 108.26)},
 ]
 
 # 카테고리별 OSM 태그 (앱 C4 카테고리 칩과 동일한 순서)
@@ -67,23 +71,73 @@ def sql_value(value) -> str:
     return "'" + escape(str(value)) + "'"
 
 
-def query_overpass(selectors, bbox):
+def query_overpass(selectors, bbox, attempts=4):
+    """Overpass 는 공개 서버라 429/504 가 흔하다. 지수 백오프로 재시도한다."""
     south, west, north, east = bbox
     body = "\n".join(f"  {s}({south},{west},{north},{east});" for s in selectors)
-    query = f"[out:json][timeout:60];\n(\n{body}\n);\nout center {LIMIT_PER_CATEGORY * 4};"
+    # 후보를 넉넉히 받아서 아래 rank_element() 로 유명한 순서대로 고른다
+    query = f"[out:json][timeout:60];\n(\n{body}\n);\nout center 300;"
 
-    req = urllib.request.Request(
-        OVERPASS_URL,
-        data=urllib.parse.urlencode({"data": query}).encode("utf-8"),
-        headers={"User-Agent": "PartTrip/1.0 (seed script)"},
-    )
-    with urllib.request.urlopen(req, timeout=90) as res:
-        return json.loads(res.read().decode("utf-8")).get("elements", [])
+    last_error = None
+
+    for attempt in range(attempts):
+        if attempt:
+            wait = 10 * (2 ** (attempt - 1))  # 10s, 20s, 40s
+            print(f"      재시도 {attempt}/{attempts - 1} — {wait}초 대기 ({last_error})")
+            time.sleep(wait)
+
+        try:
+            req = urllib.request.Request(
+                OVERPASS_URL,
+                data=urllib.parse.urlencode({"data": query}).encode("utf-8"),
+                headers={"User-Agent": "PartTrip/1.0 (seed script)"},
+            )
+            with urllib.request.urlopen(req, timeout=120) as res:
+                return json.loads(res.read().decode("utf-8")).get("elements", [])
+        except Exception as e:
+            last_error = f"{type(e).__name__} {e}"
+
+    raise RuntimeError(last_error)
 
 
 def pick_name(tags):
     """한국어 이름 > 영어 이름 > 원어 이름 순으로 고른다"""
-    return tags.get("name:ko") or tags.get("name:en") or tags.get("name")
+    name = tags.get("name:ko") or tags.get("name:en") or tags.get("name")
+    if not name:
+        return None
+    # OSM 은 별칭을 세미콜론으로 이어 붙인다 ("오사카성;오사카 성") → 첫 번째만 쓴다
+    return name.split(";")[0].strip()
+
+
+def rank_element(el):
+    """
+    유명한 장소일수록 높은 점수.
+
+    OSM 에는 평점이나 방문자 수가 없어서 '얼마나 잘 문서화됐는가'를 유명세의
+    대리 지표로 쓴다. wikidata / wikipedia 가 붙어 있으면 별도 문서가 있을 만큼
+    알려진 곳이고, 다국어 이름이 붙어 있으면 외국인 방문이 많은 곳이다.
+    이 신호가 없으면 동네 가게가 관광지보다 먼저 올라온다.
+    """
+    tags = el.get("tags") or {}
+    score = 0
+
+    if tags.get("wikidata"):
+        score += 100
+    if tags.get("wikipedia"):
+        score += 50
+    if tags.get("name:ko"):
+        score += 30
+    if tags.get("name:en"):
+        score += 20
+    if tags.get("website") or tags.get("contact:website"):
+        score += 10
+    if tags.get("stars"):
+        score += 10
+
+    # 태그가 많을수록 관리가 잘 되는 항목
+    score += min(len(tags), 20)
+
+    return score
 
 
 def build_address(tags, city_name):
@@ -142,6 +196,9 @@ def main():
                 summary.append((city_name, category, 0))
                 continue
 
+            # 유명한 순서대로 정렬한 뒤 위에서부터 채운다
+            elements.sort(key=rank_element, reverse=True)
+
             seen = set()
             count = 0
 
@@ -185,8 +242,8 @@ def main():
             print(f"  {city_name} / {category}: {count}건")
             summary.append((city_name, category, count))
 
-            # Overpass 공개 서버 부하를 줄이기 위한 간격
-            time.sleep(2)
+            # Overpass 공개 서버는 동시 슬롯이 2개뿐이라 간격을 넉넉히 둔다
+            time.sleep(6)
 
     with open("seed_tour_places.sql", "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
