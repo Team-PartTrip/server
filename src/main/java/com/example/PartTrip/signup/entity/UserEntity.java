@@ -54,4 +54,9 @@ public class UserEntity {
 
     @Column(name = "character_point")
     private Integer characterPoint;
+
+    // 여행 타입 (Func-007-01) — 프로필에 "계획형 모험가" 처럼 표시된다
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "theme_id")
+    private com.example.PartTrip.profile.entity.TravelThemeEntity travelTheme;
 }

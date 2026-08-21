@@ -3,13 +3,18 @@ package com.example.PartTrip.profile.service;
 import com.example.PartTrip.profile.dto.CharacterInfoResponseDto;
 import com.example.PartTrip.profile.dto.ProfileResponseDto;
 import com.example.PartTrip.profile.dto.ProfileUpdateRequestDto;
+import com.example.PartTrip.profile.dto.TravelThemeResponseDto;
 import com.example.PartTrip.profile.entity.CharacterInfoEntity;
+import com.example.PartTrip.profile.entity.TravelThemeEntity;
 import com.example.PartTrip.signup.entity.UserEntity;
 import com.example.PartTrip.profile.repository.CharacterInfoRepository;
+import com.example.PartTrip.profile.repository.TravelThemeRepository;
 import com.example.PartTrip.profile.repository.UserProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -17,6 +22,7 @@ public class ProfileService {
 
     private final UserProfileRepository userProfileRepository;
     private final CharacterInfoRepository characterInfoRepository;
+    private final TravelThemeRepository travelThemeRepository;
 
     @Transactional(readOnly = true)
     public ProfileResponseDto getProfile(String userId) {
@@ -37,6 +43,13 @@ public class ProfileService {
 
         user.setNickName(requestDto.getNickName());
         user.setImgUrl(requestDto.getImgUrl());
+
+        // themeId 를 보내지 않으면 기존 여행 타입을 그대로 둔다
+        if (requestDto.getThemeId() != null) {
+            TravelThemeEntity theme = travelThemeRepository.findById(requestDto.getThemeId())
+                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 여행 타입입니다."));
+            user.setTravelTheme(theme);
+        }
 
         return ProfileResponseDto.from(user);
     }
@@ -61,5 +74,14 @@ public class ProfileService {
                 .orElseThrow(() -> new IllegalArgumentException("캐릭터 정보를 찾을 수 없습니다."));
 
         return CharacterInfoResponseDto.from(characterInfo);
+    }
+
+    // 여행 타입 목록 조회 (프로필 수정 화면에서 선택지로 사용)
+    @Transactional(readOnly = true)
+    public List<TravelThemeResponseDto> getTravelThemes() {
+        return travelThemeRepository.findAllByOrderByThemeIdAsc()
+                .stream()
+                .map(TravelThemeResponseDto::from)
+                .toList();
     }
 }
