@@ -15,10 +15,13 @@ public class TourPlaceController {
     private final TourPlaceService tourPlaceService;
 
     // 관광지 조회
+    // 예) /api/main/tour-place?countryName=일본&cityName=오사카&category=맛집
     @GetMapping("/tour-place")
     public List<TourPlaceResponseDto> getTourPlace(
-            @RequestParam String countryName
+            @RequestParam String countryName,
+            @RequestParam(required = false) String cityName,
+            @RequestParam(required = false) String category
     ) {
-        return tourPlaceService.getTourPlace(countryName);
+        return tourPlaceService.getTourPlace(countryName, cityName, category);
     }
 }
