@@ -56,10 +56,14 @@ public class RecentSearchService {
 
     // 최근 검색 삭제 (X 버튼)
     @Transactional
-    public void deleteRecentSearch(Long recentSearchId) {
+    public void deleteRecentSearch(String userId, Long recentSearchId) {
 
-        recentSearchRepository.deleteById(recentSearchId);
+        // 본인 기록이 아니면 조회되지 않으므로 남의 기록을 지울 수 없다
+        RecentSearchEntity recentSearch = recentSearchRepository
+                .findByRecentSearchIdAndUserId(recentSearchId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("최근 검색 기록을 찾을 수 없습니다."));
 
+        recentSearchRepository.delete(recentSearch);
     }
 
 }

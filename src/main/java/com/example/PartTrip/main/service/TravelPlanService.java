@@ -118,10 +118,11 @@ public class TravelPlanService {
     }
 
     @Transactional
-    public void changeTravelCountry(Long travelPlanId, Long countryInfoId){
+    public void changeTravelCountry(String userId, Long travelPlanId, Long countryInfoId){
 
+        // 본인 여행 계획이 아니면 조회되지 않으므로 남의 계획을 바꿀 수 없다
         TravelPlanEntity travelPlan =
-                travelPlanRepository.findById(travelPlanId)
+                travelPlanRepository.findByTravelPlanIdAndUserId(travelPlanId, userId)
                         .orElseThrow(() -> new IllegalArgumentException("여행 계획이 없습니다."));
 
         CountryInfoEntity country =
