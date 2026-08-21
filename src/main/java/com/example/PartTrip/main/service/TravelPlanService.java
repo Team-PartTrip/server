@@ -48,6 +48,7 @@ public class TravelPlanService {
         travelPlan.setCityName(dto.getCityName());
         travelPlan.setStartDate(dto.getStartDate());
         travelPlan.setEndDate(dto.getEndDate());
+        travelPlan.setHeadcount(dto.getHeadcount());
 
         TravelPlanEntity savedTravelPlan =
                 travelPlanRepository.save(travelPlan);
@@ -73,7 +74,13 @@ public class TravelPlanService {
     public DdayResponseDto getDday(String userId) {
 
         TravelPlanEntity travelPlan = travelPlanRepository.findByUserId(userId)
-                .orElseThrow(() -> new IllegalArgumentException("등록된 여행 일정이 없습니다."));
+                .orElse(null);
+
+        // 등록된 여행 일정이 없으면 예외 대신 '쉬는 중' 상태를 내려줌
+        // 앱 첫 진입 사용자가 대부분 이 경로를 탐
+        if (travelPlan == null) {
+            return new DdayResponseDto(null, null, null, null, null, "쉬는 중");
+        }
 
         return toDdayResponseDto(travelPlan);
     }
@@ -102,6 +109,7 @@ public class TravelPlanService {
                 travelPlan.getCityName(),
                 travelPlan.getStartDate(),
                 travelPlan.getEndDate(),
+                travelPlan.getHeadcount(),
                 dday
         );
     }

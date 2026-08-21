@@ -33,6 +33,14 @@ public class SignUpRequestDto {
     @Email(message = "이메일 형식이 올바르지 않습니다.")
     private String userMail;
 
+    // 전화번호: 국가번호(+82) 포함 가능, 하이픈 허용
+    @NotBlank(message = "전화번호를 입력해주세요.")
+    @Pattern(
+            regexp = "^\\+?[0-9-]{9,20}$",
+            message = "전화번호 형식이 올바르지 않습니다."
+    )
+    private String phoneNumber;
+
     private String signUpDivision;
 
     private String myCountry;

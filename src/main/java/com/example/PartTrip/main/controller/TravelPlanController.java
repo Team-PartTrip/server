@@ -3,6 +3,7 @@ package com.example.PartTrip.main.controller;
 import com.example.PartTrip.main.dto.DdayResponseDto;
 import com.example.PartTrip.main.dto.TravelPlanRequestDto;
 import com.example.PartTrip.main.service.TravelPlanService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -18,7 +19,7 @@ public class TravelPlanController {
     @PostMapping("/travel-plan")
     public DdayResponseDto saveTravelPlan(
             Authentication authentication,
-            @RequestBody TravelPlanRequestDto dto
+            @Valid @RequestBody TravelPlanRequestDto dto
     ) {
         String userId = authentication.getName();
 

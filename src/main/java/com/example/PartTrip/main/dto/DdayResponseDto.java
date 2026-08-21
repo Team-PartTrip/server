@@ -17,5 +17,7 @@ public class DdayResponseDto {
 
     private LocalDate endDate;
 
+    private Integer headcount;
+
     private String dday;
 }

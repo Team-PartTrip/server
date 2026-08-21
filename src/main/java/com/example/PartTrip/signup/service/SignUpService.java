@@ -41,6 +41,9 @@ public class SignUpService {
         // 암호화해서 임시 저장
         pending.setUserPwd(passwordEncoder.encode(dto.getUserPwd()));
 
+        // 전화번호 저장
+        pending.setPhoneNumber(dto.getPhoneNumber());
+
         // 가입 방식 저장
         pending.setSignupDivision(dto.getSignUpDivision());
 
@@ -76,6 +79,7 @@ public class SignUpService {
         user.setUserId(pending.getUserId());
         user.setUserPwd(pending.getUserPwd());
         user.setUserMail(pending.getUserMail());
+        user.setPhoneNumber(pending.getPhoneNumber());
         user.setSignUpDivision(pending.getSignupDivision());
         user.setMyCountry(pending.getMyCountry());
         // 닉네임 자동 생성
