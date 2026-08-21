@@ -59,7 +59,10 @@ public class GuideCameraService {
     @Transactional(readOnly = true)
     public PhotoAnalysisResponseDto getAnalysisResult(Long imageId) {
         String userId = currentUserProvider.getCurrentUserId();
-        PhotoAnalysisEntity analysis = photoAnalysisRepository.findByPhotoPhotoId(imageId)
+
+        // 본인이 올린 사진의 분석 결과만 조회할 수 있음
+        PhotoAnalysisEntity analysis = photoAnalysisRepository
+                .findByPhotoPhotoIdAndPhotoUserUserId(imageId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 이미지의 분석 결과가 없습니다."));
         return PhotoAnalysisResponseDto.from(analysis);
     }
