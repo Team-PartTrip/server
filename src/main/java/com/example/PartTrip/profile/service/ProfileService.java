@@ -1,5 +1,6 @@
 package com.example.PartTrip.profile.service;
 
+import com.example.PartTrip.global.storage.ImageStorageService;
 import com.example.PartTrip.profile.dto.ProfileResponseDto;
 import com.example.PartTrip.profile.dto.ProfileUpdateRequestDto;
 import com.example.PartTrip.profile.dto.TravelThemeResponseDto;
@@ -10,6 +11,7 @@ import com.example.PartTrip.profile.repository.UserProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -19,6 +21,7 @@ public class ProfileService {
 
     private final UserProfileRepository userProfileRepository;
     private final TravelThemeRepository travelThemeRepository;
+    private final ImageStorageService imageStorageService;
 
     @Transactional(readOnly = true)
     public ProfileResponseDto getProfile(String userId) {
@@ -58,5 +61,11 @@ public class ProfileService {
                 .stream()
                 .map(TravelThemeResponseDto::from)
                 .toList();
+    }
+
+    // 프로필 사진 업로드 (Func-007-01)
+    // 저장만 하고 URL 을 돌려준다. 실제 반영은 PUT /api/profile 에서 imgUrl 로 넘긴다.
+    public String uploadProfileImage(MultipartFile imageFile) {
+        return imageStorageService.store(imageFile, "profile");
     }
 }

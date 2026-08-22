@@ -8,7 +8,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -42,5 +44,14 @@ public class ProfileController {
     @GetMapping("/themes")
     public ResponseEntity<List<TravelThemeResponseDto>> getTravelThemes() {
         return ResponseEntity.ok(profileService.getTravelThemes());
+    }
+
+    // 프로필 사진 업로드 (Func-007-01)
+    // 업로드된 이미지의 공개 URL 을 문자열로 반환한다.
+    @PostMapping(value = "/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<String> uploadProfileImage(
+            @RequestParam("file") MultipartFile file
+    ) {
+        return ResponseEntity.ok(profileService.uploadProfileImage(file));
     }
 }
