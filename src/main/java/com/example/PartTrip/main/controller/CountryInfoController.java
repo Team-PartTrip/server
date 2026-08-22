@@ -1,11 +1,7 @@
 package com.example.PartTrip.main.controller;
 
 import com.example.PartTrip.main.dto.CountryInfoResponseDto;
-import com.example.PartTrip.main.dto.ExchangeRateResponseDto;
-import com.example.PartTrip.main.dto.WeatherResponseDto;
 import com.example.PartTrip.main.service.CountryInfoService;
-import com.example.PartTrip.main.service.ExchangeRateService;
-import com.example.PartTrip.main.service.WeatherService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,8 +13,6 @@ import java.util.List;
 public class CountryInfoController {
 
     private final CountryInfoService countryInfoService;
-    private final ExchangeRateService exchangeRateService;
-    private final WeatherService weatherService;
 
     // 여행지(국가/도시) 전체 목록 조회 - 여행지 선택 화면 등에서 사용
     @GetMapping("/countries")
@@ -32,22 +26,6 @@ public class CountryInfoController {
             @RequestParam String countryName
     ) {
         return countryInfoService.getCountryInfo(countryName);
-    }
-
-    // 환율 조회 (1 현지통화 = ? 원)
-    @GetMapping("/exchange-rate")
-    public ExchangeRateResponseDto getExchangeRate(
-            @RequestParam String countryName
-    ) {
-        return exchangeRateService.getExchangeRate(countryName);
-    }
-
-    // 실시간 날씨 조회
-    @GetMapping("/weather")
-    public WeatherResponseDto getWeather(
-            @RequestParam String countryName
-    ) {
-        return weatherService.getWeather(countryName);
     }
 
 }
