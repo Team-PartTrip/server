@@ -39,21 +39,12 @@ public class UserEntity {
     @Column(name = "create_date")
     private LocalDateTime createDate;
 
-    // 여행 취향 설문 완료 여부 (최초 로그인 시 설문 화면 노출 여부 판단용)
-    @Column(name = "survey_completed", nullable = false, columnDefinition = "boolean default false")
-    private boolean surveyCompleted;
 
     @Column(name = "img_url")
     private String imgUrl;
 
-    @Column(name = "character_id")
-    private String characterId;
 
-    @Column(name = "user_level")
-    private Integer userLevel;
 
-    @Column(name = "character_point")
-    private Integer characterPoint;
 
     // 여행 타입 (Func-007-01) — 프로필에 "계획형 모험가" 처럼 표시된다
     @ManyToOne(fetch = FetchType.LAZY)

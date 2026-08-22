@@ -1,13 +1,10 @@
 package com.example.PartTrip.profile.service;
 
-import com.example.PartTrip.profile.dto.CharacterInfoResponseDto;
 import com.example.PartTrip.profile.dto.ProfileResponseDto;
 import com.example.PartTrip.profile.dto.ProfileUpdateRequestDto;
 import com.example.PartTrip.profile.dto.TravelThemeResponseDto;
-import com.example.PartTrip.profile.entity.CharacterInfoEntity;
 import com.example.PartTrip.profile.entity.TravelThemeEntity;
 import com.example.PartTrip.signup.entity.UserEntity;
-import com.example.PartTrip.profile.repository.CharacterInfoRepository;
 import com.example.PartTrip.profile.repository.TravelThemeRepository;
 import com.example.PartTrip.profile.repository.UserProfileRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +18,6 @@ import java.util.List;
 public class ProfileService {
 
     private final UserProfileRepository userProfileRepository;
-    private final CharacterInfoRepository characterInfoRepository;
     private final TravelThemeRepository travelThemeRepository;
 
     @Transactional(readOnly = true)
@@ -54,27 +50,6 @@ public class ProfileService {
         return ProfileResponseDto.from(user);
     }
 
-    @Transactional(readOnly = true)
-    public CharacterInfoResponseDto getCharacterInfo(String userId) {
-        UserEntity user = userProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-
-        if (user.getCharacterId() == null) {
-            throw new IllegalArgumentException("캐릭터를 선택하지 않은 유저입니다.");
-        }
-
-        Long characterId;
-        try {
-            characterId = Long.parseLong(user.getCharacterId());
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("캐릭터 ID 형식이 올바르지 않습니다.");
-        }
-
-        CharacterInfoEntity characterInfo = characterInfoRepository.findByCharacterId(characterId)
-                .orElseThrow(() -> new IllegalArgumentException("캐릭터 정보를 찾을 수 없습니다."));
-
-        return CharacterInfoResponseDto.from(characterInfo);
-    }
 
     // 여행 타입 목록 조회 (프로필 수정 화면에서 선택지로 사용)
     @Transactional(readOnly = true)
