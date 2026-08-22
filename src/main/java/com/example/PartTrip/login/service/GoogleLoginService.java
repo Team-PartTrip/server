@@ -80,7 +80,7 @@ public class GoogleLoginService {
         tokenEntity.setCreateDate(LocalDateTime.now());
         refreshTokenRepository.save(tokenEntity);
 
-        return new TokenResponseDto(accessToken, refreshToken, user.isSurveyCompleted());
+        return new TokenResponseDto(accessToken, refreshToken);
     }
 
     // [웹] auth code 를 Google 토큰 엔드포인트에서 교환하여 idToken 획득

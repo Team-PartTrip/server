@@ -62,7 +62,7 @@ public class LoginService {
 
         refreshTokenRepository.save(tokenEntity);
 
-        return new TokenResponseDto(accessToken, refreshToken, user.isSurveyCompleted());
+        return new TokenResponseDto(accessToken, refreshToken);
     }
 
     public TokenResponseDto refresh(RefreshRequestDto dto) {
@@ -86,7 +86,7 @@ public class LoginService {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 아이디입니다."));
 
-        return new TokenResponseDto(newAccessToken, dto.getRefreshToken(), user.isSurveyCompleted());
+        return new TokenResponseDto(newAccessToken, dto.getRefreshToken());
     }
 
     // 로그아웃
