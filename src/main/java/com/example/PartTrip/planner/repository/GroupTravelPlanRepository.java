@@ -11,4 +11,7 @@ public interface GroupTravelPlanRepository extends JpaRepository<GroupTravelPlan
     List<GroupTravelPlanEntity> findByGroupIdOrderByStartDateDesc(Long groupId);
 
     Optional<GroupTravelPlanEntity> findByPlanIdAndGroupId(Long planId, Long groupId);
+
+    // 여러 그룹의 최신 여행 계획을 목록 조회용으로 한 번에 가져온다
+    List<GroupTravelPlanEntity> findByGroupIdInOrderByCreatedAtDesc(List<Long> groupIds);
 }
