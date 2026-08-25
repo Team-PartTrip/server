@@ -17,6 +17,8 @@ public interface VoteRecordRepository extends JpaRepository<VoteRecordEntity, Lo
     // 앱 C5 의 "3 / 4명 참여"
     long countByVoteId(Long voteId);
 
+    boolean existsByOptionId(Long optionId);
+
     // 후보별 득표 수 — [optionId, count] 형태로 돌아온다
     @Query("""
             SELECT r.optionId, COUNT(r)
