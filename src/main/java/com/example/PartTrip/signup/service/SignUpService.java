@@ -23,6 +23,11 @@ public class SignUpService {
     private final MailService mailService;
     private final NickNameGenerator nickNameGenerator;
 
+    @Transactional(readOnly = true)
+    public boolean isUserIdTaken(String userId) {
+        return userRepository.existsByUserId(userId);
+    }
+
     // 회원가입 정보 입력 후 이메일 인증번호 발송
     @Transactional
     public void startSignUp(SignUpRequestDto dto) {
