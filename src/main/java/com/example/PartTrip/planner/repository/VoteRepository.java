@@ -3,13 +3,21 @@ package com.example.PartTrip.planner.repository;
 import com.example.PartTrip.main.enums.TourPlaceCategory;
 import com.example.PartTrip.planner.entity.VoteEntity;
 import com.example.PartTrip.planner.enums.VoteStatus;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 public interface VoteRepository extends JpaRepository<VoteEntity, Long> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT v FROM VoteEntity v WHERE v.voteId = :voteId")
+    Optional<VoteEntity> findByVoteIdForUpdate(@Param("voteId") Long voteId);
 
     // 앱 C7 카테고리별 현황
     List<VoteEntity> findByPlanId(Long planId);
