@@ -1,4 +1,4 @@
-package com.example.PartTrip.planner.dto;
+package com.example.PartTrip.planner.dto.response;
 
 import lombok.Builder;
 import lombok.Getter;

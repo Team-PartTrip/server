@@ -1,8 +1,8 @@
 package com.example.PartTrip.planner.controller;
 
-import com.example.PartTrip.planner.dto.response.PlannerTravelPlanResponseDto;
-import com.example.PartTrip.planner.dto.request.SavePlannerTravelPlanRequestDto;
-import com.example.PartTrip.planner.service.PlannerTravelPlanService;
+import com.example.PartTrip.planner.dto.request.VoteBallotRequestDto;
+import com.example.PartTrip.planner.dto.response.VoteBallotResponseDto;
+import com.example.PartTrip.planner.service.VoteBallotService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -16,19 +16,21 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/planners")
-public class PlannerTravelPlanController {
+public class VoteBallotController {
 
-    private final PlannerTravelPlanService plannerTravelPlanService;
+    private final VoteBallotService voteBallotService;
 
-    @PutMapping("/{plannerId}/travel-plan")
-    public ResponseEntity<PlannerTravelPlanResponseDto> saveTravelPlan(
+    @PutMapping("/{plannerId}/votes/{voteId}/ballot")
+    public ResponseEntity<VoteBallotResponseDto> castBallot(
             Authentication authentication,
             @PathVariable Long plannerId,
-            @Valid @RequestBody SavePlannerTravelPlanRequestDto requestDto
+            @PathVariable Long voteId,
+            @Valid @RequestBody VoteBallotRequestDto requestDto
     ) {
         return ResponseEntity.ok(
-                plannerTravelPlanService.saveTravelPlan(
+                voteBallotService.castBallot(
                         plannerId,
+                        voteId,
                         requestDto,
                         authentication.getName()
                 )

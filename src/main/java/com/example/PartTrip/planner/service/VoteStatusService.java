@@ -2,8 +2,8 @@ package com.example.PartTrip.planner.service;
 
 import com.example.PartTrip.main.entity.TourPlaceEntity;
 import com.example.PartTrip.main.repository.TourPlaceRepository;
-import com.example.PartTrip.planner.dto.VoteOptionStatusResponseDto;
-import com.example.PartTrip.planner.dto.VoteStatusResponseDto;
+import com.example.PartTrip.planner.dto.response.VoteOptionStatusResponseDto;
+import com.example.PartTrip.planner.dto.response.VoteStatusResponseDto;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
 import com.example.PartTrip.planner.entity.VoteEntity;
 import com.example.PartTrip.planner.entity.VoteOptionEntity;

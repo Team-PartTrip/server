@@ -1,7 +1,7 @@
 package com.example.PartTrip.planner.controller;
 
-import com.example.PartTrip.planner.dto.CreateVoteRequestDto;
-import com.example.PartTrip.planner.dto.VoteCreateResponseDto;
+import com.example.PartTrip.planner.dto.request.CreateVoteRequestDto;
+import com.example.PartTrip.planner.dto.response.VoteCreateResponseDto;
 import com.example.PartTrip.planner.service.VoteCreateService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

@@ -1,6 +1,6 @@
 package com.example.PartTrip.planner.controller;
 
-import com.example.PartTrip.planner.dto.PlannerListResponseDto;
+import com.example.PartTrip.planner.dto.response.PlannerListResponseDto;
 import com.example.PartTrip.planner.service.PlannerListService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

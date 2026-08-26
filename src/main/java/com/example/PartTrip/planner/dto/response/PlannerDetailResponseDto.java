@@ -1,4 +1,4 @@
-package com.example.PartTrip.planner.dto;
+package com.example.PartTrip.planner.dto.response;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -7,7 +7,7 @@ import java.time.LocalDate;
 
 @Getter
 @Builder
-public class PlannerListResponseDto {
+public class PlannerDetailResponseDto {
 
     private Long plannerId;
     private String title;
@@ -19,4 +19,5 @@ public class PlannerListResponseDto {
     private String role;
     private Integer memberCount;
     private Long joinedMemberCount;
+    private String inviteCode;
 }
