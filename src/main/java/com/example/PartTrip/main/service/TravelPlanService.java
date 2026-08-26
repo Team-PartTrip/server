@@ -93,27 +93,4 @@ public class TravelPlanService {
                 dday
         );
     }
-
-    @Transactional
-    public void changeTravelCountry(String userId, Long travelPlanId, Long countryInfoId){
-
-        // 본인 여행 계획이 아니면 조회되지 않으므로 남의 계획을 바꿀 수 없다
-        TravelPlanEntity travelPlan =
-                travelPlanRepository.findByTravelPlanIdAndUserId(travelPlanId, userId)
-                        .orElseThrow(() -> new IllegalArgumentException("여행 계획이 없습니다."));
-
-        CountryInfoEntity country =
-                countryInfoRepository.findById(countryInfoId)
-                        .orElseThrow(() -> new IllegalArgumentException("국가가 없습니다."));
-
-        // 같은 나라면 아무것도 안 함
-        if (travelPlan.getCountryName().equals(country.getCountryName())) {
-            return;
-        }
-
-        travelPlan.setCountryName(country.getCountryName());
-        travelPlan.setCityName(country.getCityName());
-
-        travelPlanRepository.save(travelPlan);
-    }
 }
