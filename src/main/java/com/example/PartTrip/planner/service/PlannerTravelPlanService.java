@@ -1,7 +1,7 @@
 package com.example.PartTrip.planner.service;
 
-import com.example.PartTrip.planner.dto.PlannerTravelPlanResponseDto;
-import com.example.PartTrip.planner.dto.SavePlannerTravelPlanRequestDto;
+import com.example.PartTrip.planner.dto.response.PlannerTravelPlanResponseDto;
+import com.example.PartTrip.planner.dto.request.SavePlannerTravelPlanRequestDto;
 import com.example.PartTrip.planner.entity.GroupMemberEntity;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
 import com.example.PartTrip.planner.entity.TravelGroupEntity;

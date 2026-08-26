@@ -1,6 +1,6 @@
 package com.example.PartTrip.planner.controller;
 
-import com.example.PartTrip.planner.dto.VoteStatusResponseDto;
+import com.example.PartTrip.planner.dto.response.VoteStatusResponseDto;
 import com.example.PartTrip.planner.service.VoteStatusService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

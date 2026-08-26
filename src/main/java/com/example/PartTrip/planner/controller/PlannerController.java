@@ -1,7 +1,7 @@
 package com.example.PartTrip.planner.controller;
 
-import com.example.PartTrip.planner.dto.CreatePlannerRequestDto;
-import com.example.PartTrip.planner.dto.PlannerCreateResponseDto;
+import com.example.PartTrip.planner.dto.request.CreatePlannerRequestDto;
+import com.example.PartTrip.planner.dto.response.PlannerCreateResponseDto;
 import com.example.PartTrip.planner.service.PlannerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

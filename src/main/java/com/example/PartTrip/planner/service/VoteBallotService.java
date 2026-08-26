@@ -1,8 +1,8 @@
 package com.example.PartTrip.planner.service;
 
 import com.example.PartTrip.notification.event.VoteParticipatedEvent;
-import com.example.PartTrip.planner.dto.VoteBallotRequestDto;
-import com.example.PartTrip.planner.dto.VoteBallotResponseDto;
+import com.example.PartTrip.planner.dto.request.VoteBallotRequestDto;
+import com.example.PartTrip.planner.dto.response.VoteBallotResponseDto;
 import com.example.PartTrip.planner.entity.VoteEntity;
 import com.example.PartTrip.planner.entity.VoteOptionEntity;
 import com.example.PartTrip.planner.entity.VoteRecordEntity;
