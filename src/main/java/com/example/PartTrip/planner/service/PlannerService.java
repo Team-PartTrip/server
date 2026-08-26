@@ -54,37 +54,64 @@ public class PlannerService {
         owner.setJoinedAt(now);
         groupMemberRepository.save(owner);
 
-        GroupTravelPlanEntity travelPlan = new GroupTravelPlanEntity();
-        travelPlan.setGroupId(savedGroup.getGroupId());
-        travelPlan.setTravelTitle(dto.getTitle());
-        travelPlan.setCountryName(dto.getCountryName());
-        travelPlan.setCityName(dto.getCityName());
-        travelPlan.setStartDate(dto.getStartDate());
-        travelPlan.setEndDate(dto.getEndDate());
-        travelPlan.setCreatedAt(now);
-        groupTravelPlanRepository.save(travelPlan);
+        GroupTravelPlanEntity travelPlan = createTravelPlanIfPresent(dto, savedGroup, now);
 
         return PlannerCreateResponseDto.builder()
                 .plannerId(savedGroup.getGroupId())
                 .title(savedGroup.getGroupName())
                 .status(savedGroup.getStatus().name())
                 .memberCount(savedGroup.getHeadcount())
-                .startDate(travelPlan.getStartDate())
-                .endDate(travelPlan.getEndDate())
-                .countryName(travelPlan.getCountryName())
-                .cityName(travelPlan.getCityName())
+                .startDate(travelPlan == null ? null : travelPlan.getStartDate())
+                .endDate(travelPlan == null ? null : travelPlan.getEndDate())
+                .countryName(travelPlan == null ? null : travelPlan.getCountryName())
+                .cityName(travelPlan == null ? null : travelPlan.getCityName())
                 .inviteCode(savedGroup.getInviteCode())
                 .build();
     }
 
     private void validateRequest(CreatePlannerRequestDto dto) {
-        if (dto.getEndDate().isBefore(dto.getStartDate())) {
-            throw new IllegalArgumentException("여행 종료일은 시작일보다 빠를 수 없습니다.");
-        }
-
         if (!Boolean.TRUE.equals(dto.getIsSolo()) && dto.getMemberCount() < 2) {
             throw new IllegalArgumentException("함께 여행하는 경우 인원은 2명 이상이어야 합니다.");
         }
+
+        boolean hasAnyTravelPlanValue = dto.getCountryName() != null
+                || dto.getCityName() != null
+                || dto.getStartDate() != null
+                || dto.getEndDate() != null;
+        boolean hasAllTravelPlanValues = dto.getCountryName() != null
+                && !dto.getCountryName().isBlank()
+                && dto.getCityName() != null
+                && !dto.getCityName().isBlank()
+                && dto.getStartDate() != null
+                && dto.getEndDate() != null;
+
+        if (hasAnyTravelPlanValue && !hasAllTravelPlanValues) {
+            throw new IllegalArgumentException("여행지와 기간은 모두 입력하거나 모두 생략해야 합니다.");
+        }
+
+        if (hasAllTravelPlanValues && dto.getEndDate().isBefore(dto.getStartDate())) {
+            throw new IllegalArgumentException("여행 종료일은 시작일보다 빠를 수 없습니다.");
+        }
+    }
+
+    private GroupTravelPlanEntity createTravelPlanIfPresent(
+            CreatePlannerRequestDto dto,
+            TravelGroupEntity savedGroup,
+            LocalDateTime now
+    ) {
+        if (dto.getCountryName() == null) {
+            return null;
+        }
+
+        GroupTravelPlanEntity travelPlan = new GroupTravelPlanEntity();
+        travelPlan.setGroupId(savedGroup.getGroupId());
+        travelPlan.setTravelTitle(dto.getTitle());
+        travelPlan.setCountryName(dto.getCountryName().trim());
+        travelPlan.setCityName(dto.getCityName().trim());
+        travelPlan.setStartDate(dto.getStartDate());
+        travelPlan.setEndDate(dto.getEndDate());
+        travelPlan.setCreatedAt(now);
+        return groupTravelPlanRepository.save(travelPlan);
     }
 
     private String createUniqueInviteCode() {

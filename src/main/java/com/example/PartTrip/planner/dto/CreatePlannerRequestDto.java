@@ -27,15 +27,11 @@ public class CreatePlannerRequestDto {
     @NotNull(message = "혼자 여행인지 선택해주세요.")
     private Boolean isSolo;
 
-    @NotBlank(message = "여행 국가를 입력해주세요.")
     private String countryName;
 
-    @NotBlank(message = "여행 도시를 입력해주세요.")
     private String cityName;
 
-    @NotNull(message = "여행 시작일을 입력해주세요.")
     private LocalDate startDate;
 
-    @NotNull(message = "여행 종료일을 입력해주세요.")
     private LocalDate endDate;
 }
