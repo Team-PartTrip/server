@@ -15,4 +15,10 @@ public interface TripCardRepository extends JpaRepository<TripCardEntity, Long> 
     Optional<TripCardEntity> findByTripCardIdAndUserId(Long tripCardId, String userId);
 
     Optional<TripCardEntity> findByPlanId(Long planId);
+
+    // 카드 id 로 조회
+    Optional<TripCardEntity> findByTripCardId(Long tripCardId);
+
+    List<TripCardEntity> findTripCardEntitiesByUserId(String userId);
+
 }
