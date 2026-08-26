@@ -1,6 +1,7 @@
 package com.example.PartTrip.profile.controller;
 
 import com.example.PartTrip.profile.dto.ProfileResponseDto;
+import com.example.PartTrip.profile.dto.ProfileStatsResponseDto;
 import com.example.PartTrip.profile.dto.ProfileUpdateRequestDto;
 import com.example.PartTrip.profile.dto.TravelThemeResponseDto;
 import com.example.PartTrip.profile.service.ProfileService;
@@ -26,6 +27,13 @@ public class ProfileController {
         String userId = (String) authentication.getPrincipal();
         ProfileResponseDto resDto = profileService.getProfile(userId);
         return ResponseEntity.ok(resDto);
+    }
+
+    // 여행 통계 (Func-007-01) — 마이 탭 상단의 여행 · 국가 · 기록 3칸
+    @GetMapping("/stats")
+    public ResponseEntity<ProfileStatsResponseDto> getStats(Authentication authentication) {
+        String userId = (String) authentication.getPrincipal();
+        return ResponseEntity.ok(profileService.getStats(userId));
     }
 
     @PutMapping

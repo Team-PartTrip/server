@@ -2,6 +2,8 @@ package com.example.PartTrip.tripcard.repository;
 
 import com.example.PartTrip.tripcard.entity.TripCardPhotoEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
@@ -14,4 +16,14 @@ public interface TripCardPhotoRepository extends JpaRepository<TripCardPhotoEnti
     long countByTripCardId(Long tripCardId);
 
     void deleteByTripCardId(Long tripCardId);
+
+    // Func-007-01 프로필 통계의 "기록" 수.
+    // trip_card_photo 에는 user_id 가 없어서 내 여행 카드를 거쳐 센다.
+    @Query("""
+            select count(p) from TripCardPhotoEntity p
+            where p.tripCardId in (
+                select c.tripCardId from TripCardEntity c where c.userId = :userId
+            )
+            """)
+    long countByUserId(@Param("userId") String userId);
 }
