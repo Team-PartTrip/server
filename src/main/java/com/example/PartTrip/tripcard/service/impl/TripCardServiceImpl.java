@@ -33,7 +33,7 @@ public class TripCardServiceImpl implements TripCardService {
             throw new IllegalStateException("이 카드를 조회할 권한이 없습니다.");
         }
 
-        return TripCardDetailResponse.from(tripCard, );
+        return TripCardDetailResponse.from(tripCard, List.of());
     }
 
 
