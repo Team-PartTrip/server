@@ -11,6 +11,8 @@ public interface VoteRecordRepository extends JpaRepository<VoteRecordEntity, Lo
 
     List<VoteRecordEntity> findByVoteId(Long voteId);
 
+    List<VoteRecordEntity> findByVoteIdIn(List<Long> voteIds);
+
     // 1인 1표라 최대 한 건이다. 표를 바꾸면 이 행의 option_id 를 수정한다
     Optional<VoteRecordEntity> findByVoteIdAndUserId(Long voteId, String userId);
 
