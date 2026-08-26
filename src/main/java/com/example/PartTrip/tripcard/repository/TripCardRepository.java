@@ -15,4 +15,7 @@ public interface TripCardRepository extends JpaRepository<TripCardEntity, Long> 
     Optional<TripCardEntity> findByTripCardIdAndUserId(Long tripCardId, String userId);
 
     Optional<TripCardEntity> findByPlanId(Long planId);
+
+    // Func-007-01 프로필 통계의 "여행" 수
+    long countByUserId(String userId);
 }
