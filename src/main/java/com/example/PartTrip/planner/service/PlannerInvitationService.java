@@ -1,6 +1,7 @@
 package com.example.PartTrip.planner.service;
 
 import com.example.PartTrip.notification.event.GroupInviteAcceptedEvent;
+import com.example.PartTrip.notification.event.GroupInvitedEvent;
 import com.example.PartTrip.planner.dto.request.InvitePlannerMembersRequestDto;
 import com.example.PartTrip.planner.dto.response.PlannerInvitationResponseDto;
 import com.example.PartTrip.planner.dto.response.PlannerInviteResponseDto;
@@ -90,7 +91,10 @@ public class PlannerInvitationService {
             invitation.setStatus(InvitationStatus.PENDING);
             invitation.setCreatedAt(now);
             invitation.setRespondedAt(null);
-            responses.add(toResponse(group, groupInvitationRepository.save(invitation)));
+            GroupInvitationEntity saved = groupInvitationRepository.save(invitation);
+            responses.add(toResponse(group, saved));
+            eventPublisher.publishEvent(
+                    new GroupInvitedEvent(plannerId, invitedUserId, requesterUserId));
         }
 
         return PlannerInviteResponseDto.builder()

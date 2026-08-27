@@ -9,8 +9,10 @@ import java.time.LocalDateTime;
 @Builder
 public class PlannerMemberResponseDto {
 
+    private Long invitationId;
     private String userId;
     private String nickName;
     private String role;
+    private String status;
     private LocalDateTime joinedAt;
 }

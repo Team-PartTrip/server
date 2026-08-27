@@ -20,6 +20,11 @@ public interface GroupInvitationRepository extends JpaRepository<GroupInvitation
             InvitationStatus status
     );
 
+    List<GroupInvitationEntity> findByGroupIdAndStatusOrderByCreatedAtAsc(
+            Long groupId,
+            InvitationStatus status
+    );
+
     long countByGroupIdAndStatus(Long groupId, InvitationStatus status);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
