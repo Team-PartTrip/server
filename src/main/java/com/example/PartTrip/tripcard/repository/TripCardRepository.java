@@ -11,6 +11,11 @@ public interface TripCardRepository extends JpaRepository<TripCardEntity, Long> 
     // Func-003-01 "여행카드들을 시간순으로 조회"
     List<TripCardEntity> findByUserIdOrderByStartDateDesc(String userId);
 
+    List<TripCardEntity> findByUserIdAndCountryNameIgnoreCaseOrderByStartDateDesc(
+            String userId,
+            String countryName
+    );
+
     // 조회 · 수정 · 삭제 시 소유자까지 함께 확인한다
     Optional<TripCardEntity> findByTripCardIdAndUserId(Long tripCardId, String userId);
 
