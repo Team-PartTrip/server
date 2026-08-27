@@ -1,6 +1,8 @@
 package com.example.PartTrip.planner.controller;
 
 import com.example.PartTrip.planner.dto.request.JoinPlannerRequestDto;
+import com.example.PartTrip.planner.dto.request.InvitePlannerMembersRequestDto;
+import com.example.PartTrip.planner.dto.response.PlannerInviteResponseDto;
 import com.example.PartTrip.planner.dto.response.PlannerJoinResponseDto;
 import com.example.PartTrip.planner.service.PlannerMemberService;
 import jakarta.validation.Valid;
@@ -9,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -31,5 +34,20 @@ public class PlannerMemberController {
         );
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/{plannerId}/members")
+    public ResponseEntity<PlannerInviteResponseDto> inviteMembers(
+            Authentication authentication,
+            @PathVariable Long plannerId,
+            @Valid @RequestBody InvitePlannerMembersRequestDto requestDto
+    ) {
+        return ResponseEntity.ok(
+                plannerMemberService.inviteMembers(
+                        plannerId,
+                        requestDto,
+                        authentication.getName()
+                )
+        );
     }
 }

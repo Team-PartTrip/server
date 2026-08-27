@@ -17,4 +17,7 @@ public class VoteCreateResponseDto {
     private String status;
     private LocalDateTime deadline;
     private LocalDateTime createdAt;
+
+    // 투표 생성 직후 참여 수
+    private Long count;
 }

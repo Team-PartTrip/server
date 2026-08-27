@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -22,6 +23,21 @@ public class PlannerTravelPlanController {
 
     @PutMapping("/{plannerId}/travel-plan")
     public ResponseEntity<PlannerTravelPlanResponseDto> saveTravelPlan(
+            Authentication authentication,
+            @PathVariable Long plannerId,
+            @Valid @RequestBody SavePlannerTravelPlanRequestDto requestDto
+    ) {
+        return ResponseEntity.ok(
+                plannerTravelPlanService.saveTravelPlan(
+                        plannerId,
+                        requestDto,
+                        authentication.getName()
+                )
+        );
+    }
+
+    @PatchMapping("/{plannerId}")
+    public ResponseEntity<PlannerTravelPlanResponseDto> updatePlanner(
             Authentication authentication,
             @PathVariable Long plannerId,
             @Valid @RequestBody SavePlannerTravelPlanRequestDto requestDto

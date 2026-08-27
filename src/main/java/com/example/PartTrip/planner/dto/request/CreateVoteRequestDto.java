@@ -14,6 +14,9 @@ public class CreateVoteRequestDto {
     @NotBlank(message = "투표 카테고리를 입력해주세요.")
     private String category;
 
+    // API-008-06 호환: 투표 생성과 동시에 첫 장소 후보를 등록할 때 사용한다
+    private Long placeId;
+
     // null이면 마감 시간이 없는 투표로 생성한다
     private LocalDateTime deadline;
 }
