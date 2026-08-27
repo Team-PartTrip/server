@@ -62,6 +62,10 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+	// 사진 메타데이터 추출자
+	implementation 'com.drewnoakes:metadata-extractor:2.19.0'
+
 }
 
 tasks.named('test') {
