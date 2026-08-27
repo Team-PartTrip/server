@@ -71,7 +71,7 @@ public class WorldMapService {
         TripCardEntity trip = tripCardRepository.findByTripCardIdAndUserId(tripId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("여행 기록을 찾을 수 없거나 접근 권한이 없습니다."));
         CountryInfoEntity country = countryInfoRepository
-                .findByCountryNameIgnoreCase(trip.getCountryName())
+                .findByCountryNameIgnoreCaseForUpdate(trip.getCountryName())
                 .orElseThrow(() -> new IllegalArgumentException("여행 기록의 국가가 국가 정보에 존재하지 않습니다."));
         String countryCode = requireCountryCode(country.getCountryName());
 

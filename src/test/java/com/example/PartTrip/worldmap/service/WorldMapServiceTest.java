@@ -66,7 +66,7 @@ class WorldMapServiceTest {
                 LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 4));
         when(tripCardRepository.findByTripCardIdAndUserId(2L, "user1"))
                 .thenReturn(Optional.of(recentTrip));
-        when(countryInfoRepository.findByCountryNameIgnoreCase("일본"))
+        when(countryInfoRepository.findByCountryNameIgnoreCaseForUpdate("일본"))
                 .thenReturn(Optional.of(japan));
         when(tripCardRepository.findByUserIdAndCountryNameIgnoreCaseOrderByStartDateDesc(
                 "user1", "일본"))
@@ -95,7 +95,7 @@ class WorldMapServiceTest {
         VisitedCountryEntity existing = visited("user1", 10L);
         when(tripCardRepository.findByTripCardIdAndUserId(1L, "user1"))
                 .thenReturn(Optional.of(trip));
-        when(countryInfoRepository.findByCountryNameIgnoreCase("일본"))
+        when(countryInfoRepository.findByCountryNameIgnoreCaseForUpdate("일본"))
                 .thenReturn(Optional.of(japan));
         when(tripCardRepository.findByUserIdAndCountryNameIgnoreCaseOrderByStartDateDesc(
                 "user1", "일본"))
