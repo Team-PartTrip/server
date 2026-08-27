@@ -25,4 +25,8 @@ public interface TravelGroupRepository extends JpaRepository<TravelGroupEntity, 
 
     // 수정 시 소유자까지 함께 확인한다
     Optional<TravelGroupEntity> findByGroupIdAndOwnerUserId(Long groupId, String ownerUserId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT g FROM TravelGroupEntity g WHERE g.groupId = :groupId")
+    Optional<TravelGroupEntity> findByIdForUpdate(@Param("groupId") Long groupId);
 }
