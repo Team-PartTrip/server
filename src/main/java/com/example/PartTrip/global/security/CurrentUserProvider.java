@@ -1,4 +1,4 @@
-package com.example.PartTrip.photo.service;
+package com.example.PartTrip.global.security;
 
 import com.example.PartTrip.signup.entity.UserEntity;
 
