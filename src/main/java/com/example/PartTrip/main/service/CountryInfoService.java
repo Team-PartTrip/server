@@ -32,6 +32,18 @@ public class CountryInfoService {
                 .collect(Collectors.toList());
     }
 
+    public List<CountryInfoResponseDto> getCountries(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return getCountries();
+        }
+        return countryInfoRepository.searchByCountryOrCity(keyword.trim()).stream()
+                .limit(20)
+                .map(c -> new CountryInfoResponseDto(
+                        c.getCountryInfoId(), c.getCountryName(), c.getCityName(),
+                        c.getImageUrl(), c.getSummary()))
+                .toList();
+    }
+
     // 국가 정보 조회
     public CountryInfoResponseDto getCountryInfo(String countryName) {
 
