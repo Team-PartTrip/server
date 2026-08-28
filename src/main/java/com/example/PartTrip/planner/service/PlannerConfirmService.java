@@ -80,15 +80,19 @@ public class PlannerConfirmService {
             if (closed.getTopOptionIds().isEmpty()) {
                 throw new IllegalArgumentException("확정할 후보가 없는 투표가 있습니다.");
             }
+            if (Boolean.TRUE.equals(closed.getTied())) {
+                throw new IllegalArgumentException(
+                        "동점 투표가 있습니다. 그룹장이 공동 1위 후보를 먼저 선택해주세요. voteId="
+                                + vote.getVoteId());
+            }
 
             VoteConfirmRequestDto request = new VoteConfirmRequestDto();
-            request.setOptionId(closed.getTopOptionIds().get(0));
             voteConfirmService.confirmVote(plannerId, vote.getVoteId(), request, userId);
         }
 
         PlannerFinalResponseDto finalResult = plannerFinalService
                 .getConfirmedPlaces(plannerId, userId);
-        TripCardEntity tripCard = createTripCardIfAbsent(
+        TripCardEntity tripCard = createTripCardsIfAbsent(
                 group,
                 plan,
                 finalResult.getPlaces()
@@ -101,22 +105,40 @@ public class PlannerConfirmService {
                 .build();
     }
 
-    private TripCardEntity createTripCardIfAbsent(
+    private TripCardEntity createTripCardsIfAbsent(
             TravelGroupEntity group,
             GroupTravelPlanEntity plan,
             List<ConfirmedPlaceResponseDto> places
     ) {
-        return tripCardRepository.findByPlanId(plan.getPlanId())
-                .orElseGet(() -> createTripCard(group, plan, places));
+        List<GroupMemberEntity> members = groupMemberRepository
+                .findByGroupIdOrderByJoinedAtAsc(group.getGroupId());
+        TripCardEntity ownerCard = null;
+        for (GroupMemberEntity member : members) {
+            TripCardEntity card = tripCardRepository
+                    .findByPlanIdAndUserId(plan.getPlanId(), member.getUserId())
+                    .orElseGet(() -> createTripCard(
+                            group,
+                            plan,
+                            places,
+                            member.getUserId()));
+            if (member.getUserId().equals(group.getOwnerUserId())) {
+                ownerCard = card;
+            }
+        }
+        if (ownerCard == null) {
+            throw new IllegalArgumentException("플래너 그룹장 정보를 찾을 수 없습니다.");
+        }
+        return ownerCard;
     }
 
     private TripCardEntity createTripCard(
             TravelGroupEntity group,
             GroupTravelPlanEntity plan,
-            List<ConfirmedPlaceResponseDto> places
+            List<ConfirmedPlaceResponseDto> places,
+            String cardOwnerUserId
     ) {
         TripCardEntity card = new TripCardEntity();
-        card.setUserId(group.getOwnerUserId());
+        card.setUserId(cardOwnerUserId);
         card.setPlanId(plan.getPlanId());
         card.setTitle(group.getGroupName());
         card.setCountryName(plan.getCountryName());
@@ -153,7 +175,7 @@ public class PlannerConfirmService {
         }
 
         eventPublisher.publishEvent(
-                new TripCardCreatedEvent(savedCard.getTripCardId(), group.getOwnerUserId())
+                new TripCardCreatedEvent(savedCard.getTripCardId(), cardOwnerUserId)
         );
         return savedCard;
     }

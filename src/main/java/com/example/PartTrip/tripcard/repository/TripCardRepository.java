@@ -14,7 +14,7 @@ public interface TripCardRepository extends JpaRepository<TripCardEntity, Long> 
     // 조회 · 수정 · 삭제 시 소유자까지 함께 확인한다
     Optional<TripCardEntity> findByTripCardIdAndUserId(Long tripCardId, String userId);
 
-    Optional<TripCardEntity> findByPlanId(Long planId);
+    Optional<TripCardEntity> findByPlanIdAndUserId(Long planId, String userId);
 
     // Func-007-01 프로필 통계의 "여행" 수
     long countByUserId(String userId);

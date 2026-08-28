@@ -2,8 +2,10 @@ package com.example.PartTrip.notification.listener;
 
 import com.example.PartTrip.notification.enums.NotificationType;
 import com.example.PartTrip.notification.event.GroupInviteAcceptedEvent;
+import com.example.PartTrip.notification.event.GroupInvitedEvent;
 import com.example.PartTrip.notification.event.VoteDeadlineEvent;
 import com.example.PartTrip.notification.event.VoteParticipatedEvent;
+import com.example.PartTrip.notification.event.VoteReminderEvent;
 import com.example.PartTrip.notification.service.NotificationWriter;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
 import com.example.PartTrip.planner.entity.TravelGroupEntity;
@@ -130,6 +132,61 @@ public class PlannerNotificationListener {
 
         } catch (Exception e) {
             log.warn("그룹 참여 알림 생성 실패 groupId={}", event.groupId(), e);
+        }
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void on(GroupInvitedEvent event) {
+        try {
+            TravelGroupEntity group = travelGroupRepository.findById(event.groupId()).orElse(null);
+            if (group == null) {
+                return;
+            }
+            String groupName = group.getGroupName() == null ? "여행 그룹" : group.getGroupName();
+            notificationWriter.write(
+                    event.invitedUserId(),
+                    NotificationType.GROUP_INVITED,
+                    NotificationType.GROUP_INVITED.getLabel(),
+                    nickNameOf(event.actorUserId()) + "님이 " + groupName + "에 초대했어요.",
+                    "GROUP_INVITATION",
+                    group.getGroupId());
+        } catch (Exception e) {
+            log.warn("그룹 초대 알림 생성 실패 groupId={}", event.groupId(), e);
+        }
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void on(VoteReminderEvent event) {
+        try {
+            GroupTravelPlanEntity plan = groupTravelPlanRepository
+                    .findFirstByGroupIdOrderByCreatedAtDesc(event.groupId())
+                    .orElse(null);
+            if (plan == null) {
+                return;
+            }
+            List<VoteEntity> activeVotes = voteRepository.findByPlanId(plan.getPlanId()).stream()
+                    .filter(vote -> vote.getStatus() == com.example.PartTrip.planner.enums.VoteStatus.OPEN)
+                    .toList();
+            if (activeVotes.isEmpty()) {
+                return;
+            }
+            Set<String> completedAll = membersOfGroup(event.groupId()).stream()
+                    .filter(userId -> activeVotes.stream().allMatch(vote ->
+                            voteRecordRepository.findByVoteIdAndUserId(vote.getVoteId(), userId).isPresent()))
+                    .collect(Collectors.toSet());
+            List<String> recipients = membersOfGroup(event.groupId()).stream()
+                    .filter(userId -> !userId.equals(event.actorUserId()))
+                    .filter(userId -> !completedAll.contains(userId))
+                    .toList();
+            notificationWriter.writeAll(
+                    recipients,
+                    NotificationType.VOTE_REMINDER,
+                    NotificationType.VOTE_REMINDER.getLabel(),
+                    nickNameOf(event.actorUserId()) + "님이 아직 남은 투표 참여를 요청했어요.",
+                    "GROUP",
+                    event.groupId());
+        } catch (Exception e) {
+            log.warn("투표 재촉 알림 생성 실패 groupId={}", event.groupId(), e);
         }
     }
 
