@@ -1,9 +1,6 @@
 package com.example.PartTrip.main.service;
 
 import com.example.PartTrip.main.dto.DdayResponseDto;
-import com.example.PartTrip.main.dto.TravelPlanRequestDto;
-import com.example.PartTrip.main.entity.TravelPlanEntity;
-import com.example.PartTrip.main.repository.TravelPlanRepository;
 import com.example.PartTrip.planner.entity.GroupMemberEntity;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
 import com.example.PartTrip.planner.entity.TravelGroupEntity;
@@ -23,45 +20,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class TravelPlanService {
 
-    private final TravelPlanRepository travelPlanRepository;
     private final GroupMemberRepository groupMemberRepository;
     private final GroupTravelPlanRepository groupTravelPlanRepository;
     private final TravelGroupRepository travelGroupRepository;
-
-    // 여행 일정 등록 또는 수정
-    @Transactional
-    public DdayResponseDto saveTravelPlan(
-            String userId,
-            TravelPlanRequestDto dto
-    ) {
-
-        TravelPlanEntity travelPlan = travelPlanRepository.findByUserId(userId)
-                .orElse(null);
-
-        boolean isNew = travelPlan == null;
-
-        if (isNew) {
-            travelPlan = new TravelPlanEntity();
-        }
-
-        travelPlan.setUserId(userId);
-        travelPlan.setCountryName(dto.getCountryName());
-        travelPlan.setCityName(dto.getCityName());
-        travelPlan.setStartDate(dto.getStartDate());
-        travelPlan.setEndDate(dto.getEndDate());
-        travelPlan.setHeadcount(dto.getHeadcount());
-
-        TravelPlanEntity savedTravelPlan =
-                travelPlanRepository.save(travelPlan);
-
-        return toDdayResponseDto(
-                savedTravelPlan.getCountryName(),
-                savedTravelPlan.getCityName(),
-                savedTravelPlan.getStartDate(),
-                savedTravelPlan.getEndDate(),
-                savedTravelPlan.getHeadcount()
-        );
-    }
 
     // D-Day 조회
     //
