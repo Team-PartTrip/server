@@ -14,6 +14,7 @@
 | `seed_tour_places.py` → `seed_tour_places.sql` | `tour_place` (오사카 · 방콕 · 다낭 205곳) | [Overpass API](https://overpass-api.de) (OpenStreetMap, ODbL) |
 | `seed_travel_themes.sql` | `travel_theme` | 직접 작성 |
 | `seed_festivals.sql` | `festival` (7개국 39건) | 직접 작성 |
+| `seed_festivals_public.py` → `seed_festivals_public.sql` | `festival` (51개국 281건) | [위키데이터](https://query.wikidata.org) (CC0), [Nager.Date](https://date.nager.at) |
 
 `.py` 는 공개 데이터를 받아 `.sql` 을 **생성**하고, `.sql` 은 그걸 DB에 **적용**합니다.
 이미 생성된 `.sql` 이 함께 들어 있으니 보통은 `.sql` 만 실행하면 됩니다.
@@ -30,6 +31,7 @@ mysql -u <user> -p --default-character-set=utf8mb4 PartTrip < backfill_coordinat
 mysql -u <user> -p --default-character-set=utf8mb4 PartTrip < seed_tour_places.sql
 mysql -u <user> -p --default-character-set=utf8mb4 PartTrip < seed_travel_themes.sql
 mysql -u <user> -p --default-character-set=utf8mb4 PartTrip < seed_festivals.sql
+mysql -u <user> -p --default-character-set=utf8mb4 PartTrip < seed_festivals_public.sql
 ```
 
 순서는 `seed_countries` → `backfill_coordinates` 만 지키면 됩니다. 나머지는 서로 독립입니다.
@@ -75,5 +77,10 @@ mysql -h <host> -P <port> -u <user> -p \
 OpenStreetMap 에는 평점과 대표 이미지가 없어서 없는 값을 지어내지 않고 비워 두었습니다.
 별도 소스가 정해지면 백필 스크립트를 추가하세요.
 
-`festival` 은 7개국(한국 · 일본 · 대만 · 태국 · 베트남 · 싱가포르 · 프랑스)만 채워져 있습니다.
-나머지 나라를 여행지로 고르면 축제 화면이 비어 보입니다.
+`festival` 은 두 시드를 합쳐 53개국 321건입니다. 나머지 나라를 여행지로 고르면
+축제 화면이 비어 보입니다.
+
+공개 데이터에서 온 281건 중 **한국어 이름이 있는 건 26건뿐**이라 나머지는 영어 이름
+그대로 들어갑니다. 위키데이터에 한국어 라벨이 없어서이고, 없는 이름을 지어내지 않았습니다.
+분류도 위키데이터의 종류를 키워드로 옮긴 것이라 대부분 `체험` 으로 몰립니다.
+사람이 확인해 고칠 값이 있다면 이 두 가지입니다.
