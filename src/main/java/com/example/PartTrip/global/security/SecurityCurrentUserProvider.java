@@ -1,6 +1,5 @@
-package com.example.PartTrip.photo.infra;
+package com.example.PartTrip.global.security;
 
-import com.example.PartTrip.photo.service.CurrentUserProvider;
 
 import com.example.PartTrip.signup.entity.UserEntity;
 import com.example.PartTrip.signup.repository.UserRepository;

@@ -1,5 +1,6 @@
 package com.example.PartTrip.planner.controller;
 
+import com.example.PartTrip.planner.dto.response.VoteReminderResponseDto;
 import com.example.PartTrip.planner.service.VoteReminderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,11 +18,10 @@ public class VoteReminderController {
     private final VoteReminderService voteReminderService;
 
     @PostMapping("/{plannerId}/votes/remind")
-    public ResponseEntity<Void> remind(
+    public ResponseEntity<VoteReminderResponseDto> remind(
             Authentication authentication,
             @PathVariable Long plannerId
     ) {
-        voteReminderService.remind(plannerId, authentication.getName());
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(voteReminderService.remind(plannerId, authentication.getName()));
     }
 }

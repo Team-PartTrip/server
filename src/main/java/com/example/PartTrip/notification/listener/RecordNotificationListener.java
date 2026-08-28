@@ -4,10 +4,8 @@ import com.example.PartTrip.main.entity.CountryInfoEntity;
 import com.example.PartTrip.main.repository.CountryInfoRepository;
 import com.example.PartTrip.notification.enums.NotificationType;
 import com.example.PartTrip.notification.event.CountryAcquiredEvent;
-import com.example.PartTrip.notification.event.PhotoOrganizedEvent;
 import com.example.PartTrip.notification.event.TripCardCreatedEvent;
 import com.example.PartTrip.notification.service.NotificationWriter;
-import com.example.PartTrip.photo.repository.PhotoAnalysisRepository;
 import com.example.PartTrip.tripcard.entity.TripCardEntity;
 import com.example.PartTrip.tripcard.repository.TripCardRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +26,6 @@ public class RecordNotificationListener {
     private final NotificationWriter notificationWriter;
     private final TripCardRepository tripCardRepository;
     private final CountryInfoRepository countryInfoRepository;
-    private final PhotoAnalysisRepository photoAnalysisRepository;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void on(TripCardCreatedEvent event) {
@@ -51,31 +48,6 @@ public class RecordNotificationListener {
         }
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void on(PhotoOrganizedEvent event) {
-
-        try {
-            // 분석이 끝나야 알릴 내용이 생긴다. 제목이 있으면 무엇을 찍었는지 함께 보여준다.
-            String subject = photoAnalysisRepository.findByPhotoPhotoId(event.photoId())
-                    .map(analysis -> analysis.getTitle())
-                    .orElse(null);
-
-            String body = subject == null
-                    ? "사진 분석이 끝났어요. 기록에서 확인해보세요."
-                    : subject + " 사진 분석이 끝났어요. 기록에서 확인해보세요.";
-
-            notificationWriter.write(
-                    event.actorUserId(),
-                    NotificationType.PHOTO_ORGANIZED,
-                    NotificationType.PHOTO_ORGANIZED.getLabel(),
-                    body,
-                    "RECORD",
-                    event.photoId());
-
-        } catch (Exception e) {
-            log.warn("사진 정리 알림 실패 photoId={}", event.photoId(), e);
-        }
-    }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void on(CountryAcquiredEvent event) {

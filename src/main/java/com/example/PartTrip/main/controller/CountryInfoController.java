@@ -16,8 +16,10 @@ public class CountryInfoController {
 
     // 여행지(국가/도시) 전체 목록 조회 - 여행지 선택 화면 등에서 사용
     @GetMapping("/countries")
-    public List<CountryInfoResponseDto> getCountries() {
-        return countryInfoService.getCountries();
+    public List<CountryInfoResponseDto> getCountries(
+            @RequestParam(required = false) String keyword
+    ) {
+        return countryInfoService.getCountries(keyword);
     }
 
     // 국가 정보 조회
