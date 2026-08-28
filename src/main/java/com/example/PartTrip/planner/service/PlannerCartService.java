@@ -21,8 +21,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -43,39 +49,83 @@ public class PlannerCartService {
     ) {
         TravelGroupEntity group = requireMember(plannerId, userId);
         GroupTravelPlanEntity plan = requirePlan(plannerId);
-        int addedCount = 0;
+        List<Long> placeIds = dto.getPlaceIds().stream().distinct().toList();
+        Map<Long, TourPlaceEntity> placesById = tourPlaceRepository.findAllById(placeIds).stream()
+                .collect(Collectors.toMap(TourPlaceEntity::getTourPlaceId, Function.identity()));
+        placeIds.stream()
+                .filter(placeId -> !placesById.containsKey(placeId))
+                .findFirst()
+                .ifPresent(placeId -> {
+                    throw new IllegalArgumentException("관광지가 존재하지 않습니다: " + placeId);
+                });
 
-        for (Long placeId : dto.getPlaceIds().stream().distinct().toList()) {
-            TourPlaceEntity place = tourPlaceRepository.findById(placeId)
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "관광지가 존재하지 않습니다: " + placeId
-                    ));
-            if (place.getCategory() == null) {
-                throw new IllegalArgumentException("카테고리가 없는 관광지는 담을 수 없습니다.");
-            }
-
-            VoteEntity vote = findOrCreateVote(plan, place.getCategory());
-            if (vote.getStatus() != VoteStatus.OPEN) {
-                throw new IllegalArgumentException("마감된 카테고리 투표에는 장소를 담을 수 없습니다.");
-            }
-            if (voteOptionRepository.existsByVoteIdAndTourPlaceId(vote.getVoteId(), placeId)) {
-                continue;
-            }
-
-            VoteOptionEntity option = new VoteOptionEntity();
-            option.setVoteId(vote.getVoteId());
-            option.setTourPlaceId(placeId);
-            option.setPlaceName(place.getPlaceName());
-            option.setAddedByUserId(userId);
-            option.setCreatedAt(LocalDateTime.now());
-            voteOptionRepository.save(option);
-            addedCount++;
+        Set<TourPlaceCategory> requiredCategories = placesById.values().stream()
+                .map(TourPlaceEntity::getCategory)
+                .collect(Collectors.toSet());
+        if (requiredCategories.contains(null)) {
+            throw new IllegalArgumentException("카테고리가 없는 관광지는 담을 수 없습니다.");
         }
+
+        Map<TourPlaceCategory, VoteEntity> votesByCategory = new EnumMap<>(TourPlaceCategory.class);
+        voteRepository.findByPlanId(plan.getPlanId())
+                .forEach(vote -> votesByCategory.put(vote.getCategory(), vote));
+        List<VoteEntity> newVotes = requiredCategories.stream()
+                .filter(category -> !votesByCategory.containsKey(category))
+                .map(category -> newOpenVote(plan.getPlanId(), category))
+                .toList();
+        voteRepository.saveAll(newVotes)
+                .forEach(vote -> votesByCategory.put(vote.getCategory(), vote));
+
+        List<VoteEntity> targetVotes = requiredCategories.stream().map(votesByCategory::get).toList();
+        if (targetVotes.stream().anyMatch(vote -> vote.getStatus() != VoteStatus.OPEN)) {
+            throw new IllegalArgumentException("마감된 카테고리 투표에는 장소를 담을 수 없습니다.");
+        }
+
+        Set<String> existingPairs = voteOptionRepository
+                .findByVoteIdInOrderByCreatedAtAsc(targetVotes.stream().map(VoteEntity::getVoteId).toList())
+                .stream()
+                .filter(option -> option.getTourPlaceId() != null)
+                .map(option -> option.getVoteId() + ":" + option.getTourPlaceId())
+                .collect(Collectors.toCollection(HashSet::new));
+        LocalDateTime now = LocalDateTime.now();
+        List<VoteOptionEntity> optionsToSave = placeIds.stream()
+                .map(placesById::get)
+                .filter(place -> !existingPairs.contains(
+                        votesByCategory.get(place.getCategory()).getVoteId() + ":" + place.getTourPlaceId()))
+                .map(place -> newOption(
+                        votesByCategory.get(place.getCategory()).getVoteId(), place, userId, now))
+                .toList();
+        voteOptionRepository.saveAll(optionsToSave);
+        int addedCount = optionsToSave.size();
 
         if (addedCount > 0) {
             group.setStatus(GroupStatus.VOTING);
         }
         return addedCount + "개 장소를 장바구니에 담았습니다.";
+    }
+
+    private VoteEntity newOpenVote(Long planId, TourPlaceCategory category) {
+        VoteEntity vote = new VoteEntity();
+        vote.setPlanId(planId);
+        vote.setCategory(category);
+        vote.setStatus(VoteStatus.OPEN);
+        vote.setCreatedAt(LocalDateTime.now());
+        return vote;
+    }
+
+    private VoteOptionEntity newOption(
+            Long voteId,
+            TourPlaceEntity place,
+            String userId,
+            LocalDateTime createdAt
+    ) {
+        VoteOptionEntity option = new VoteOptionEntity();
+        option.setVoteId(voteId);
+        option.setTourPlaceId(place.getTourPlaceId());
+        option.setPlaceName(place.getPlaceName());
+        option.setAddedByUserId(userId);
+        option.setCreatedAt(createdAt);
+        return option;
     }
 
     @Transactional(readOnly = true)
@@ -118,18 +168,4 @@ public class PlannerCartService {
                 .orElseThrow(() -> new IllegalArgumentException("플래너의 여행 계획이 없습니다."));
     }
 
-    private VoteEntity findOrCreateVote(
-            GroupTravelPlanEntity plan,
-            TourPlaceCategory category
-    ) {
-        return voteRepository.findByPlanIdAndCategory(plan.getPlanId(), category)
-                .orElseGet(() -> {
-                    VoteEntity vote = new VoteEntity();
-                    vote.setPlanId(plan.getPlanId());
-                    vote.setCategory(category);
-                    vote.setStatus(VoteStatus.OPEN);
-                    vote.setCreatedAt(LocalDateTime.now());
-                    return voteRepository.save(vote);
-                });
-    }
 }

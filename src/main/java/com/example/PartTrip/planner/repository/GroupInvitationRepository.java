@@ -15,6 +15,8 @@ public interface GroupInvitationRepository extends JpaRepository<GroupInvitation
 
     Optional<GroupInvitationEntity> findByGroupIdAndInvitedUserId(Long groupId, String invitedUserId);
 
+    List<GroupInvitationEntity> findByGroupIdAndInvitedUserIdIn(Long groupId, List<String> invitedUserIds);
+
     List<GroupInvitationEntity> findByInvitedUserIdAndStatusOrderByCreatedAtDesc(
             String invitedUserId,
             InvitationStatus status
