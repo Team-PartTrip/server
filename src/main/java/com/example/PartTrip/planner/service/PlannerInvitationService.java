@@ -21,7 +21,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -51,36 +55,50 @@ public class PlannerInvitationService {
         if (userIds.isEmpty()) {
             throw new IllegalArgumentException("초대할 사용자를 한 명 이상 입력해주세요.");
         }
+        if (userIds.contains(requesterUserId)) {
+            throw new IllegalArgumentException("본인은 초대할 수 없습니다.");
+        }
+
+        Set<String> existingUserIds = userRepository.findAllById(userIds).stream()
+                .map(user -> user.getUserId())
+                .collect(Collectors.toSet());
+        Set<String> memberUserIds = groupMemberRepository
+                .findByGroupIdAndUserIdIn(plannerId, userIds).stream()
+                .map(GroupMemberEntity::getUserId)
+                .collect(Collectors.toSet());
+        Map<String, GroupInvitationEntity> invitationsByUserId = groupInvitationRepository
+                .findByGroupIdAndInvitedUserIdIn(plannerId, userIds).stream()
+                .collect(Collectors.toMap(
+                        GroupInvitationEntity::getInvitedUserId,
+                        Function.identity()
+                ));
 
         long memberCount = groupMemberRepository.countByGroupId(plannerId);
         long pendingCount = groupInvitationRepository
                 .countByGroupIdAndStatus(plannerId, InvitationStatus.PENDING);
         long newInvitationCount = userIds.stream()
-                .filter(id -> !groupMemberRepository.existsByGroupIdAndUserId(plannerId, id))
-                .filter(id -> groupInvitationRepository.findByGroupIdAndInvitedUserId(plannerId, id)
-                        .map(invitation -> invitation.getStatus() != InvitationStatus.PENDING)
-                        .orElse(true))
+                .filter(id -> !memberUserIds.contains(id))
+                .filter(id -> {
+                    GroupInvitationEntity invitation = invitationsByUserId.get(id);
+                    return invitation == null || invitation.getStatus() != InvitationStatus.PENDING;
+                })
                 .count();
         if (memberCount + pendingCount + newInvitationCount > group.getHeadcount()) {
             throw new IllegalArgumentException("설정한 여행 인원을 초과하여 초대할 수 없습니다.");
         }
 
         LocalDateTime now = LocalDateTime.now();
-        List<PlannerInvitationResponseDto> responses = new ArrayList<>();
+        List<GroupInvitationEntity> invitationsToSave = new ArrayList<>();
         for (String invitedUserId : userIds) {
-            if (requesterUserId.equals(invitedUserId)) {
-                throw new IllegalArgumentException("본인은 초대할 수 없습니다.");
-            }
-            if (!userRepository.existsByUserId(invitedUserId)) {
+            if (!existingUserIds.contains(invitedUserId)) {
                 throw new IllegalArgumentException("존재하지 않는 사용자입니다: " + invitedUserId);
             }
-            if (groupMemberRepository.existsByGroupIdAndUserId(plannerId, invitedUserId)) {
+            if (memberUserIds.contains(invitedUserId)) {
                 throw new IllegalArgumentException("이미 참여 중인 사용자입니다: " + invitedUserId);
             }
 
-            GroupInvitationEntity invitation = groupInvitationRepository
-                    .findByGroupIdAndInvitedUserId(plannerId, invitedUserId)
-                    .orElseGet(GroupInvitationEntity::new);
+            GroupInvitationEntity invitation = invitationsByUserId
+                    .getOrDefault(invitedUserId, new GroupInvitationEntity());
             if (invitation.getStatus() == InvitationStatus.PENDING) {
                 throw new IllegalArgumentException("이미 초대 대기 중인 사용자입니다: " + invitedUserId);
             }
@@ -91,10 +109,16 @@ public class PlannerInvitationService {
             invitation.setStatus(InvitationStatus.PENDING);
             invitation.setCreatedAt(now);
             invitation.setRespondedAt(null);
-            GroupInvitationEntity saved = groupInvitationRepository.save(invitation);
-            responses.add(toResponse(group, saved));
+            invitationsToSave.add(invitation);
+        }
+
+        List<GroupInvitationEntity> savedInvitations = groupInvitationRepository.saveAll(invitationsToSave);
+        List<PlannerInvitationResponseDto> responses = savedInvitations.stream()
+                .map(invitation -> toResponse(group, invitation))
+                .toList();
+        for (GroupInvitationEntity saved : savedInvitations) {
             eventPublisher.publishEvent(
-                    new GroupInvitedEvent(plannerId, invitedUserId, requesterUserId));
+                    new GroupInvitedEvent(plannerId, saved.getInvitedUserId(), requesterUserId));
         }
 
         return PlannerInviteResponseDto.builder()
@@ -106,14 +130,18 @@ public class PlannerInvitationService {
 
     @Transactional(readOnly = true)
     public List<PlannerInvitationResponseDto> getMyPendingInvitations(String userId) {
-        return groupInvitationRepository
-                .findByInvitedUserIdAndStatusOrderByCreatedAtDesc(userId, InvitationStatus.PENDING)
+        List<GroupInvitationEntity> invitations = groupInvitationRepository
+                .findByInvitedUserIdAndStatusOrderByCreatedAtDesc(userId, InvitationStatus.PENDING);
+        Map<Long, TravelGroupEntity> groupsById = travelGroupRepository
+                .findAllById(invitations.stream().map(GroupInvitationEntity::getGroupId).distinct().toList())
                 .stream()
-                .map(invitation -> {
-                    TravelGroupEntity group = travelGroupRepository.findById(invitation.getGroupId())
-                            .orElseThrow(() -> new IllegalArgumentException("플래너가 존재하지 않습니다."));
-                    return toResponse(group, invitation);
-                })
+                .collect(Collectors.toMap(TravelGroupEntity::getGroupId, Function.identity()));
+        return invitations.stream()
+                .map(invitation -> toResponse(
+                        java.util.Optional.ofNullable(groupsById.get(invitation.getGroupId()))
+                                .orElseThrow(() -> new IllegalArgumentException("플래너가 존재하지 않습니다.")),
+                        invitation
+                ))
                 .toList();
     }
 

@@ -18,6 +18,8 @@ public interface GroupMemberRepository extends JpaRepository<GroupMemberEntity, 
 
     Optional<GroupMemberEntity> findByGroupIdAndUserId(Long groupId, String userId);
 
+    List<GroupMemberEntity> findByGroupIdAndUserIdIn(Long groupId, Collection<String> userIds);
+
     // 그룹 멤버인지 확인 — 플래너 API 전반의 접근 권한 검사에 쓴다
     boolean existsByGroupIdAndUserId(Long groupId, String userId);
 
