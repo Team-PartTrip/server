@@ -13,6 +13,7 @@
 | `backfill_coordinates.py` → `backfill_coordinates.sql` | `country_info.latitude/longitude` | mledoze/countries |
 | `seed_tour_places.py` → `seed_tour_places.sql` | `tour_place` (오사카 · 방콕 · 다낭 205곳) | [Overpass API](https://overpass-api.de) (OpenStreetMap, ODbL) |
 | `seed_travel_themes.sql` | `travel_theme` | 직접 작성 |
+| `seed_festivals.sql` | `festival` (7개국 39건) | 직접 작성 |
 
 `.py` 는 공개 데이터를 받아 `.sql` 을 **생성**하고, `.sql` 은 그걸 DB에 **적용**합니다.
 이미 생성된 `.sql` 이 함께 들어 있으니 보통은 `.sql` 만 실행하면 됩니다.
@@ -28,6 +29,7 @@ mysql -u <user> -p --default-character-set=utf8mb4 PartTrip < seed_countries.sql
 mysql -u <user> -p --default-character-set=utf8mb4 PartTrip < backfill_coordinates.sql
 mysql -u <user> -p --default-character-set=utf8mb4 PartTrip < seed_tour_places.sql
 mysql -u <user> -p --default-character-set=utf8mb4 PartTrip < seed_travel_themes.sql
+mysql -u <user> -p --default-character-set=utf8mb4 PartTrip < seed_festivals.sql
 ```
 
 순서는 `seed_countries` → `backfill_coordinates` 만 지키면 됩니다. 나머지는 서로 독립입니다.
@@ -59,8 +61,19 @@ mysql -h <host> -P <port> -u <user> -p \
 시드 스크립트는 `WHERE NOT EXISTS` 로 이미 있는 행을 건너뛰고,
 백필 스크립트는 기존 행을 `UPDATE` 할 뿐 새 행을 만들지 않습니다.
 
+## 축제 날짜에 대해
+
+`seed_festivals.sql` 의 날짜는 각 축제가 해마다 열리는 **통상 일정**을 2026년으로 옮겨 적은
+것입니다. 주최 측이 2026년 공식 일정을 발표하면 그 날짜로 교체해 주세요.
+
+`start_time` 과 `image_url` 은 확인된 값이 없으면 NULL 입니다. 앱은 시각이 없으면 날짜만
+보여주고, 이미지는 아직 화면에서 쓰지 않습니다.
+
 ## 아직 비어 있는 것
 
 `tour_place.rating` 과 `tour_place.image_url` 은 **205행 전부 NULL** 입니다.
 OpenStreetMap 에는 평점과 대표 이미지가 없어서 없는 값을 지어내지 않고 비워 두었습니다.
 별도 소스가 정해지면 백필 스크립트를 추가하세요.
+
+`festival` 은 7개국(한국 · 일본 · 대만 · 태국 · 베트남 · 싱가포르 · 프랑스)만 채워져 있습니다.
+나머지 나라를 여행지로 고르면 축제 화면이 비어 보입니다.

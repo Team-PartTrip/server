@@ -35,15 +35,15 @@ public class FestivalEntity {
     @Column(nullable = false)
     private String startDate;
 
-    // 시작 시간
-    @Column(nullable = false)
+    // 시작 시간. 정해진 시각이 없는 축제가 많아 비워둘 수 있다
+    @Column
     private String startTime;
 
     // 장소
     @Column(nullable = false)
     private String location;
 
-    // 축제 이미지 URL
-    @Column(nullable = false, length = 1000)
+    // 축제 이미지 URL. 확보한 이미지가 없으면 비워둔다
+    @Column(length = 1000)
     private String imageUrl;
 }
