@@ -2,14 +2,10 @@ package com.example.PartTrip.notification.service;
 
 import com.example.PartTrip.notification.dto.NotificationPageResponseDto;
 import com.example.PartTrip.notification.dto.NotificationResponseDto;
-import com.example.PartTrip.notification.dto.NotificationSettingResponseDto;
-import com.example.PartTrip.notification.dto.NotificationSettingUpdateRequestDto;
 import com.example.PartTrip.notification.entity.NotificationEntity;
-import com.example.PartTrip.notification.entity.NotificationSettingEntity;
 import com.example.PartTrip.notification.enums.NotificationCategory;
 import com.example.PartTrip.notification.enums.NotificationType;
 import com.example.PartTrip.notification.repository.NotificationRepository;
-import com.example.PartTrip.notification.repository.NotificationSettingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -17,9 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
@@ -28,7 +21,6 @@ import java.util.Map;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
-    private final NotificationSettingRepository notificationSettingRepository;
 
     private static final int MAX_PAGE_SIZE = 50;
     private static final int DEFAULT_PAGE_SIZE = 20;
@@ -85,50 +77,6 @@ public class NotificationService {
     public int markAllAsRead(String userId) {
 
         return notificationRepository.markAllAsRead(userId, LocalDateTime.now());
-    }
-
-    // 설정 행이 없는 유형은 수신으로 본다. 회원가입 때 6개 행을 미리 만들지 않아도 되고,
-    // 알림 종류가 늘어도 기존 사용자에게 행을 채워 넣을 필요가 없다.
-    @Transactional(readOnly = true)
-    public List<NotificationSettingResponseDto> getSettings(String userId) {
-
-        Map<NotificationType, Boolean> saved = new EnumMap<>(NotificationType.class);
-        for (NotificationSettingEntity setting : notificationSettingRepository.findByUserId(userId)) {
-            saved.put(setting.getType(), setting.isEnabled());
-        }
-
-        return Arrays.stream(NotificationType.values())
-                .map(type -> new NotificationSettingResponseDto(
-                        type,
-                        type.getLabel(),
-                        saved.getOrDefault(type, true)))
-                .toList();
-    }
-
-    @Transactional
-    public List<NotificationSettingResponseDto> updateSettings(
-            String userId, NotificationSettingUpdateRequestDto request) {
-
-        List<NotificationSettingEntity> toSave = new ArrayList<>();
-
-        for (NotificationSettingUpdateRequestDto.Item item : request.getSettings()) {
-
-            NotificationSettingEntity setting = notificationSettingRepository
-                    .findByUserIdAndType(userId, item.getType())
-                    .orElseGet(() -> {
-                        NotificationSettingEntity created = new NotificationSettingEntity();
-                        created.setUserId(userId);
-                        created.setType(item.getType());
-                        return created;
-                    });
-
-            setting.setEnabled(item.getEnabled());
-            toSave.add(setting);
-        }
-
-        notificationSettingRepository.saveAll(toSave);
-
-        return getSettings(userId);
     }
 
     private List<NotificationEntity> findRows(

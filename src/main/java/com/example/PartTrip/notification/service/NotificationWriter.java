@@ -3,7 +3,6 @@ package com.example.PartTrip.notification.service;
 import com.example.PartTrip.notification.entity.NotificationEntity;
 import com.example.PartTrip.notification.enums.NotificationType;
 import com.example.PartTrip.notification.repository.NotificationRepository;
-import com.example.PartTrip.notification.repository.NotificationSettingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -22,7 +21,6 @@ import java.util.List;
 public class NotificationWriter {
 
     private final NotificationRepository notificationRepository;
-    private final NotificationSettingRepository notificationSettingRepository;
 
     // REQUIRES_NEW 로 새 트랜잭션을 연다.
     // AFTER_COMMIT 은 원래 트랜잭션이 끝나는 중에 실행되므로, 기본 전파 수준으로 두면
@@ -40,10 +38,6 @@ public class NotificationWriter {
 
         List<NotificationEntity> toSave = userIds.stream()
                 .distinct()
-                // 사용자가 이 종류를 꺼두었으면 만들지 않는다
-                .filter(userId ->
-                        !notificationSettingRepository
-                                .existsByUserIdAndTypeAndEnabledFalse(userId, type))
                 .map(userId -> build(userId, type, title, body, linkType, linkId))
                 .toList();
 

@@ -1,16 +1,11 @@
 package com.example.PartTrip.notification.controller;
 
 import com.example.PartTrip.notification.dto.NotificationPageResponseDto;
-import com.example.PartTrip.notification.dto.NotificationSettingResponseDto;
-import com.example.PartTrip.notification.dto.NotificationSettingUpdateRequestDto;
 import com.example.PartTrip.notification.dto.UnreadCountResponseDto;
 import com.example.PartTrip.notification.service.NotificationService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -62,25 +57,5 @@ public class NotificationController {
 
         // 배지를 다시 그릴 수 있도록 남은 개수를 돌려준다
         return new UnreadCountResponseDto(notificationService.getUnreadCount(userId));
-    }
-
-    // Func-004-03 알림 설정 조회
-    @GetMapping("/settings")
-    public List<NotificationSettingResponseDto> getSettings(Authentication authentication) {
-
-        String userId = (String) authentication.getPrincipal();
-
-        return notificationService.getSettings(userId);
-    }
-
-    // Func-004-03 알림 설정 변경
-    @PutMapping("/settings")
-    public List<NotificationSettingResponseDto> updateSettings(
-            Authentication authentication,
-            @Valid @RequestBody NotificationSettingUpdateRequestDto request) {
-
-        String userId = (String) authentication.getPrincipal();
-
-        return notificationService.updateSettings(userId, request);
     }
 }
