@@ -18,13 +18,15 @@ public class NotificationController {
     @GetMapping
     public NotificationPageResponseDto getNotifications(
             Authentication authentication,
-            @RequestParam(defaultValue = "ALL") String category,
+            // 명세서(API-004-01)가 정한 이름은 type 이다.
+            // 값은 ALL / VOTE / RECORD 로 탭 구분이라 안에서는 category 로 부른다.
+            @RequestParam(defaultValue = "ALL") String type,
             @RequestParam(required = false) Long cursor,
             @RequestParam(required = false) Integer size) {
 
         String userId = (String) authentication.getPrincipal();
 
-        return notificationService.getNotifications(userId, category, cursor, size);
+        return notificationService.getNotifications(userId, type, cursor, size);
     }
 
     // Func-004-01 상단 배지
