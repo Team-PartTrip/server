@@ -29,6 +29,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -112,30 +116,49 @@ public class PlannerConfirmService {
     ) {
         List<GroupMemberEntity> members = groupMemberRepository
                 .findByGroupIdOrderByJoinedAtAsc(group.getGroupId());
-        TripCardEntity ownerCard = null;
-        for (GroupMemberEntity member : members) {
-            TripCardEntity card = tripCardRepository
-                    .findByPlanIdAndUserId(plan.getPlanId(), member.getUserId())
-                    .orElseGet(() -> createTripCard(
-                            group,
-                            plan,
-                            places,
-                            member.getUserId()));
-            if (member.getUserId().equals(group.getOwnerUserId())) {
-                ownerCard = card;
-            }
-        }
-        if (ownerCard == null) {
-            throw new IllegalArgumentException("플래너 그룹장 정보를 찾을 수 없습니다.");
-        }
+        List<String> memberUserIds = members.stream().map(GroupMemberEntity::getUserId).toList();
+        Map<String, TripCardEntity> cardsByUserId = tripCardRepository
+                .findByPlanIdAndUserIdIn(plan.getPlanId(), memberUserIds).stream()
+                .collect(Collectors.toMap(TripCardEntity::getUserId, Function.identity()));
+
+        List<TripCardEntity> newCards = memberUserIds.stream()
+                .filter(memberUserId -> !cardsByUserId.containsKey(memberUserId))
+                .map(memberUserId -> newTripCard(
+                        group, plan, places, memberUserId, members.size()))
+                .toList();
+        List<TripCardEntity> savedCards = tripCardRepository.saveAll(newCards);
+        savedCards.forEach(card -> cardsByUserId.put(card.getUserId(), card));
+
+        Set<Long> tourPlaceIds = places.stream()
+                .map(ConfirmedPlaceResponseDto::getTourPlaceId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+        Map<Long, TourPlaceEntity> tourPlacesById = tourPlaceRepository.findAllById(tourPlaceIds).stream()
+                .collect(Collectors.toMap(TourPlaceEntity::getTourPlaceId, Function.identity()));
+        List<TripCardPlaceEntity> cardPlaces = savedCards.stream()
+                .flatMap(card -> java.util.stream.IntStream.range(0, places.size())
+                        .mapToObj(index -> newTripCardPlace(
+                                card.getTripCardId(),
+                                plan,
+                                places.get(index),
+                                tourPlacesById.get(places.get(index).getTourPlaceId()),
+                                index + 1)))
+                .toList();
+        tripCardPlaceRepository.saveAll(cardPlaces);
+        savedCards.forEach(card -> eventPublisher.publishEvent(
+                new TripCardCreatedEvent(card.getTripCardId(), card.getUserId())));
+
+        TripCardEntity ownerCard = cardsByUserId.get(group.getOwnerUserId());
+        if (ownerCard == null) throw new IllegalArgumentException("플래너 그룹장 정보를 찾을 수 없습니다.");
         return ownerCard;
     }
 
-    private TripCardEntity createTripCard(
+    private TripCardEntity newTripCard(
             TravelGroupEntity group,
             GroupTravelPlanEntity plan,
             List<ConfirmedPlaceResponseDto> places,
-            String cardOwnerUserId
+            String cardOwnerUserId,
+            int companionCount
     ) {
         TripCardEntity card = new TripCardEntity();
         card.setUserId(cardOwnerUserId);
@@ -145,7 +168,7 @@ public class PlannerConfirmService {
         card.setCityName(plan.getCityName());
         card.setStartDate(plan.getStartDate());
         card.setEndDate(plan.getEndDate());
-        card.setCompanionCount((int) groupMemberRepository.countByGroupId(group.getGroupId()));
+        card.setCompanionCount(companionCount);
         card.setPlaceCount(places.size());
         card.setPhotoCount(0);
         card.setCoverImageUrl(places.stream()
@@ -154,29 +177,25 @@ public class PlannerConfirmService {
                 .findFirst()
                 .orElse(null));
         card.setCreatedAt(LocalDateTime.now());
-        TripCardEntity savedCard = tripCardRepository.save(card);
+        return card;
+    }
 
-        for (int index = 0; index < places.size(); index++) {
-            ConfirmedPlaceResponseDto confirmed = places.get(index);
-            TourPlaceEntity place = confirmed.getTourPlaceId() == null
-                    ? null
-                    : tourPlaceRepository.findById(confirmed.getTourPlaceId()).orElse(null);
-
-            TripCardPlaceEntity cardPlace = new TripCardPlaceEntity();
-            cardPlace.setTripCardId(savedCard.getTripCardId());
-            cardPlace.setTourPlaceId(confirmed.getTourPlaceId());
-            cardPlace.setPlaceName(confirmed.getPlaceName());
-            cardPlace.setAddress(confirmed.getAddress());
-            cardPlace.setVisitedDate(plan.getStartDate());
-            cardPlace.setLatitude(place == null ? null : place.getLatitude());
-            cardPlace.setLongitude(place == null ? null : place.getLongitude());
-            cardPlace.setSortOrder(index + 1);
-            tripCardPlaceRepository.save(cardPlace);
-        }
-
-        eventPublisher.publishEvent(
-                new TripCardCreatedEvent(savedCard.getTripCardId(), cardOwnerUserId)
-        );
-        return savedCard;
+    private TripCardPlaceEntity newTripCardPlace(
+            Long tripCardId,
+            GroupTravelPlanEntity plan,
+            ConfirmedPlaceResponseDto confirmed,
+            TourPlaceEntity place,
+            int sortOrder
+    ) {
+        TripCardPlaceEntity cardPlace = new TripCardPlaceEntity();
+        cardPlace.setTripCardId(tripCardId);
+        cardPlace.setTourPlaceId(confirmed.getTourPlaceId());
+        cardPlace.setPlaceName(confirmed.getPlaceName());
+        cardPlace.setAddress(confirmed.getAddress());
+        cardPlace.setVisitedDate(plan.getStartDate());
+        cardPlace.setLatitude(place == null ? null : place.getLatitude());
+        cardPlace.setLongitude(place == null ? null : place.getLongitude());
+        cardPlace.setSortOrder(sortOrder);
+        return cardPlace;
     }
 }
