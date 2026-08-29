@@ -12,6 +12,8 @@ import java.time.LocalDateTime;
 @Setter
 @Builder
 public class TimelineItemResponse {
+    /** 사진 항목의 식별자. 삭제(API-003-07)에 쓴다. 장소 항목은 null */
+    private Long entryId;
     private LocalDate date;
     private TimelineItemType type;
     private String placeName;

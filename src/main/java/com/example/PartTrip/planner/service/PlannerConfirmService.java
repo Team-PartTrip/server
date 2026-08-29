@@ -160,22 +160,22 @@ public class PlannerConfirmService {
             String cardOwnerUserId,
             int companionCount
     ) {
-        TripCardEntity card = new TripCardEntity();
-        card.setUserId(cardOwnerUserId);
-        card.setPlanId(plan.getPlanId());
-        card.setTitle(group.getGroupName());
-        card.setCountryName(plan.getCountryName());
-        card.setCityName(plan.getCityName());
-        card.setStartDate(plan.getStartDate());
-        card.setEndDate(plan.getEndDate());
-        card.setCompanionCount(companionCount);
-        card.setPlaceCount(places.size());
-        card.setPhotoCount(0);
-        // 커버는 사용자가 찍은 사진 중에서 고른다. 아직 사진이 없으니 비워 두고,
-        // 사진이 붙을 때 채운다. 관광지 대표 이미지를 대신 넣지 않는다 (팀 결정).
-        card.setCoverImageUrl(null);
-        card.setCreatedAt(LocalDateTime.now());
-        return card;
+        return TripCardEntity.builder()
+                .userId(cardOwnerUserId)
+                .planId(plan.getPlanId())
+                .title(group.getGroupName())
+                .countryName(plan.getCountryName())
+                .cityName(plan.getCityName())
+                .startDate(plan.getStartDate())
+                .endDate(plan.getEndDate())
+                .companionCount(companionCount)
+                .placeCount(places.size())
+                .photoCount(0)
+                // 커버는 사용자가 찍은 사진 중에서 고른다. 아직 사진이 없으니 비워 두고,
+                // 사진이 붙을 때 채운다. 관광지 대표 이미지를 대신 넣지 않는다 (팀 결정).
+                .coverImageUrl(null)
+                .createdAt(LocalDateTime.now())
+                .build();
     }
 
     private TripCardPlaceEntity newTripCardPlace(
