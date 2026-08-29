@@ -8,6 +8,7 @@ import com.example.PartTrip.tripcard.service.TripCardEntryService;
 import com.example.PartTrip.tripcard.service.TripCardService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -44,11 +45,14 @@ public class TripCardController {
     }
 
     // Func-003-04 사진 추가 — EXIF 에서 촬영 시각과 좌표를 읽는다
-    @PostMapping("/{cardId}/entries")
+    // comment 는 @RequestPart 가 아니라 @RequestParam 으로 받는다.
+    // 앱·웹이 보내는 폼 필드에는 Content-Type 이 없어서 @RequestPart String 은
+    // 415 로 떨어진다. 프로필 사진 업로드도 같은 방식을 쓰고 있다.
+    @PostMapping(value = "/{cardId}/entries", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public TripCardEntryResponse addEntry(
             @PathVariable Long cardId,
-            @RequestPart("imageFile") MultipartFile imageFile,
-            @RequestPart(value = "comment", required = false) String comment
+            @RequestParam("imageFile") MultipartFile imageFile,
+            @RequestParam(value = "comment", required = false) String comment
     ) {
         return tripCardEntryService.addEntry(cardId, imageFile, comment);
     }
