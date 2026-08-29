@@ -26,6 +26,8 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class TripCardEntryServiceImpl implements TripCardEntryService {
 
+    private static final int COMMENT_MAX_LENGTH = 100;
+
     private final TripCardRepository tripCardRepository;
     private final TripCardPhotoRepository tripCardPhotoRepository;
     private final CurrentUserProvider currentUserProvider;
@@ -45,7 +47,7 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
         String storedImageUrl = imageStorageService.store(imageFile, "trip-card/" + cardId);
         deleteFileIfRolledBack(storedImageUrl);
         photo.setImageUrl(storedImageUrl);
-        photo.setComment(comment);
+        photo.setComment(normalizeComment(comment));
         photo.setTakenAt(takenAt);
         photo.setLatitude(exif == null ? null : exif.latitude());
         photo.setLongitude(exif == null ? null : exif.longitude());
@@ -61,13 +63,20 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
 
     @Transactional
     @Override
+    public TripCardEntryResponse updateComment(Long cardId, Long entryId, String comment) {
+        getEditableCard(cardId);
+        TripCardPhotoEntity photo = getCardPhoto(cardId, entryId);
+
+        photo.setComment(normalizeComment(comment));
+
+        return TripCardEntryResponse.from(photo);
+    }
+
+    @Transactional
+    @Override
     public void deleteEntry(Long cardId, Long entryId) {
         TripCardEntity tripCard = getEditableCard(cardId);
-        TripCardPhotoEntity photo = tripCardPhotoRepository.findById(entryId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 사진 항목이 존재하지 않습니다."));
-        if (!photo.getTripCardId().equals(cardId)) {
-            throw new IllegalArgumentException("해당 카드에 속한 사진 항목이 아닙니다.");
-        }
+        TripCardPhotoEntity photo = getCardPhoto(cardId, entryId);
 
         boolean wasCoverImage = photo.getImageUrl().equals(tripCard.getCoverImageUrl());
         deleteFileAfterCommit(photo.getImageUrl());
@@ -114,12 +123,40 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
         });
     }
 
+    // 사진 추가와 코멘트 수정이 같은 규칙을 쓰도록 여기 한 곳에 둔다.
+    // 공백만 남은 코멘트는 없는 것으로 본다. trim() 은 전각 공백(U+3000)을
+    // 남기기 때문에 유니코드를 아는 strip() 을 쓴다.
+    private String normalizeComment(String comment) {
+        if (comment == null) {
+            return null;
+        }
+        String stripped = comment.strip();
+        if (stripped.isEmpty()) {
+            return null;
+        }
+        if (stripped.length() > COMMENT_MAX_LENGTH) {
+            throw new IllegalArgumentException(
+                    "코멘트는 " + COMMENT_MAX_LENGTH + "자까지 쓸 수 있습니다.");
+        }
+        return stripped;
+    }
+
+    /** 이 카드에 속한 사진인지까지 확인해서 가져온다 */
+    private TripCardPhotoEntity getCardPhoto(Long cardId, Long entryId) {
+        TripCardPhotoEntity photo = tripCardPhotoRepository.findById(entryId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사진 항목이 존재하지 않습니다."));
+        if (!photo.getTripCardId().equals(cardId)) {
+            throw new IllegalArgumentException("해당 카드에 속한 사진 항목이 아닙니다.");
+        }
+        return photo;
+    }
+
     private TripCardEntity getEditableCard(Long cardId) {
         String userId = currentUserProvider.getCurrentUserId();
         TripCardEntity tripCard = tripCardRepository.findByTripCardIdAndUserId(cardId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 카드가 없거나 수정 권한이 없습니다."));
         if (tripCard.isDateOver()) {
-            throw new IllegalStateException("여행 종료 후에는 사진을 추가하거나 삭제할 수 없습니다.");
+            throw new IllegalStateException("여행 종료 후에는 사진을 추가·수정·삭제할 수 없습니다.");
         }
         return tripCard;
     }
