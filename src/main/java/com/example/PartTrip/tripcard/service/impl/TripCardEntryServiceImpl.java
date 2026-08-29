@@ -26,6 +26,8 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class TripCardEntryServiceImpl implements TripCardEntryService {
 
+    private static final int COMMENT_MAX_LENGTH = 100;
+
     private final TripCardRepository tripCardRepository;
     private final TripCardPhotoRepository tripCardPhotoRepository;
     private final CurrentUserProvider currentUserProvider;
@@ -45,7 +47,7 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
         String storedImageUrl = imageStorageService.store(imageFile, "trip-card/" + cardId);
         deleteFileIfRolledBack(storedImageUrl);
         photo.setImageUrl(storedImageUrl);
-        photo.setComment(comment);
+        photo.setComment(normalizeComment(comment));
         photo.setTakenAt(takenAt);
         photo.setLatitude(exif == null ? null : exif.latitude());
         photo.setLongitude(exif == null ? null : exif.longitude());
@@ -65,9 +67,7 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
         getEditableCard(cardId);
         TripCardPhotoEntity photo = getCardPhoto(cardId, entryId);
 
-        // 빈 값이면 코멘트를 지운다. 공백만 남기지 않는다.
-        String trimmed = comment == null ? null : comment.trim();
-        photo.setComment(trimmed == null || trimmed.isEmpty() ? null : trimmed);
+        photo.setComment(normalizeComment(comment));
 
         return TripCardEntryResponse.from(photo);
     }
@@ -121,6 +121,24 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
                 imageStorageService.delete(imageUrl);
             }
         });
+    }
+
+    // 사진 추가와 코멘트 수정이 같은 규칙을 쓰도록 여기 한 곳에 둔다.
+    // 공백만 남은 코멘트는 없는 것으로 본다. trim() 은 전각 공백(U+3000)을
+    // 남기기 때문에 유니코드를 아는 strip() 을 쓴다.
+    private String normalizeComment(String comment) {
+        if (comment == null) {
+            return null;
+        }
+        String stripped = comment.strip();
+        if (stripped.isEmpty()) {
+            return null;
+        }
+        if (stripped.length() > COMMENT_MAX_LENGTH) {
+            throw new IllegalArgumentException(
+                    "코멘트는 " + COMMENT_MAX_LENGTH + "자까지 쓸 수 있습니다.");
+        }
+        return stripped;
     }
 
     /** 이 카드에 속한 사진인지까지 확인해서 가져온다 */
