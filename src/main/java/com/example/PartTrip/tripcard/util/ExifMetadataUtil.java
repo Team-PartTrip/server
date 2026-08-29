@@ -10,10 +10,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.Date;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Optional;
-import java.util.TimeZone;
 
 // 사진에서 촬영 시각과 좌표를 읽는다.
 //
@@ -33,14 +32,14 @@ public final class ExifMetadataUtil {
                 return Optional.empty();
             }
 
-            // EXIF 시각에는 시간대가 없다. 인자를 안 주면 GMT 로 읽고 서버 시간대로 옮겨
-            // 서버가 어디에 있느냐에 따라 날짜가 달라진다. 카메라가 찍은 벽시계 값을
-            // 그대로 쓰기 위해 같은 시간대를 넣고 같은 시간대로 되돌린다.
-            Date originalDate = exifDirectory.getDateOriginal(TimeZone.getDefault());
-            if (originalDate == null) {
+            // EXIF 시각에는 시간대가 없다. 카메라가 보여준 벽시계 값이 그대로 여행지의
+            // 시각이라 그 값을 옮겨 적기만 한다. Date 로 한 번 바꾸면 서버 시간대를 타고,
+            // 서머타임으로 없는 시각(예: 미국 3월 02:30)은 한 시간 밀린다.
+            String original = exifDirectory.getString(ExifSubIFDDirectory.TAG_DATETIME_ORIGINAL);
+            LocalDateTime takenAt = parseExifDateTime(original);
+            if (takenAt == null) {
                 return Optional.empty();
             }
-            LocalDateTime takenAt = LocalDateTime.ofInstant(originalDate.toInstant(), ZoneId.systemDefault());
 
             GpsDirectory gpsDirectory = metadata.getFirstDirectoryOfType(GpsDirectory.class);
             GeoLocation location = gpsDirectory == null ? null : gpsDirectory.getGeoLocation();
@@ -52,6 +51,21 @@ public final class ExifMetadataUtil {
             return Optional.empty();
         }
     }
+
+    /** EXIF 표준 표기는 "yyyy:MM:dd HH:mm:ss" 다. 읽을 수 없으면 null */
+    static LocalDateTime parseExifDateTime(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalDateTime.parse(value.trim(), EXIF_FORMAT);
+        } catch (DateTimeParseException exception) {
+            return null;
+        }
+    }
+
+    private static final DateTimeFormatter EXIF_FORMAT =
+            DateTimeFormatter.ofPattern("yyyy:MM:dd HH:mm:ss");
 
     public record ExifMetadata(LocalDateTime takenAt, Double latitude, Double longitude) { }
 }

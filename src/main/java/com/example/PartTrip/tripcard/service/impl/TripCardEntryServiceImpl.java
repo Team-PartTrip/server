@@ -12,6 +12,8 @@ import com.example.PartTrip.tripcard.util.ExifMetadataUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
@@ -37,7 +39,9 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
 
         TripCardPhotoEntity photo = new TripCardPhotoEntity();
         photo.setTripCardId(cardId);
-        photo.setImageUrl(imageStorageService.store(imageFile, "trip-card/" + cardId));
+        String storedImageUrl = imageStorageService.store(imageFile, "trip-card/" + cardId);
+        deleteFileIfRolledBack(storedImageUrl);
+        photo.setImageUrl(storedImageUrl);
         photo.setComment(comment);
         photo.setTakenAt(takenAt);
         photo.setLatitude(exif == null ? null : exif.latitude());
@@ -63,6 +67,7 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
         }
 
         boolean wasCoverImage = photo.getImageUrl().equals(tripCard.getCoverImageUrl());
+        deleteFileAfterCommit(photo.getImageUrl());
         tripCardPhotoRepository.delete(photo);
         tripCard.setPhotoCount(Math.max(0, (tripCard.getPhotoCount() == null ? 0 : tripCard.getPhotoCount()) - 1));
         if (wasCoverImage) {
@@ -75,6 +80,35 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
                     .map(TripCardPhotoEntity::getImageUrl)
                     .orElse(null));
         }
+    }
+
+    // 파일과 DB 는 같은 트랜잭션에 못 묶인다. 그래서 커밋 결과를 보고 파일을 맞춘다.
+    // 저장에 실패하면 올려둔 파일을 지우고, 삭제가 확정되면 그때 파일을 지운다.
+    private void deleteFileIfRolledBack(String imageUrl) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status != STATUS_COMMITTED) {
+                    imageStorageService.delete(imageUrl);
+                }
+            }
+        });
+    }
+
+    private void deleteFileAfterCommit(String imageUrl) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            imageStorageService.delete(imageUrl);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                imageStorageService.delete(imageUrl);
+            }
+        });
     }
 
     private TripCardEntity getEditableCard(Long cardId) {

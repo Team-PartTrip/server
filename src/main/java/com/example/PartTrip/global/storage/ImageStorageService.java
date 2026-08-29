@@ -49,6 +49,28 @@ public class ImageStorageService {
         }
     }
 
+    /**
+     * store 가 돌려준 공개 URL 로 파일을 지운다.
+     * 이미 없거나 우리 저장소 밖을 가리키면 아무 것도 하지 않고 false 를 준다.
+     */
+    public boolean delete(String publicUrl) {
+        String prefix = publicPathPrefix + "/";
+        if (publicUrl == null || !publicUrl.startsWith(prefix)) {
+            return false;
+        }
+        try {
+            Path root = rootDirectory.normalize().toAbsolutePath();
+            Path target = root.resolve(publicUrl.substring(prefix.length())).normalize().toAbsolutePath();
+            // ../ 로 저장소 밖을 지우려는 경로를 막는다
+            if (!target.startsWith(root)) {
+                return false;
+            }
+            return Files.deleteIfExists(target);
+        } catch (IOException | RuntimeException exception) {
+            return false;
+        }
+    }
+
     private void validate(MultipartFile imageFile) {
         if (imageFile == null || imageFile.isEmpty()) {
             throw new IllegalArgumentException("이미지 파일은 필수입니다.");
