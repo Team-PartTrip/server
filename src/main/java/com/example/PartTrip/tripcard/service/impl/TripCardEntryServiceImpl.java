@@ -156,7 +156,7 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
         TripCardEntity tripCard = tripCardRepository.findByTripCardIdAndUserId(cardId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 카드가 없거나 수정 권한이 없습니다."));
         if (tripCard.isDateOver()) {
-            throw new IllegalStateException("여행 종료 후에는 사진을 추가하거나 삭제할 수 없습니다.");
+            throw new IllegalStateException("여행 종료 후에는 사진을 추가·수정·삭제할 수 없습니다.");
         }
         return tripCard;
     }
