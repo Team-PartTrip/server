@@ -20,6 +20,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -34,8 +35,10 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
     @Override
     public TripCardEntryResponse addEntry(Long cardId, MultipartFile imageFile, String comment) {
         TripCardEntity tripCard = getEditableCard(cardId);
+        // 촬영 시각을 읽지 못하면 비워 둔다. 업로드 시각을 대신 넣으면 여행과 상관없는
+        // 오늘 날짜로 타임라인에 꽂히고, 그 값이 진짜 촬영 시각인지 구분할 수 없게 된다.
         ExifMetadataUtil.ExifMetadata exif = ExifMetadataUtil.extract(imageFile).orElse(null);
-        LocalDateTime takenAt = exif == null ? LocalDateTime.now() : exif.takenAt();
+        LocalDateTime takenAt = exif == null ? null : exif.takenAt();
 
         TripCardPhotoEntity photo = new TripCardPhotoEntity();
         photo.setTripCardId(cardId);
@@ -46,7 +49,7 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
         photo.setTakenAt(takenAt);
         photo.setLatitude(exif == null ? null : exif.latitude());
         photo.setLongitude(exif == null ? null : exif.longitude());
-        photo.setSortOrder(nextSortOrder(cardId, takenAt.toLocalDate()));
+        photo.setSortOrder(nextSortOrder(cardId, takenAt == null ? null : takenAt.toLocalDate()));
         TripCardPhotoEntity savedPhoto = tripCardPhotoRepository.save(photo);
 
         tripCard.setPhotoCount((tripCard.getPhotoCount() == null ? 0 : tripCard.getPhotoCount()) + 1);
@@ -121,13 +124,17 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
         return tripCard;
     }
 
+    // 같은 날짜끼리 순번을 매긴다. 날짜를 모르는 사진끼리도 한 묶음이다.
     private int nextSortOrder(Long cardId, LocalDate date) {
-        List<TripCardPhotoEntity> photos = tripCardPhotoRepository.findByTripCardIdOrderByTakenAtAsc(cardId);
-        return photos.stream()
-                .filter(photo -> photo.getTakenAt() != null && date.equals(photo.getTakenAt().toLocalDate()))
+        return tripCardPhotoRepository.findByTripCardIdOrderByTakenAtAsc(cardId).stream()
+                .filter(photo -> sameDate(photo.getTakenAt(), date))
                 .map(TripCardPhotoEntity::getSortOrder)
-                .filter(java.util.Objects::nonNull)
+                .filter(Objects::nonNull)
                 .max(Integer::compareTo)
                 .orElse(0) + 1;
+    }
+
+    static boolean sameDate(LocalDateTime takenAt, LocalDate date) {
+        return Objects.equals(takenAt == null ? null : takenAt.toLocalDate(), date);
     }
 }
