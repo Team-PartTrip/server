@@ -1,6 +1,7 @@
 package com.example.PartTrip.tripcard.dto.request;
 
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -13,5 +14,5 @@ import java.util.Set;
 public class DeleteTripCardsRequest {
 
     @NotEmpty(message = "삭제할 카드를 선택해주세요.")
-    private Set<Long> cardIds;
+    private Set<@NotNull(message = "카드 id 는 비어 있을 수 없습니다.") Long> cardIds;
 }

@@ -16,8 +16,10 @@ public interface GroupTravelPlanRepository extends JpaRepository<GroupTravelPlan
     // 플래너 상세 화면에 보여줄 가장 최근 여행 계획
     Optional<GroupTravelPlanEntity> findFirstByGroupIdOrderByCreatedAtDesc(Long groupId);
 
-    // 그 날 출발하는 계획 — 여행 카드 자동 생성에 쓴다
-    List<GroupTravelPlanEntity> findByStartDate(LocalDate startDate);
+    // 진행 중인 계획 (시작했고 아직 안 끝난) — 여행 카드 자동 생성에 쓴다.
+    // 출발 당일만 보면 그 날 서버가 꺼져 있던 여행은 카드가 영영 안 생긴다.
+    List<GroupTravelPlanEntity> findByStartDateLessThanEqualAndEndDateGreaterThanEqual(
+            LocalDate from, LocalDate to);
 
     // 여러 그룹의 최신 여행 계획을 목록 조회용으로 한 번에 가져온다
     List<GroupTravelPlanEntity> findByGroupIdInOrderByCreatedAtDesc(List<Long> groupIds);
