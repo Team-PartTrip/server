@@ -63,6 +63,11 @@ public class TripCardEntity {
     @Column(name = "distance_km")
     private Double distanceKm;
 
+    // 여행이 끝났는지. 여행 기간에는 사진을 계속 붙일 수 있고, 끝나면 수정이 막힌다.
+    // 세계지도 국가 획득도 이 값이 true 로 바뀐 뒤에 처리한다.
+    @Column(name = "is_date_over", nullable = false)
+    private boolean dateOver;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 }

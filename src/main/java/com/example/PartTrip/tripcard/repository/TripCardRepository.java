@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDate;
 import java.util.Collection;
 
 public interface TripCardRepository extends JpaRepository<TripCardEntity, Long> {
@@ -20,5 +21,8 @@ public interface TripCardRepository extends JpaRepository<TripCardEntity, Long> 
     List<TripCardEntity> findByPlanIdAndUserIdIn(Long planId, Collection<String> userIds);
 
     // Func-007-01 프로필 통계의 "여행" 수
+    // 종료일이 지났는데 아직 잠기지 않은 카드 (TripCardScheduler)
+    List<TripCardEntity> findByDateOverFalseAndEndDateBefore(LocalDate date);
+
     long countByUserId(String userId);
 }
