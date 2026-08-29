@@ -34,6 +34,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+import festival_ko
+
 YEAR = 2026
 
 COUNTRIES_URL = "https://raw.githubusercontent.com/mledoze/countries/master/countries.json"
@@ -297,8 +299,8 @@ def main():
         detail = details.get(uri, {})
         country_name = country_names[code]
 
-        # 한국어 이름이 있으면 그걸 쓰고, 없으면 영어 이름을 그대로 쓴다
-        title = detail.get("ko") or sorted(labels, key=len)[0]
+        # 한국어 이름이 있으면 그걸 쓰고, 없으면 손으로 채운 표(festival_ko)를 본다
+        title = detail.get("ko") or festival_ko.title(sorted(labels, key=len)[0])
         if is_junk(title):
             continue
 
@@ -314,7 +316,8 @@ def main():
             "category": pick_category(detail.get("types", set()), title),
             "description": description[:500],
             "start_date": date,
-            "location": (detail.get("loc") or country_name)[:255],
+            "location": festival_ko.location(
+                detail.get("loc") or country_name, country_name)[:255],
             "image_url": detail.get("img"),
         })
 
