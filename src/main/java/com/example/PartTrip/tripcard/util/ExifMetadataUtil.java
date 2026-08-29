@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
 import java.util.Optional;
 
 // 사진에서 촬영 시각과 좌표를 읽는다.
@@ -64,8 +65,12 @@ public final class ExifMetadataUtil {
         }
     }
 
+    // STRICT 가 아니면 2026:02:29 같은 없는 날짜가 02-28 로 슬쩍 바뀐다.
+    // 잘못 찍힌 값이 멀쩡한 촬영 시각으로 저장되느니 못 읽은 것으로 두는 편이 낫다.
+    // STRICT 에서는 연도를 yyyy(연호 기준) 대신 uuuu 로 써야 한다.
     private static final DateTimeFormatter EXIF_FORMAT =
-            DateTimeFormatter.ofPattern("yyyy:MM:dd HH:mm:ss");
+            DateTimeFormatter.ofPattern("uuuu:MM:dd HH:mm:ss")
+                    .withResolverStyle(ResolverStyle.STRICT);
 
     public record ExifMetadata(LocalDateTime takenAt, Double latitude, Double longitude) { }
 }

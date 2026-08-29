@@ -1,6 +1,8 @@
 package com.example.PartTrip.tripcard.util;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.Resources;
 
 import java.time.LocalDateTime;
 import java.util.TimeZone;
@@ -13,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 class ExifMetadataUtilTest {
 
     @Test
+    @ResourceLock(Resources.TIME_ZONE)
     void 서버_시간대가_달라도_촬영_시각은_같다() {
         TimeZone original = TimeZone.getDefault();
         try {
@@ -30,6 +33,7 @@ class ExifMetadataUtilTest {
     }
 
     @Test
+    @ResourceLock(Resources.TIME_ZONE)
     void 서머타임으로_없는_시각도_적힌_그대로_읽는다() {
         TimeZone original = TimeZone.getDefault();
         try {
@@ -47,5 +51,12 @@ class ExifMetadataUtilTest {
         assertNull(ExifMetadataUtil.parseExifDateTime(null));
         assertNull(ExifMetadataUtil.parseExifDateTime("   "));
         assertNull(ExifMetadataUtil.parseExifDateTime("2026-08-15 14:30:00"));
+    }
+
+    @Test
+    void 없는_날짜는_보정하지_않고_거부한다() {
+        // 2026 년은 윤년이 아니다. 느슨하게 읽으면 02-28 로 바뀐다.
+        assertNull(ExifMetadataUtil.parseExifDateTime("2026:02:29 14:30:00"));
+        assertNull(ExifMetadataUtil.parseExifDateTime("2026:13:01 00:00:00"));
     }
 }
