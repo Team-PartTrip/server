@@ -171,11 +171,9 @@ public class PlannerConfirmService {
         card.setCompanionCount(companionCount);
         card.setPlaceCount(places.size());
         card.setPhotoCount(0);
-        card.setCoverImageUrl(places.stream()
-                .map(ConfirmedPlaceResponseDto::getImageUrl)
-                .filter(url -> url != null && !url.isBlank())
-                .findFirst()
-                .orElse(null));
+        // 커버는 사용자가 찍은 사진 중에서 고른다. 아직 사진이 없으니 비워 두고,
+        // 사진이 붙을 때 채운다. 관광지 대표 이미지를 대신 넣지 않는다 (팀 결정).
+        card.setCoverImageUrl(null);
         card.setCreatedAt(LocalDateTime.now());
         return card;
     }
