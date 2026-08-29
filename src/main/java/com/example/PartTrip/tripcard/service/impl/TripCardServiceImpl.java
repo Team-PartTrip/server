@@ -1,15 +1,15 @@
 package com.example.PartTrip.tripcard.service.impl;
 
+import com.example.PartTrip.global.security.CurrentUserProvider;
 import com.example.PartTrip.main.entity.TourPlaceEntity;
 import com.example.PartTrip.main.repository.TourPlaceRepository;
-import com.example.PartTrip.photo.service.CurrentUserProvider;
+import com.example.PartTrip.tripcard.dto.response.TimelineItemResponse;
 import com.example.PartTrip.tripcard.dto.response.TripCardDetailResponse;
 import com.example.PartTrip.tripcard.dto.response.TripCardResponse;
-import com.example.PartTrip.tripcard.dto.response.TimelineItemResponse;
+import com.example.PartTrip.tripcard.entity.TimelineItemType;
 import com.example.PartTrip.tripcard.entity.TripCardEntity;
 import com.example.PartTrip.tripcard.entity.TripCardPhotoEntity;
 import com.example.PartTrip.tripcard.entity.TripCardPlaceEntity;
-import com.example.PartTrip.tripcard.entity.TimelineItemType;
 import com.example.PartTrip.tripcard.repository.TripCardPhotoRepository;
 import com.example.PartTrip.tripcard.repository.TripCardPlaceRepository;
 import com.example.PartTrip.tripcard.repository.TripCardRepository;
@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -38,50 +39,44 @@ public class TripCardServiceImpl implements TripCardService {
     private final TripCardPhotoRepository tripCardPhotoRepository;
     private final TourPlaceRepository tourPlaceRepository;
 
-
     @Transactional(readOnly = true)
     @Override
-    public TripCardDetailResponse getTripCard(Long tripCardId) {
+    public TripCardDetailResponse getTripCard(Long cardId) {
         String currentUserId = currentUserProvider.getCurrentUserId();
 
-        TripCardEntity tripCard = tripCardRepository.findByTripCardId(tripCardId)
+        // 내 카드가 아니면 조회 단계에서 걸러진다
+        TripCardEntity tripCard = tripCardRepository
+                .findByTripCardIdAndUserId(cardId, currentUserId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 카드가 존재하지 않습니다."));
 
-        if (!tripCard.getUserId().equals( currentUserId)) {
-            throw new IllegalStateException("이 카드를 조회할 권한이 없습니다.");
-        }
-
         List<TripCardPlaceEntity> places = tripCardPlaceRepository
-                .findByTripCardIdOrderByVisitedDateAscSortOrderAsc(tripCardId);
+                .findByTripCardIdOrderByVisitedDateAscSortOrderAsc(cardId);
         List<TripCardPhotoEntity> photos = tripCardPhotoRepository
-                .findByTripCardIdOrderByTakenAtAsc(tripCardId);
+                .findByTripCardIdOrderByTakenAtAsc(cardId);
+
         return TripCardDetailResponse.from(tripCard, buildTimeline(places, photos));
     }
-
 
     @Transactional(readOnly = true)
     @Override
     public List<TripCardResponse> getTripCards() {
         String currentUserId = currentUserProvider.getCurrentUserId();
 
-        List<TripCardEntity> tripCards = tripCardRepository.findTripCardEntitiesByUserId(currentUserId);
-
-        List<TripCardResponse> tripCardResponsesList = tripCards.stream()
+        // 명세서 비고: "시간순 정렬"
+        return tripCardRepository.findByUserIdOrderByStartDateDesc(currentUserId)
+                .stream()
                 .map(TripCardResponse::from)
                 .toList();
-
-        return tripCardResponsesList;
     }
 
     @Transactional
     @Override
-    public String deleteTripCard(Set<Long> tripCardIds) {
-
+    public String deleteTripCard(Set<Long> cardIds) {
         String currentUserId = currentUserProvider.getCurrentUserId();
 
-        List<TripCardEntity> tripCards = tripCardRepository.findAllById(tripCardIds);
+        List<TripCardEntity> tripCards = tripCardRepository.findAllById(cardIds);
 
-        if (tripCards.size() != tripCardIds.size()) {
+        if (tripCards.size() != cardIds.size()) {
             throw new IllegalArgumentException("조회 중 일부 카드가 누락됨을 감지했습니다.");
         }
 
@@ -91,16 +86,17 @@ public class TripCardServiceImpl implements TripCardService {
             }
         }
 
-        tripCardRepository.deleteAllById(tripCardIds);
+        tripCardRepository.deleteAllById(cardIds);
 
         return "삭제 완료";
     }
 
+    /** 확정 장소와 사용자 사진을 한 줄로 섞어 날짜순으로 세운다 */
     private List<TimelineItemResponse> buildTimeline(List<TripCardPlaceEntity> places,
                                                      List<TripCardPhotoEntity> photos) {
         Map<Long, TourPlaceEntity> tourPlacesById = tourPlaceRepository.findAllById(places.stream()
                         .map(TripCardPlaceEntity::getTourPlaceId)
-                        .filter(java.util.Objects::nonNull)
+                        .filter(Objects::nonNull)
                         .toList()).stream()
                 .collect(Collectors.toMap(TourPlaceEntity::getTourPlaceId, Function.identity()));
 
@@ -120,6 +116,8 @@ public class TripCardServiceImpl implements TripCardService {
             boolean hasLocation = photo.getLatitude() != null && photo.getLongitude() != null;
             entries.add(new TimelineEntry(date, 1, photo.getTakenAt(), photo.getSortOrder(),
                     TimelineItemResponse.builder()
+                            // 앱이 이 값으로 사진을 지운다 (API-003-07)
+                            .entryId(photo.getTripCardPhotoId())
                             .date(date).type(hasLocation ? TimelineItemType.PHOTO : TimelineItemType.NO_INFO_PHOTO)
                             .imageUrl(photo.getImageUrl()).comment(photo.getComment()).takenAt(photo.getTakenAt())
                             .latitude(photo.getLatitude()).longitude(photo.getLongitude()).build()));

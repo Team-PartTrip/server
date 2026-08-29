@@ -11,7 +11,7 @@ import java.time.LocalDate;
 @Setter
 @Builder
 public class TripCardResponse {
-    private Long tripCardId;
+    private Long cardId;
     private String countryName;
     private String cityName;
     private LocalDate startDate;
@@ -22,7 +22,7 @@ public class TripCardResponse {
 
     public static TripCardResponse from(TripCardEntity tripCard) {
         return TripCardResponse.builder()
-                .tripCardId(tripCard.getTripCardId())
+                .cardId(tripCard.getTripCardId())
                 .countryName(tripCard.getCountryName())
                 .cityName(tripCard.getCityName())
                 .startDate(tripCard.getStartDate())

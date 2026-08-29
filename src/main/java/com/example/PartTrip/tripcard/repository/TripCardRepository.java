@@ -5,6 +5,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDate;
+import java.util.Collection;
 
 public interface TripCardRepository extends JpaRepository<TripCardEntity, Long> {
 
@@ -14,11 +16,13 @@ public interface TripCardRepository extends JpaRepository<TripCardEntity, Long> 
     // 조회 · 수정 · 삭제 시 소유자까지 함께 확인한다
     Optional<TripCardEntity> findByTripCardIdAndUserId(Long tripCardId, String userId);
 
-    Optional<TripCardEntity> findByPlanId(Long planId);
+    Optional<TripCardEntity> findByPlanIdAndUserId(Long planId, String userId);
 
-    // 카드 id 로 조회
-    Optional<TripCardEntity> findByTripCardId(Long tripCardId);
+    List<TripCardEntity> findByPlanIdAndUserIdIn(Long planId, Collection<String> userIds);
 
-    List<TripCardEntity> findTripCardEntitiesByUserId(String userId);
+    // Func-007-01 프로필 통계의 "여행" 수
+    // 종료일이 지났는데 아직 잠기지 않은 카드 (TripCardScheduler)
+    List<TripCardEntity> findByDateOverFalseAndEndDateBefore(LocalDate date);
 
+    long countByUserId(String userId);
 }

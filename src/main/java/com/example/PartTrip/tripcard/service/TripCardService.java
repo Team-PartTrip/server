@@ -10,11 +10,11 @@ import java.util.Set;
 public interface TripCardService {
 
     @Transactional(readOnly = true)
-    TripCardDetailResponse getTripCard(Long tripCardId);
+    TripCardDetailResponse getTripCard(Long cardId);
 
     @Transactional(readOnly = true)
     List<TripCardResponse> getTripCards();
 
     @Transactional
-    String deleteTripCard(Set<Long> tripCardIds);
+    String deleteTripCard(Set<Long> cardIds);
 }

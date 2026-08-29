@@ -34,8 +34,10 @@ dependencies {
 	// Mail
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
 
-	// MySQL
+	// DB 드라이버. 둘 다 넣어 두면 application.properties 의 URL 만 바꿔도 붙는다.
+	// 팀원이 한꺼번에 갈아타지 않아도 되도록 MySQL 쪽을 남겨 둔다.
 	runtimeOnly 'com.mysql:mysql-connector-j'
+	runtimeOnly 'org.postgresql:postgresql'
 
 	// Swagger
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9'

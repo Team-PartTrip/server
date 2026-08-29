@@ -1,7 +1,7 @@
 package com.example.PartTrip.tripcard.service.impl;
 
 import com.example.PartTrip.global.storage.ImageStorageService;
-import com.example.PartTrip.photo.service.CurrentUserProvider;
+import com.example.PartTrip.global.security.CurrentUserProvider;
 import com.example.PartTrip.tripcard.dto.response.TripCardEntryResponse;
 import com.example.PartTrip.tripcard.entity.TripCardEntity;
 import com.example.PartTrip.tripcard.entity.TripCardPhotoEntity;
@@ -81,7 +81,7 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
         String userId = currentUserProvider.getCurrentUserId();
         TripCardEntity tripCard = tripCardRepository.findByTripCardIdAndUserId(cardId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 카드가 없거나 수정 권한이 없습니다."));
-        if (tripCard.getIsDateOver()) {
+        if (tripCard.isDateOver()) {
             throw new IllegalStateException("여행 종료 후에는 사진을 추가하거나 삭제할 수 없습니다.");
         }
         return tripCard;
