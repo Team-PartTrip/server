@@ -1,0 +1,41 @@
+package com.example.PartTrip.tripcard.controller;
+
+import com.example.PartTrip.tripcard.dto.request.DeleteTripCardsRequest;
+import com.example.PartTrip.tripcard.dto.response.TripCardDetailResponse;
+import com.example.PartTrip.tripcard.dto.response.TripCardResponse;
+import com.example.PartTrip.tripcard.service.TripCardService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+// 여행 카드 (Func-003-02 ~ 03, 05)
+//
+// 경로는 명세서(API-003-02 · 03 · 05)를 따라 /api/travel-cards 다.
+// 테이블 이름(trip_card)과 다르지만, 앱이 명세서를 보고 붙기 때문에 명세서를 기준으로 둔다.
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/api/travel-cards")
+public class TripCardController {
+
+    private final TripCardService tripCardService;
+
+    // Func-003-02 여행 카드 목록 — 최근 여행순
+    @GetMapping
+    public List<TripCardResponse> getTripCards() {
+        return tripCardService.getTripCards();
+    }
+
+    // Func-003-03 여행 카드 상세
+    @GetMapping("/{cardId}")
+    public TripCardDetailResponse getTripCard(@PathVariable Long cardId) {
+        return tripCardService.getTripCard(cardId);
+    }
+
+    // Func-003-05 여행 카드 삭제 — 다중 선택
+    @DeleteMapping
+    public String deleteTripCard(@Valid @RequestBody DeleteTripCardsRequest request) {
+        return tripCardService.deleteTripCard(request.getCardIds());
+    }
+}
