@@ -66,4 +66,8 @@ public class TripCardEntity {
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "is_date_over")
+    @Builder.Default
+    private Boolean isDateOver = false;
 }
