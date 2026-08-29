@@ -1,6 +1,7 @@
 package com.example.PartTrip.tripcard.controller;
 
 import com.example.PartTrip.tripcard.dto.request.DeleteTripCardsRequest;
+import com.example.PartTrip.tripcard.dto.request.UpdateEntryCommentRequest;
 import com.example.PartTrip.tripcard.dto.response.TripCardDetailResponse;
 import com.example.PartTrip.tripcard.dto.response.TripCardEntryResponse;
 import com.example.PartTrip.tripcard.dto.response.TripCardResponse;
@@ -55,6 +56,16 @@ public class TripCardController {
             @RequestParam(value = "comment", required = false) String comment
     ) {
         return tripCardEntryService.addEntry(cardId, imageFile, comment);
+    }
+
+    // Func-003-04 사진 코멘트 수정 — 사진을 올린 뒤에도 고칠 수 있어야 한다
+    @PatchMapping("/{cardId}/entries/{entryId}")
+    public TripCardEntryResponse updateEntryComment(
+            @PathVariable Long cardId,
+            @PathVariable Long entryId,
+            @Valid @RequestBody UpdateEntryCommentRequest request
+    ) {
+        return tripCardEntryService.updateComment(cardId, entryId, request.getComment());
     }
 
     // Func-003-07 사진 삭제

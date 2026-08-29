@@ -9,5 +9,8 @@ public interface TripCardEntryService {
     TripCardEntryResponse addEntry(Long cardId, MultipartFile imageFile, String comment);
 
     @Transactional
+    TripCardEntryResponse updateComment(Long cardId, Long entryId, String comment);
+
+    @Transactional
     void deleteEntry(Long cardId, Long entryId);
 }

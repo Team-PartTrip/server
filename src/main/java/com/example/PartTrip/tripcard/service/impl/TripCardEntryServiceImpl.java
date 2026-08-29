@@ -61,13 +61,22 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
 
     @Transactional
     @Override
+    public TripCardEntryResponse updateComment(Long cardId, Long entryId, String comment) {
+        getEditableCard(cardId);
+        TripCardPhotoEntity photo = getCardPhoto(cardId, entryId);
+
+        // 빈 값이면 코멘트를 지운다. 공백만 남기지 않는다.
+        String trimmed = comment == null ? null : comment.trim();
+        photo.setComment(trimmed == null || trimmed.isEmpty() ? null : trimmed);
+
+        return TripCardEntryResponse.from(photo);
+    }
+
+    @Transactional
+    @Override
     public void deleteEntry(Long cardId, Long entryId) {
         TripCardEntity tripCard = getEditableCard(cardId);
-        TripCardPhotoEntity photo = tripCardPhotoRepository.findById(entryId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 사진 항목이 존재하지 않습니다."));
-        if (!photo.getTripCardId().equals(cardId)) {
-            throw new IllegalArgumentException("해당 카드에 속한 사진 항목이 아닙니다.");
-        }
+        TripCardPhotoEntity photo = getCardPhoto(cardId, entryId);
 
         boolean wasCoverImage = photo.getImageUrl().equals(tripCard.getCoverImageUrl());
         deleteFileAfterCommit(photo.getImageUrl());
@@ -112,6 +121,16 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
                 imageStorageService.delete(imageUrl);
             }
         });
+    }
+
+    /** 이 카드에 속한 사진인지까지 확인해서 가져온다 */
+    private TripCardPhotoEntity getCardPhoto(Long cardId, Long entryId) {
+        TripCardPhotoEntity photo = tripCardPhotoRepository.findById(entryId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사진 항목이 존재하지 않습니다."));
+        if (!photo.getTripCardId().equals(cardId)) {
+            throw new IllegalArgumentException("해당 카드에 속한 사진 항목이 아닙니다.");
+        }
+        return photo;
     }
 
     private TripCardEntity getEditableCard(Long cardId) {
