@@ -14,7 +14,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-PROPS = Path(__file__).resolve().parents[2] / "src/main/resources/application.properties"
+PROPS = Path(sys.argv[1]) if len(sys.argv) > 1 else (
+    Path(__file__).resolve().parents[2] / "src/main/resources/application.properties"
+)
 
 # 외래키 순서다. 부모 먼저 넣지 않으면 들어가지 않는다.
 TABLES = [
@@ -66,7 +68,8 @@ def query(cfg: dict, sql: str) -> list:
 
 
 def literal(value: str) -> str:
-    if value == "\\N":
+    # mysql --batch 는 널을 NULL 로, mysqldump 는 \\N 으로 쓴다. 둘 다 받는다.
+    if value in ("\\N", "NULL"):
         return "NULL"
     # Postgres 는 기본(standard_conforming_strings)에서 역슬래시를 글자로 본다.
     # 작은따옴표만 두 번 쓰면 된다.
@@ -81,8 +84,15 @@ def main() -> None:
     print("BEGIN;\n")
 
     for table in TABLES:
-        columns = [row[0] for row in query(cfg, f"SHOW COLUMNS FROM {table}")]
-        rows = query(cfg, f"SELECT * FROM {table}")
+        described = query(cfg, f"SHOW COLUMNS FROM {table}")
+        columns = [row[0] for row in described]
+        # bit(1) 은 배치 출력에서 날바이트로 나와 글자가 깨진다. 숫자로 바꿔 뽑는다.
+        # Postgres boolean 은 '0' · '1' 을 그대로 받는다.
+        selected = ", ".join(
+            f"{name}+0" if row_type.startswith(("bit(", "tinyint(1)")) else name
+            for name, row_type in ((row[0], row[1]) for row in described)
+        )
+        rows = query(cfg, f"SELECT {selected} FROM {table}")
         if not rows:
             continue
         print(f"-- {table} {len(rows)}건")
