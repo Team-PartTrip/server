@@ -57,7 +57,7 @@ class PlannerTravelPlanServiceTest {
         owner.setUserId(OWNER_ID);
         owner.setRole(GroupRole.OWNER);
 
-        given(travelGroupRepository.findById(PLANNER_ID)).willReturn(Optional.of(group));
+        given(travelGroupRepository.findByIdForUpdate(PLANNER_ID)).willReturn(Optional.of(group));
         given(groupMemberRepository.findByGroupIdAndUserId(PLANNER_ID, OWNER_ID))
                 .willReturn(Optional.of(owner));
     }
@@ -85,6 +85,7 @@ class PlannerTravelPlanServiceTest {
         assertThat(group.getHeadcount()).isEqualTo(3);
         assertThat(response.getMemberCount()).isEqualTo(3);
         assertThat(response.getIsSolo()).isFalse();
+        verify(travelGroupRepository).findByIdForUpdate(PLANNER_ID);
     }
 
     @Test
@@ -108,6 +109,19 @@ class PlannerTravelPlanServiceTest {
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> plannerTravelPlanService.saveTravelPlan(PLANNER_ID, request, OWNER_ID))
                 .withMessage("이미 참여한 멤버가 있어 혼자 여행으로 변경할 수 없습니다.");
+        verify(groupTravelPlanRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsMemberCountThatConflictsWithSoloSetting() {
+        SavePlannerTravelPlanRequestDto request = request();
+        request.setMemberCount(3);
+        request.setIsSolo(true);
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> plannerTravelPlanService.saveTravelPlan(PLANNER_ID, request, OWNER_ID))
+                .withMessage("혼자 여행의 인원은 1명이어야 합니다.");
+        verify(groupMemberRepository, never()).countByGroupId(any());
         verify(groupTravelPlanRepository, never()).save(any());
     }
 

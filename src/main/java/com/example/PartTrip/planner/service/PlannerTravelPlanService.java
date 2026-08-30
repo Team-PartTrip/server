@@ -30,7 +30,7 @@ public class PlannerTravelPlanService {
             SavePlannerTravelPlanRequestDto dto,
             String userId
     ) {
-        TravelGroupEntity group = travelGroupRepository.findById(plannerId)
+        TravelGroupEntity group = travelGroupRepository.findByIdForUpdate(plannerId)
                 .orElseThrow(() -> new IllegalArgumentException("플래너가 존재하지 않습니다."));
 
         GroupMemberEntity membership = groupMemberRepository
@@ -90,6 +90,12 @@ public class PlannerTravelPlanService {
 
         if (requestedMemberCount == null && requestedSolo == null) {
             return;
+        }
+
+        if (Boolean.TRUE.equals(requestedSolo)
+                && requestedMemberCount != null
+                && requestedMemberCount != 1) {
+            throw new IllegalArgumentException("혼자 여행의 인원은 1명이어야 합니다.");
         }
 
         long joinedMemberCount = groupMemberRepository.countByGroupId(group.getGroupId());
