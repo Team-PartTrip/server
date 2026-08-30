@@ -1,7 +1,7 @@
 package com.example.PartTrip.main.service;
 
 import com.example.PartTrip.main.dto.PopularCityResponseDto;
-import com.example.PartTrip.planner.repository.GroupTravelPlanRepository;
+import com.example.PartTrip.main.repository.TourPlaceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -17,11 +17,11 @@ public class PopularCityService {
     static final int MAX_LIMIT = 50;
     static final int DEFAULT_LIMIT = 8;
 
-    private final GroupTravelPlanRepository groupTravelPlanRepository;
+    private final TourPlaceRepository tourPlaceRepository;
 
     @Transactional(readOnly = true)
     public List<PopularCityResponseDto> getPopularCities(Integer limit) {
-        return groupTravelPlanRepository.findPopularCities(
+        return tourPlaceRepository.findPopularCities(
                 PageRequest.of(0, normalizeLimit(limit)));
     }
 
