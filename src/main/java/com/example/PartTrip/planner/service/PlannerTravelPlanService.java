@@ -49,6 +49,8 @@ public class PlannerTravelPlanService {
             throw new IllegalArgumentException("여행 종료일은 시작일보다 빠를 수 없습니다.");
         }
 
+        updateGroupSettings(group, dto);
+
         GroupTravelPlanEntity plan = groupTravelPlanRepository
                 .findFirstByGroupIdOrderByCreatedAtDesc(plannerId)
                 .orElseGet(GroupTravelPlanEntity::new);
@@ -70,10 +72,49 @@ public class PlannerTravelPlanService {
                 .plannerId(group.getGroupId())
                 .planId(savedPlan.getPlanId())
                 .title(savedPlan.getTravelTitle())
+                .memberCount(group.getHeadcount())
+                .isSolo(group.getHeadcount() == 1)
                 .countryName(savedPlan.getCountryName())
                 .cityName(savedPlan.getCityName())
                 .startDate(savedPlan.getStartDate())
                 .endDate(savedPlan.getEndDate())
                 .build();
+    }
+
+    private void updateGroupSettings(
+            TravelGroupEntity group,
+            SavePlannerTravelPlanRequestDto dto
+    ) {
+        Integer requestedMemberCount = dto.getMemberCount();
+        Boolean requestedSolo = dto.getIsSolo();
+
+        if (requestedMemberCount == null && requestedSolo == null) {
+            return;
+        }
+
+        long joinedMemberCount = groupMemberRepository.countByGroupId(group.getGroupId());
+
+        if (Boolean.TRUE.equals(requestedSolo)) {
+            if (joinedMemberCount > 1) {
+                throw new IllegalArgumentException("이미 참여한 멤버가 있어 혼자 여행으로 변경할 수 없습니다.");
+            }
+            group.setHeadcount(1);
+            return;
+        }
+
+        if (requestedMemberCount != null) {
+            if (requestedMemberCount < joinedMemberCount) {
+                throw new IllegalArgumentException("여행 인원은 현재 참여 멤버 수보다 적을 수 없습니다.");
+            }
+            if (Boolean.FALSE.equals(requestedSolo) && requestedMemberCount < 2) {
+                throw new IllegalArgumentException("함께 여행하는 경우 인원은 2명 이상이어야 합니다.");
+            }
+            group.setHeadcount(requestedMemberCount);
+            return;
+        }
+
+        if (Boolean.FALSE.equals(requestedSolo) && group.getHeadcount() < 2) {
+            throw new IllegalArgumentException("함께 여행으로 변경하려면 2명 이상의 여행 인원을 입력해주세요.");
+        }
     }
 }
