@@ -29,6 +29,10 @@ public interface GroupTravelPlanRepository extends JpaRepository<GroupTravelPlan
      *
      * 나라·도시가 비어 있는 계획이 있다. 그룹 만들기 다음 화면에서 채우므로
      * 아직 목적지를 안 고른 계획이다. 세지 않는다.
+     *
+     * 같은 도시 이름이 다른 나라에 있다(산호세 — 코스타리카·미국).
+     * 계획 수까지 같으면 순서가 정해지지 않아 limit 경계에서 목록이
+     * 호출마다 바뀐다. 나라 이름까지 정렬 기준에 넣는다.
      */
     @Query("""
             select new com.example.PartTrip.main.dto.PopularCityResponseDto(
@@ -37,7 +41,7 @@ public interface GroupTravelPlanRepository extends JpaRepository<GroupTravelPlan
              where p.cityName is not null and p.cityName <> ''
                and p.countryName is not null and p.countryName <> ''
              group by p.cityName, p.countryName
-             order by count(p) desc, p.cityName asc
+             order by count(p) desc, p.cityName asc, p.countryName asc
             """)
     List<PopularCityResponseDto> findPopularCities(Pageable pageable);
 }
