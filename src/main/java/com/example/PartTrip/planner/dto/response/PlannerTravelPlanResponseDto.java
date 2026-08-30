@@ -12,6 +12,8 @@ public class PlannerTravelPlanResponseDto {
     private Long plannerId;
     private Long planId;
     private String title;
+    private Integer memberCount;
+    private Boolean isSolo;
     private String countryName;
     private String cityName;
     private LocalDate startDate;
