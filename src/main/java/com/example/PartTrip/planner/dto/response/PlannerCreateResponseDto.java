@@ -25,5 +25,5 @@ public class PlannerCreateResponseDto {
 
     private String cityName;
 
-    private String inviteCode;
+    private String inviteLink;
 }

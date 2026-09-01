@@ -18,6 +18,7 @@ public class PlannerDetailService {
     private final TravelGroupRepository travelGroupRepository;
     private final GroupMemberRepository groupMemberRepository;
     private final GroupTravelPlanRepository groupTravelPlanRepository;
+    private final PlannerInviteLinkFactory inviteLinkFactory;
 
     @Transactional(readOnly = true)
     public PlannerDetailResponseDto getPlannerDetail(
@@ -50,7 +51,7 @@ public class PlannerDetailService {
                 .role(membership.getRole().name())
                 .memberCount(group.getHeadcount())
                 .joinedMemberCount(joinedMemberCount)
-                .inviteCode(group.getInviteCode())
+                .inviteLink(inviteLinkFactory.create(group.getInviteCode()))
                 .build();
     }
 }
