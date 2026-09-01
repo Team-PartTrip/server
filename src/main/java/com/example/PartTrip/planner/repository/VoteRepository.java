@@ -22,6 +22,11 @@ public interface VoteRepository extends JpaRepository<VoteEntity, Long> {
     // 앱 C7 카테고리별 현황
     List<VoteEntity> findByPlanId(Long planId);
 
+    List<VoteEntity> findByPlanIdIn(List<Long> planIds);
+
+    // 플래너 삭제용. 외래키가 없어 순서대로 지워야 한다.
+    void deleteByPlanIdIn(List<Long> planIds);
+
     Optional<VoteEntity> findByPlanIdAndCategory(Long planId, TourPlaceCategory category);
 
     // 마감 임박 알림용 — 아직 열려 있고 마감이 임박한 투표

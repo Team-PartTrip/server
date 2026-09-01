@@ -10,6 +10,9 @@ public interface GroupTravelPlanRepository extends JpaRepository<GroupTravelPlan
 
     List<GroupTravelPlanEntity> findByGroupIdOrderByStartDateDesc(Long groupId);
 
+    // 플래너 삭제용
+    void deleteByGroupId(Long groupId);
+
     Optional<GroupTravelPlanEntity> findByPlanIdAndGroupId(Long planId, Long groupId);
 
     // 플래너 상세 화면에 보여줄 가장 최근 여행 계획

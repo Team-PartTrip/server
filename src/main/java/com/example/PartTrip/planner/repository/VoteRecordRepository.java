@@ -32,4 +32,7 @@ public interface VoteRecordRepository extends JpaRepository<VoteRecordEntity, Lo
     List<Object[]> countByOption(Long voteId);
 
     void deleteByVoteId(Long voteId);
+
+    // 플래너 삭제용
+    void deleteByVoteIdIn(List<Long> voteIds);
 }

@@ -20,4 +20,7 @@ public interface VoteOptionRepository extends JpaRepository<VoteOptionEntity, Lo
     boolean existsByVoteIdAndPlaceNameIgnoreCase(Long voteId, String placeName);
 
     void deleteByVoteId(Long voteId);
+
+    // 플래너 삭제용
+    void deleteByVoteIdIn(List<Long> voteIds);
 }
