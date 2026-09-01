@@ -3,6 +3,7 @@ package com.example.PartTrip.planner.service;
 import com.example.PartTrip.main.entity.TourPlaceEntity;
 import com.example.PartTrip.main.repository.TourPlaceRepository;
 import com.example.PartTrip.notification.event.TripCardCreatedEvent;
+import com.example.PartTrip.planner.dto.request.PlannerConfirmRequestDto;
 import com.example.PartTrip.planner.dto.request.VoteConfirmRequestDto;
 import com.example.PartTrip.planner.dto.response.ConfirmedPlaceResponseDto;
 import com.example.PartTrip.planner.dto.response.PlannerConfirmResponseDto;
@@ -28,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -52,6 +54,7 @@ public class PlannerConfirmService {
     @Transactional
     public PlannerConfirmResponseDto confirmPlanner(
             Long plannerId,
+            PlannerConfirmRequestDto request,
             String userId
     ) {
         TravelGroupEntity group = travelGroupRepository.findById(plannerId)
@@ -71,6 +74,8 @@ public class PlannerConfirmService {
             throw new IllegalArgumentException("확정할 투표가 없습니다.");
         }
 
+        Map<Long, Long> chosenByVoteId = chosenByVoteId(request, votes);
+
         for (VoteEntity vote : votes) {
             if (vote.getStatus() == VoteStatus.CONFIRMED) {
                 continue;
@@ -84,14 +89,20 @@ public class PlannerConfirmService {
             if (closed.getTopOptionIds().isEmpty()) {
                 throw new IllegalArgumentException("확정할 후보가 없는 투표가 있습니다.");
             }
-            if (Boolean.TRUE.equals(closed.getTied())) {
+
+            Long chosenOptionId = chosenByVoteId.get(vote.getVoteId());
+            // 아무도 투표하지 않은 장바구니는 모든 후보가 0표 동점이다.
+            // 고른 것을 함께 보내면 그걸로 확정하고, 없을 때만 막는다.
+            if (chosenOptionId == null && Boolean.TRUE.equals(closed.getTied())) {
                 throw new IllegalArgumentException(
                         "동점 투표가 있습니다. 그룹장이 공동 1위 후보를 먼저 선택해주세요. voteId="
                                 + vote.getVoteId());
             }
 
-            VoteConfirmRequestDto request = new VoteConfirmRequestDto();
-            voteConfirmService.confirmVote(plannerId, vote.getVoteId(), request, userId);
+            VoteConfirmRequestDto confirmRequest = new VoteConfirmRequestDto();
+            confirmRequest.setOptionId(chosenOptionId);
+            voteConfirmService.confirmVote(
+                    plannerId, vote.getVoteId(), confirmRequest, userId);
         }
 
         PlannerFinalResponseDto finalResult = plannerFinalService
@@ -107,6 +118,50 @@ public class PlannerConfirmService {
                 .confirmedSchedule(finalResult.getPlaces())
                 .tripCardId(tripCard.getTripCardId())
                 .build();
+    }
+
+    /**
+     * 요청에 담긴 선택을 투표별로 정리한다.
+     *
+     * 이 플래너의 투표가 아닌 것을 조용히 버리면, 앱이 엉뚱한 값을 보내도
+     * 확정이 그냥 성공해 어디서 틀어졌는지 알 수 없다.
+     */
+    private Map<Long, Long> chosenByVoteId(
+            PlannerConfirmRequestDto request,
+            List<VoteEntity> votes
+    ) {
+        Map<Long, Long> chosen = new HashMap<>();
+        if (request == null || request.getSelections() == null) {
+            return chosen;
+        }
+
+        Set<Long> voteIds = votes.stream()
+                .map(VoteEntity::getVoteId)
+                .collect(Collectors.toSet());
+
+        for (PlannerConfirmRequestDto.VoteSelection selection : request.getSelections()) {
+            // JSON 배열에는 null 이 들어올 수 있다. 그대로 두면 아래에서
+            // NullPointerException 이 나 400 이 아니라 500 으로 나간다.
+            if (selection == null) {
+                throw new IllegalArgumentException("선택 항목이 비어 있습니다.");
+            }
+            if (selection.getVoteId() == null || selection.getOptionId() == null) {
+                throw new IllegalArgumentException("선택에는 voteId 와 optionId 가 모두 필요합니다.");
+            }
+            if (!voteIds.contains(selection.getVoteId())) {
+                throw new IllegalArgumentException(
+                        "이 플래너의 투표가 아닙니다. voteId=" + selection.getVoteId());
+            }
+            // 한 카테고리에서 두 곳을 확정할 수는 없다. 같은 값을 두 번 보낸
+            // 것까지 막는다. 한쪽만 허용하면 앱이 무엇을 보냈을 때 통하는지
+            // 알 수 없고, 계약이 "투표당 하나" 라는 것도 흐려진다.
+            if (chosen.containsKey(selection.getVoteId())) {
+                throw new IllegalArgumentException(
+                        "한 투표에는 하나만 선택할 수 있습니다. voteId=" + selection.getVoteId());
+            }
+            chosen.put(selection.getVoteId(), selection.getOptionId());
+        }
+        return chosen;
     }
 
     private TripCardEntity createTripCardsIfAbsent(
