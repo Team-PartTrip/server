@@ -1,5 +1,7 @@
 package com.example.PartTrip.planner.service;
 
+import com.example.PartTrip.global.exception.ForbiddenException;
+import com.example.PartTrip.global.exception.NotFoundException;
 import com.example.PartTrip.planner.entity.GroupMemberEntity;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
 import com.example.PartTrip.planner.enums.GroupRole;
@@ -41,13 +43,15 @@ public class PlannerDeleteService {
     @Transactional
     public void deletePlanner(Long plannerId, String userId) {
         if (!travelGroupRepository.existsById(plannerId)) {
-            throw new IllegalArgumentException("플래너가 존재하지 않습니다.");
+            throw new NotFoundException("플래너가 존재하지 않습니다.");
         }
+        // 남의 플래너를 지우려는 것도 "권한 없음" 이다. 404 로 답하면
+        // 그 id 의 플래너가 있는지 없는지를 알려주는 셈이 된다.
         GroupMemberEntity member = groupMemberRepository
                 .findByGroupIdAndUserId(plannerId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 플래너의 멤버가 아닙니다."));
+                .orElseThrow(() -> new ForbiddenException("해당 플래너의 멤버가 아닙니다."));
         if (member.getRole() != GroupRole.OWNER) {
-            throw new IllegalArgumentException("플래너 그룹장만 플래너를 삭제할 수 있습니다.");
+            throw new ForbiddenException("플래너 그룹장만 플래너를 삭제할 수 있습니다.");
         }
 
         List<Long> planIds = groupTravelPlanRepository

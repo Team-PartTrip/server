@@ -1,5 +1,7 @@
 package com.example.PartTrip.planner.service;
 
+import com.example.PartTrip.global.exception.ForbiddenException;
+import com.example.PartTrip.global.exception.NotFoundException;
 import com.example.PartTrip.planner.entity.GroupMemberEntity;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
 import com.example.PartTrip.planner.entity.VoteEntity;
@@ -25,7 +27,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
@@ -114,9 +116,10 @@ class PlannerDeleteServiceTest {
     void 그룹장이_아니면_거부한다() {
         givenRole(MEMBER_ID, GroupRole.MEMBER);
 
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> plannerDeleteService.deletePlanner(PLANNER_ID, MEMBER_ID))
-                .withMessageContaining("그룹장");
+        // 403 으로 나가야 한다 (API-005-12)
+        assertThatThrownBy(() -> plannerDeleteService.deletePlanner(PLANNER_ID, MEMBER_ID))
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessageContaining("그룹장");
         verify(travelGroupRepository, never()).deleteById(PLANNER_ID);
     }
 
@@ -124,9 +127,10 @@ class PlannerDeleteServiceTest {
     void 없는_플래너면_거부한다() {
         given(travelGroupRepository.existsById(PLANNER_ID)).willReturn(false);
 
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> plannerDeleteService.deletePlanner(PLANNER_ID, OWNER_ID))
-                .withMessageContaining("존재하지 않습니다");
+        // 404 로 나가야 한다 (API-005-12)
+        assertThatThrownBy(() -> plannerDeleteService.deletePlanner(PLANNER_ID, OWNER_ID))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessageContaining("존재하지 않습니다");
         verify(travelGroupRepository, never()).deleteById(PLANNER_ID);
     }
 }
