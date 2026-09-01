@@ -190,6 +190,37 @@ class PlannerConfirmServiceTest {
     }
 
     @Test
+    void 같은_후보를_두_번_보내도_거부한다() {
+        PlannerConfirmRequestDto.VoteSelection first =
+                new PlannerConfirmRequestDto.VoteSelection();
+        first.setVoteId(VOTE_ID);
+        first.setOptionId(OPTION_A);
+        PlannerConfirmRequestDto.VoteSelection second =
+                new PlannerConfirmRequestDto.VoteSelection();
+        second.setVoteId(VOTE_ID);
+        second.setOptionId(OPTION_A);
+        PlannerConfirmRequestDto request = new PlannerConfirmRequestDto();
+        request.setSelections(List.of(first, second));
+
+        assertThatThrownBy(() ->
+                plannerConfirmService.confirmPlanner(PLANNER_ID, request, OWNER_ID))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("한 투표에는 하나만");
+    }
+
+    @Test
+    void 선택_항목이_null_이면_거부한다() {
+        PlannerConfirmRequestDto request = new PlannerConfirmRequestDto();
+        // List.of 는 null 을 못 담는다. JSON 으로는 [null] 이 들어온다.
+        request.setSelections(java.util.Collections.singletonList(null));
+
+        assertThatThrownBy(() ->
+                plannerConfirmService.confirmPlanner(PLANNER_ID, request, OWNER_ID))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("선택 항목이 비어 있습니다");
+    }
+
+    @Test
     void 이미_확정된_투표는_다시_확정하지_않는다() {
         vote.setStatus(VoteStatus.CONFIRMED);
         givenTripCardCreation();

@@ -140,6 +140,11 @@ public class PlannerConfirmService {
                 .collect(Collectors.toSet());
 
         for (PlannerConfirmRequestDto.VoteSelection selection : request.getSelections()) {
+            // JSON 배열에는 null 이 들어올 수 있다. 그대로 두면 아래에서
+            // NullPointerException 이 나 400 이 아니라 500 으로 나간다.
+            if (selection == null) {
+                throw new IllegalArgumentException("선택 항목이 비어 있습니다.");
+            }
             if (selection.getVoteId() == null || selection.getOptionId() == null) {
                 throw new IllegalArgumentException("선택에는 voteId 와 optionId 가 모두 필요합니다.");
             }
@@ -147,13 +152,14 @@ public class PlannerConfirmService {
                 throw new IllegalArgumentException(
                         "이 플래너의 투표가 아닙니다. voteId=" + selection.getVoteId());
             }
-            Long previous = chosen.put(selection.getVoteId(), selection.getOptionId());
-            // 한 카테고리에서 두 곳을 확정할 수는 없다. 뒤엣것으로 덮으면
-            // 앱이 보낸 것과 확정 결과가 말없이 달라진다.
-            if (previous != null && !previous.equals(selection.getOptionId())) {
+            // 한 카테고리에서 두 곳을 확정할 수는 없다. 같은 값을 두 번 보낸
+            // 것까지 막는다. 한쪽만 허용하면 앱이 무엇을 보냈을 때 통하는지
+            // 알 수 없고, 계약이 "투표당 하나" 라는 것도 흐려진다.
+            if (chosen.containsKey(selection.getVoteId())) {
                 throw new IllegalArgumentException(
                         "한 투표에는 하나만 선택할 수 있습니다. voteId=" + selection.getVoteId());
             }
+            chosen.put(selection.getVoteId(), selection.getOptionId());
         }
         return chosen;
     }
