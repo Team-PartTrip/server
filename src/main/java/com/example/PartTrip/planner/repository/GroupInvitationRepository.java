@@ -29,6 +29,9 @@ public interface GroupInvitationRepository extends JpaRepository<GroupInvitation
 
     long countByGroupIdAndStatus(Long groupId, InvitationStatus status);
 
+    // 플래너 삭제용
+    void deleteByGroupId(Long groupId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT i FROM GroupInvitationEntity i WHERE i.invitationId = :invitationId")
     Optional<GroupInvitationEntity> findByIdForUpdate(@Param("invitationId") Long invitationId);

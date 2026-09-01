@@ -25,6 +25,9 @@ public interface GroupMemberRepository extends JpaRepository<GroupMemberEntity, 
 
     long countByGroupId(Long groupId);
 
+    // 플래너 삭제용
+    void deleteByGroupId(Long groupId);
+
     // 플래너 목록에서 그룹별 현재 참여 인원을 한 번에 조회한다
     @Query("""
             SELECT m.groupId, COUNT(m)

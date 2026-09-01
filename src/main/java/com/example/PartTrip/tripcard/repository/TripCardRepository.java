@@ -18,6 +18,10 @@ public interface TripCardRepository extends JpaRepository<TripCardEntity, Long> 
 
     Optional<TripCardEntity> findByPlanIdAndUserId(Long planId, String userId);
 
+    // 플래너를 지울 때 그 플래너로 만들어진 카드를 찾는다.
+    // 카드는 지우지 않고 planId 만 끊는다.
+    List<TripCardEntity> findByPlanIdIn(Collection<Long> planIds);
+
     List<TripCardEntity> findByPlanIdAndUserIdIn(Long planId, Collection<String> userIds);
 
     // Func-007-01 프로필 통계의 "여행" 수
