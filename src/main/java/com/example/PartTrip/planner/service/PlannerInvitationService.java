@@ -36,6 +36,7 @@ public class PlannerInvitationService {
     private final GroupInvitationRepository groupInvitationRepository;
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final PlannerInviteLinkFactory inviteLinkFactory;
 
     @Transactional
     public PlannerInviteResponseDto inviteMembers(
@@ -122,7 +123,7 @@ public class PlannerInvitationService {
         }
 
         return PlannerInviteResponseDto.builder()
-                .inviteLink("/planner/join?inviteCode=" + group.getInviteCode())
+                .inviteLink(inviteLinkFactory.create(group.getInviteCode()))
                 .invitedCount(responses.size())
                 .invitations(responses)
                 .build();

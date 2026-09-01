@@ -24,6 +24,7 @@ public class PlannerService {
     private final TravelGroupRepository travelGroupRepository;
     private final GroupMemberRepository groupMemberRepository;
     private final GroupTravelPlanRepository groupTravelPlanRepository;
+    private final PlannerInviteLinkFactory inviteLinkFactory;
 
     @Transactional
     public PlannerCreateResponseDto createPlanner(
@@ -65,7 +66,7 @@ public class PlannerService {
                 .endDate(travelPlan == null ? null : travelPlan.getEndDate())
                 .countryName(travelPlan == null ? null : travelPlan.getCountryName())
                 .cityName(travelPlan == null ? null : travelPlan.getCityName())
-                .inviteCode(savedGroup.getInviteCode())
+                .inviteLink(inviteLinkFactory.create(savedGroup.getInviteCode()))
                 .build();
     }
 
