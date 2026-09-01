@@ -6,6 +6,7 @@ import com.example.PartTrip.login.dto.RefreshRequestDto;
 import com.example.PartTrip.login.dto.TokenResponseDto;
 import com.example.PartTrip.login.entity.RefreshTokenEntity;
 import com.example.PartTrip.signup.entity.UserEntity;
+import com.example.PartTrip.global.exception.RefreshTokenReuseException;
 import com.example.PartTrip.global.security.JwtUtil;
 import com.example.PartTrip.login.repository.RefreshTokenRepository;
 import com.example.PartTrip.signup.repository.UserRepository;
@@ -83,6 +84,10 @@ public class LoginService {
      * 쫓겨난다. 그래서 짧은 유예 동안은 같은 응답을 다시 준다.
      * 유예가 지난 뒤의 재사용은 탈취로 보고 세션을 끊는다.
      */
+    // 재사용을 탐지하면 행을 지운 뒤 예외를 던진다. 클래스의 @Transactional 이
+    // 예외에 롤백해 버리면 그 삭제가 없던 일이 되어, 탈취된 세션이 그대로
+    // 살아남는다. 이 예외에만 롤백하지 않는다.
+    @Transactional(noRollbackFor = RefreshTokenReuseException.class)
     public TokenResponseDto refresh(RefreshRequestDto dto) {
 
         String presented = dto.getRefreshToken();
@@ -90,7 +95,10 @@ public class LoginService {
             throw new IllegalArgumentException("Refresh Token 이 필요합니다.");
         }
 
-        Optional<RefreshTokenEntity> current = refreshTokenRepository.findByRefreshToken(presented);
+        // 같은 토큰으로 두 요청이 동시에 오면 서로의 회전 결과를 덮어쓴다.
+        // 행을 잠가 한 번에 하나만 지나가게 한다.
+        Optional<RefreshTokenEntity> current =
+                refreshTokenRepository.findByRefreshTokenForUpdate(presented);
 
         if (current.isEmpty()) {
             // 지금 토큰이 아니다. 방금 회전시킨 직전 토큰인지 본다.
@@ -102,7 +110,7 @@ public class LoginService {
                     || replayed.getPreviousValidUntil().isBefore(LocalDateTime.now())) {
                 // 유예가 끝난 옛 토큰이다. 탈취로 보고 세션을 끊는다.
                 refreshTokenRepository.delete(replayed);
-                throw new IllegalArgumentException(
+                throw new RefreshTokenReuseException(
                         "이미 사용된 Refresh Token 입니다. 다시 로그인 해주세요.");
             }
 

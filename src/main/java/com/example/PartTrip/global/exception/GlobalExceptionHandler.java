@@ -30,6 +30,15 @@ public class GlobalExceptionHandler {
                 .body(e.getMessage());
     }
 
+    // 죽은 리프레시 토큰이 유예가 지난 뒤 다시 들어왔다. 세션은 이미 끊었다.
+    @ExceptionHandler(RefreshTokenReuseException.class)
+    public ResponseEntity<String> handleRefreshTokenReuse(RefreshTokenReuseException e) {
+
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(e.getMessage());
+    }
+
     // 서명이 안 맞거나 형식이 깨진 토큰.
     //
     // JJWT 예외는 RuntimeException 계열이라 여기서 잡지 않으면 500 이 나간다.

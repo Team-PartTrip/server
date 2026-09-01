@@ -1,5 +1,6 @@
 package com.example.PartTrip.login.service;
 
+import com.example.PartTrip.global.exception.RefreshTokenReuseException;
 import com.example.PartTrip.global.security.JwtUtil;
 import com.example.PartTrip.login.dto.LogoutRequestDto;
 import com.example.PartTrip.login.dto.RefreshRequestDto;
@@ -78,7 +79,7 @@ class LoginServiceTest {
 
     @Test
     void 갱신하면_리프레시_토큰이_새것으로_바뀐다() {
-        given(refreshTokenRepository.findByRefreshToken(OLD_TOKEN))
+        given(refreshTokenRepository.findByRefreshTokenForUpdate(OLD_TOKEN))
                 .willReturn(Optional.of(stored));
 
         TokenResponseDto result = refresh(OLD_TOKEN);
@@ -97,7 +98,7 @@ class LoginServiceTest {
         stored.setRefreshToken(NEW_TOKEN);
         stored.setPreviousToken(OLD_TOKEN);
         stored.setPreviousValidUntil(LocalDateTime.now().plusSeconds(30));
-        given(refreshTokenRepository.findByRefreshToken(OLD_TOKEN))
+        given(refreshTokenRepository.findByRefreshTokenForUpdate(OLD_TOKEN))
                 .willReturn(Optional.empty());
         given(refreshTokenRepository.findByPreviousToken(OLD_TOKEN))
                 .willReturn(Optional.of(stored));
@@ -115,13 +116,15 @@ class LoginServiceTest {
         stored.setRefreshToken(NEW_TOKEN);
         stored.setPreviousToken(OLD_TOKEN);
         stored.setPreviousValidUntil(LocalDateTime.now().minusSeconds(1));
-        given(refreshTokenRepository.findByRefreshToken(OLD_TOKEN))
+        given(refreshTokenRepository.findByRefreshTokenForUpdate(OLD_TOKEN))
                 .willReturn(Optional.empty());
         given(refreshTokenRepository.findByPreviousToken(OLD_TOKEN))
                 .willReturn(Optional.of(stored));
 
+        // 전용 예외여야 한다. IllegalArgumentException 이면 트랜잭션이 롤백해
+        // 바로 위의 delete 가 없던 일이 되고, 탈취된 세션이 살아남는다.
         assertThatThrownBy(() -> refresh(OLD_TOKEN))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(RefreshTokenReuseException.class)
                 .hasMessageContaining("이미 사용된");
 
         verify(refreshTokenRepository).delete(stored);
@@ -129,7 +132,7 @@ class LoginServiceTest {
 
     @Test
     void 모르는_토큰은_거부한다() {
-        given(refreshTokenRepository.findByRefreshToken("unknown"))
+        given(refreshTokenRepository.findByRefreshTokenForUpdate("unknown"))
                 .willReturn(Optional.empty());
         given(refreshTokenRepository.findByPreviousToken("unknown"))
                 .willReturn(Optional.empty());
@@ -142,7 +145,7 @@ class LoginServiceTest {
     @Test
     void 저장된_만료시각이_지났으면_거부한다() {
         stored.setExpiredAt(LocalDateTime.now().minusMinutes(1));
-        given(refreshTokenRepository.findByRefreshToken(OLD_TOKEN))
+        given(refreshTokenRepository.findByRefreshTokenForUpdate(OLD_TOKEN))
                 .willReturn(Optional.of(stored));
 
         assertThatThrownBy(() -> refresh(OLD_TOKEN))
@@ -154,7 +157,7 @@ class LoginServiceTest {
     void 빈_토큰은_조회도_하지_않는다() {
         assertThatThrownBy(() -> refresh("  "))
                 .isInstanceOf(IllegalArgumentException.class);
-        verify(refreshTokenRepository, never()).findByRefreshToken(anyString());
+        verify(refreshTokenRepository, never()).findByRefreshTokenForUpdate(anyString());
     }
 
     @Test
