@@ -1,5 +1,6 @@
 package com.example.PartTrip.global.exception;
 
+import io.jsonwebtoken.JwtException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -27,6 +28,20 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.FORBIDDEN)
                 .body(e.getMessage());
+    }
+
+    // 서명이 안 맞거나 형식이 깨진 토큰.
+    //
+    // JJWT 예외는 RuntimeException 계열이라 여기서 잡지 않으면 500 이 나간다.
+    // 앱은 500 을 "잠시 후 되는 오류" 로 보고 토큰을 지우지 않아서, 사용자가
+    // 로그인 화면으로도 못 가고 모든 화면이 실패하는 상태에 갇힌다.
+    // 위조·손상 토큰은 401 이 맞다.
+    @ExceptionHandler(JwtException.class)
+    public ResponseEntity<String> handleJwtException(JwtException e) {
+
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body("토큰이 유효하지 않습니다. 다시 로그인 해주세요.");
     }
 
     // IllegalArgumentException이 발생하면 여기서 처리
