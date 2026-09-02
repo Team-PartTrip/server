@@ -11,6 +11,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Locale;
+
 @Service
 @RequiredArgsConstructor
 public class FindPasswordService {
@@ -23,13 +25,17 @@ public class FindPasswordService {
     // 1단계: 가입된 이메일인지 확인 후 인증번호 발송
     public void sendResetCode(String email) {
 
+        String normalizedEmail = normalizeEmail(email);
+
         // 가입되지 않은 이메일이면 비밀번호를 찾을 수 없음
-        if (userRepository.findByUserMail(email).isEmpty()) {
+        if (userRepository
+                .findFirstByUserMailIgnoreCaseOrderByUserIdAsc(normalizedEmail)
+                .isEmpty()) {
             throw new IllegalArgumentException("가입되지 않은 이메일입니다.");
         }
 
         // 기존 이메일 인증 로직 재활용
-        mailService.sendCode(email);
+        mailService.sendCode(normalizedEmail);
     }
 
     // 2단계: 이메일로 받은 인증번호 확인
@@ -45,18 +51,21 @@ public class FindPasswordService {
     @Transactional
     public void resetPassword(PasswordResetRequestDto dto) {
 
+        String normalizedEmail = normalizeEmail(dto.getEmail());
+
         // 새 비밀번호와 재입력한 비밀번호가 일치하는지 확인
         if (!dto.getNewPassword().equals(dto.getConfirmPassword())) {
             throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
         }
 
         // 이메일 인증을 먼저 완료했는지 확인
-        if (!mailService.isVerified(dto.getEmail())) {
+        if (!mailService.isVerified(normalizedEmail)) {
             throw new IllegalArgumentException("이메일 인증을 먼저 완료해주세요.");
         }
 
         // 비밀번호를 변경할 회원 조회
-        UserEntity user = userRepository.findByUserMail(dto.getEmail())
+        UserEntity user = userRepository
+                .findFirstByUserMailIgnoreCaseOrderByUserIdAsc(normalizedEmail)
                 .orElseThrow(() -> new IllegalArgumentException("가입되지 않은 이메일입니다."));
 
         // 새 비밀번호를 암호화해서 저장
@@ -64,6 +73,10 @@ public class FindPasswordService {
         userRepository.save(user);
 
         // 사용이 끝난 인증 정보 삭제 (재사용 방지)
-        emailVerificationRepository.deleteById(dto.getEmail());
+        emailVerificationRepository.deleteById(normalizedEmail);
+    }
+
+    private String normalizeEmail(String email) {
+        return email.trim().toLowerCase(Locale.ROOT);
     }
 }

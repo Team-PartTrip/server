@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -32,16 +33,21 @@ public class SignUpService {
     @Transactional
     public void startSignUp(SignUpRequestDto dto) {
 
+        String email = normalizeEmail(dto.getUserMail());
+
         // 이미 가입된 아이디인지 검사
         if (userRepository.existsByUserId(dto.getUserId())) {
             throw new IllegalArgumentException("이미 존재하는 아이디입니다.");
+        }
+        if (userRepository.existsByUserMailIgnoreCase(email)) {
+            throw new IllegalArgumentException("이미 가입된 이메일입니다.");
         }
 
         // 임시 회원가입 객체 생성
         PendingSignUpEntity pending = new PendingSignUpEntity();
 
         // 사용자가 입력한 이메일 저장
-        pending.setUserMail(dto.getUserMail());
+        pending.setUserMail(email);
 
         // 사용자가 입력한 아이디 저장
         pending.setUserId(dto.getUserId());
@@ -66,20 +72,28 @@ public class SignUpService {
         pendingSignUpRepository.save(pending);
 
         // 이메일 인증번호 전송
-        mailService.sendCode(dto.getUserMail());
+        mailService.sendCode(email);
     }
 
     // 이메일 인증 성공 후 진짜 회원가입 완료
     @Transactional
     public UserEntity completeSignUp(String email) {
 
+        String normalizedEmail = normalizeEmail(email);
+
         // pending_signup에서 임시 회원가입 정보 조회
-        PendingSignUpEntity pending = pendingSignUpRepository.findById(email)
+        PendingSignUpEntity pending = pendingSignUpRepository.findById(normalizedEmail)
                 .orElseThrow(() -> new IllegalArgumentException("회원가입 정보를 먼저 입력해주세요."));
 
         // 임시 회원가입 시간이 만료됐는지 확인
         if (pending.getExpiredAt().isBefore(LocalDateTime.now())) {
             throw new IllegalArgumentException("회원가입 시간이 만료되었습니다. 다시 시도해주세요.");
+        }
+        if (userRepository.existsByUserId(pending.getUserId())) {
+            throw new IllegalArgumentException("이미 존재하는 아이디입니다.");
+        }
+        if (userRepository.existsByUserMailIgnoreCase(normalizedEmail)) {
+            throw new IllegalArgumentException("이미 가입된 이메일입니다.");
         }
 
         // 진짜 회원 테이블에 저장할 UserEntity 생성
@@ -107,5 +121,7 @@ public class SignUpService {
         return savedUser;
     }
 
-
+    private String normalizeEmail(String email) {
+        return email.trim().toLowerCase(Locale.ROOT);
+    }
 }
