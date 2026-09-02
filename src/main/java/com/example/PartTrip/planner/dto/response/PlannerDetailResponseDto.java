@@ -19,5 +19,5 @@ public class PlannerDetailResponseDto {
     private String role;
     private Integer memberCount;
     private Long joinedMemberCount;
-    private String inviteCode;
+    private String inviteLink;
 }

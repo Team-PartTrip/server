@@ -66,9 +66,9 @@ class WorldMapServiceTest {
                 LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 4));
         when(tripCardRepository.findByTripCardIdAndUserId(2L, "user1"))
                 .thenReturn(Optional.of(recentTrip));
-        when(countryInfoRepository.findByCountryNameIgnoreCaseForUpdate("일본"))
+        when(countryInfoRepository.findFirstByCountryNameIgnoreCaseOrderByCountryInfoIdAsc("일본"))
                 .thenReturn(Optional.of(japan));
-        when(tripCardRepository.findByUserIdAndCountryNameIgnoreCaseOrderByStartDateDesc(
+        when(tripCardRepository.findByUserIdAndCountryNameIgnoreCaseAndDateOverTrueOrderByStartDateDesc(
                 "user1", "일본"))
                 .thenReturn(List.of(recentTrip, oldTrip));
         when(visitedCountryRepository.findByUserIdAndCountryInfoId("user1", 10L))
@@ -95,9 +95,9 @@ class WorldMapServiceTest {
         VisitedCountryEntity existing = visited("user1", 10L);
         when(tripCardRepository.findByTripCardIdAndUserId(1L, "user1"))
                 .thenReturn(Optional.of(trip));
-        when(countryInfoRepository.findByCountryNameIgnoreCaseForUpdate("일본"))
+        when(countryInfoRepository.findFirstByCountryNameIgnoreCaseOrderByCountryInfoIdAsc("일본"))
                 .thenReturn(Optional.of(japan));
-        when(tripCardRepository.findByUserIdAndCountryNameIgnoreCaseOrderByStartDateDesc(
+        when(tripCardRepository.findByUserIdAndCountryNameIgnoreCaseAndDateOverTrueOrderByStartDateDesc(
                 "user1", "일본"))
                 .thenReturn(List.of(trip));
         when(visitedCountryRepository.findByUserIdAndCountryInfoId("user1", 10L))
@@ -121,17 +121,31 @@ class WorldMapServiceTest {
     }
 
     @Test
+    void rejectsTripThatHasNotEnded() {
+        TripCardEntity ongoingTrip = trip(1L, "user1", "일본", "도쿄",
+                LocalDate.now(), LocalDate.now().plusDays(1));
+        ongoingTrip.setDateOver(false);
+        when(tripCardRepository.findByTripCardIdAndUserId(1L, "user1"))
+                .thenReturn(Optional.of(ongoingTrip));
+
+        assertThatThrownBy(() -> worldMapService.acquireCountry("user1", 1L))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("종료된 여행");
+        verify(visitedCountryRepository, never()).save(any());
+    }
+
+    @Test
     void returnsOwnedCountryHistoryWithDistinctCitiesInRecentOrder() {
         CountryInfoEntity japan = country(10L, "일본");
         TripCardEntity recent = trip(2L, "user1", "일본", "도쿄",
                 LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 5));
         TripCardEntity old = trip(1L, "user1", "일본", "도쿄",
                 LocalDate.of(2025, 1, 1), LocalDate.of(2025, 1, 5));
-        when(countryInfoRepository.findByCountryNameIgnoreCase("일본"))
+        when(countryInfoRepository.findFirstByCountryNameIgnoreCaseOrderByCountryInfoIdAsc("일본"))
                 .thenReturn(Optional.of(japan));
         when(visitedCountryRepository.existsByUserIdAndCountryInfoId("user1", 10L))
                 .thenReturn(true);
-        when(tripCardRepository.findByUserIdAndCountryNameIgnoreCaseOrderByStartDateDesc(
+        when(tripCardRepository.findByUserIdAndCountryNameIgnoreCaseAndDateOverTrueOrderByStartDateDesc(
                 "user1", "일본"))
                 .thenReturn(List.of(recent, old));
 
@@ -141,7 +155,7 @@ class WorldMapServiceTest {
         assertThat(result.getVisitCount()).isEqualTo(2);
         assertThat(result.getCities()).containsExactly("도쿄");
         assertThat(result.getTrips()).extracting(
-                CountryTravelHistoryResponseDto.TripResponseDto::getTripId)
+                CountryTravelHistoryResponseDto.TripResponseDto::getTripCardId)
                 .containsExactly(2L, 1L);
     }
 
@@ -205,14 +219,15 @@ class WorldMapServiceTest {
             LocalDate startDate,
             LocalDate endDate
     ) {
-        TripCardEntity trip = new TripCardEntity();
-        trip.setTripCardId(id);
-        trip.setUserId(userId);
-        trip.setCountryName(countryName);
-        trip.setCityName(cityName);
-        trip.setStartDate(startDate);
-        trip.setEndDate(endDate);
-        return trip;
+        return TripCardEntity.builder()
+                .tripCardId(id)
+                .userId(userId)
+                .countryName(countryName)
+                .cityName(cityName)
+                .startDate(startDate)
+                .endDate(endDate)
+                .dateOver(true)
+                .build();
     }
 
     private VisitedCountryEntity visited(String userId, Long countryInfoId) {

@@ -5,13 +5,15 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDate;
+import java.util.Collection;
 
 public interface TripCardRepository extends JpaRepository<TripCardEntity, Long> {
 
     // Func-003-01 "여행카드들을 시간순으로 조회"
     List<TripCardEntity> findByUserIdOrderByStartDateDesc(String userId);
 
-    List<TripCardEntity> findByUserIdAndCountryNameIgnoreCaseOrderByStartDateDesc(
+    List<TripCardEntity> findByUserIdAndCountryNameIgnoreCaseAndDateOverTrueOrderByStartDateDesc(
             String userId,
             String countryName
     );
@@ -19,8 +21,17 @@ public interface TripCardRepository extends JpaRepository<TripCardEntity, Long> 
     // 조회 · 수정 · 삭제 시 소유자까지 함께 확인한다
     Optional<TripCardEntity> findByTripCardIdAndUserId(Long tripCardId, String userId);
 
-    Optional<TripCardEntity> findByPlanId(Long planId);
+    Optional<TripCardEntity> findByPlanIdAndUserId(Long planId, String userId);
+
+    // 플래너를 지울 때 그 플래너로 만들어진 카드를 찾는다.
+    // 카드는 지우지 않고 planId 만 끊는다.
+    List<TripCardEntity> findByPlanIdIn(Collection<Long> planIds);
+
+    List<TripCardEntity> findByPlanIdAndUserIdIn(Long planId, Collection<String> userIds);
 
     // Func-007-01 프로필 통계의 "여행" 수
+    // 종료일이 지났는데 아직 잠기지 않은 카드 (TripCardScheduler)
+    List<TripCardEntity> findByDateOverFalseAndEndDateBefore(LocalDate date);
+
     long countByUserId(String userId);
 }

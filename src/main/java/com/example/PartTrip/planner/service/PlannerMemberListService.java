@@ -2,7 +2,10 @@ package com.example.PartTrip.planner.service;
 
 import com.example.PartTrip.planner.dto.response.PlannerMemberResponseDto;
 import com.example.PartTrip.planner.entity.GroupMemberEntity;
+import com.example.PartTrip.planner.entity.GroupInvitationEntity;
 import com.example.PartTrip.planner.enums.GroupRole;
+import com.example.PartTrip.planner.enums.InvitationStatus;
+import com.example.PartTrip.planner.repository.GroupInvitationRepository;
 import com.example.PartTrip.planner.repository.GroupMemberRepository;
 import com.example.PartTrip.planner.repository.TravelGroupRepository;
 import com.example.PartTrip.signup.entity.UserEntity;
@@ -12,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -23,6 +27,7 @@ public class PlannerMemberListService {
 
     private final TravelGroupRepository travelGroupRepository;
     private final GroupMemberRepository groupMemberRepository;
+    private final GroupInvitationRepository groupInvitationRepository;
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
@@ -41,17 +46,30 @@ public class PlannerMemberListService {
         List<GroupMemberEntity> members = groupMemberRepository
                 .findByGroupIdOrderByJoinedAtAsc(plannerId);
 
+        List<GroupInvitationEntity> pendingInvitations = groupInvitationRepository
+                .findByGroupIdAndStatusOrderByCreatedAtAsc(plannerId, InvitationStatus.PENDING);
+        List<String> relatedUserIds = new ArrayList<>();
+        relatedUserIds.addAll(members.stream().map(GroupMemberEntity::getUserId).toList());
+        relatedUserIds.addAll(pendingInvitations.stream()
+                .map(GroupInvitationEntity::getInvitedUserId).toList());
+
         Map<String, UserEntity> usersById = userRepository
-                .findAllById(members.stream().map(GroupMemberEntity::getUserId).toList())
+                .findAllById(relatedUserIds)
                 .stream()
                 .collect(Collectors.toMap(UserEntity::getUserId, Function.identity()));
 
-        return members.stream()
+        List<PlannerMemberResponseDto> result = new ArrayList<>(members.stream()
                 .sorted(Comparator
                         .comparingInt((GroupMemberEntity member) -> roleOrder(member.getRole()))
                         .thenComparing(GroupMemberEntity::getJoinedAt))
                 .map(member -> toResponse(member, usersById.get(member.getUserId())))
-                .toList();
+                .toList());
+        result.addAll(pendingInvitations.stream()
+                .map(invitation -> toPendingResponse(
+                        invitation,
+                        usersById.get(invitation.getInvitedUserId())))
+                .toList());
+        return result;
     }
 
     private int roleOrder(GroupRole role) {
@@ -66,7 +84,21 @@ public class PlannerMemberListService {
                 .userId(member.getUserId())
                 .nickName(user == null ? "알 수 없는 사용자" : user.getNickName())
                 .role(member.getRole().name())
+                .status(member.getRole() == GroupRole.OWNER ? "HOST" : "ACCEPTED")
                 .joinedAt(member.getJoinedAt())
+                .build();
+    }
+
+    private PlannerMemberResponseDto toPendingResponse(
+            GroupInvitationEntity invitation,
+            UserEntity user
+    ) {
+        return PlannerMemberResponseDto.builder()
+                .invitationId(invitation.getInvitationId())
+                .userId(invitation.getInvitedUserId())
+                .nickName(user == null ? "알 수 없는 사용자" : user.getNickName())
+                .role(GroupRole.MEMBER.name())
+                .status(InvitationStatus.PENDING.name())
                 .build();
     }
 }

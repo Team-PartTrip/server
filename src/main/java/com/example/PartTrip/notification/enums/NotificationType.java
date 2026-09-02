@@ -8,8 +8,9 @@ public enum NotificationType {
 
     VOTE_PARTICIPATED("투표 참여", NotificationCategory.VOTE),
     VOTE_DEADLINE("투표 마감 임박", NotificationCategory.VOTE),
+    VOTE_REMINDER("투표 참여 요청", NotificationCategory.VOTE),
+    GROUP_INVITED("그룹 초대", NotificationCategory.VOTE),
     GROUP_INVITE_ACCEPTED("그룹 초대 수락", NotificationCategory.VOTE),
-    PHOTO_ORGANIZED("사진 정리 완료", NotificationCategory.RECORD),
     COUNTRY_ACQUIRED("국가 획득", NotificationCategory.RECORD),
     TRIP_CARD_CREATED("여행카드 생성", NotificationCategory.RECORD);
 

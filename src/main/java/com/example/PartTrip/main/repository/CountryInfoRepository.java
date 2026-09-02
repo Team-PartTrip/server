@@ -14,13 +14,10 @@ public interface CountryInfoRepository extends JpaRepository<CountryInfoEntity, 
 
     Optional<CountryInfoEntity> findByCountryName(String countryName);
 
-    Optional<CountryInfoEntity> findByCountryNameIgnoreCase(String countryName);
-
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select c from CountryInfoEntity c " +
-            "where lower(c.countryName) = lower(:countryName)")
-    Optional<CountryInfoEntity> findByCountryNameIgnoreCaseForUpdate(
-            @Param("countryName") String countryName);
+    Optional<CountryInfoEntity> findFirstByCountryNameIgnoreCaseOrderByCountryInfoIdAsc(
+            String countryName
+    );
 
     @Query("select count(distinct c.countryName) from CountryInfoEntity c")
     long countDistinctCountries();
@@ -29,4 +26,11 @@ public interface CountryInfoRepository extends JpaRepository<CountryInfoEntity, 
     List<CountryInfoEntity> findTop20ByCountryNameContainingOrderByCountryNameAsc(
             String keyword
     );
+    @Query("""
+            SELECT c FROM CountryInfoEntity c
+            WHERE LOWER(c.countryName) LIKE LOWER(CONCAT('%', :keyword, '%'))
+               OR LOWER(c.cityName) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            ORDER BY c.countryName ASC, c.cityName ASC
+            """)
+    List<CountryInfoEntity> searchByCountryOrCity(@Param("keyword") String keyword);
 }

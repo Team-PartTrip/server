@@ -18,7 +18,7 @@ public class CountryTravelHistoryResponseDto {
     @Getter
     @Builder
     public static class TripResponseDto {
-        private Long tripId;
+        private Long tripCardId;
         private String cityName;
         private LocalDate startDate;
         private LocalDate endDate;

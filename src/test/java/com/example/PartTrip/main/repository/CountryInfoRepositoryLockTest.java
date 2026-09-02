@@ -11,7 +11,9 @@ class CountryInfoRepositoryLockTest {
     @Test
     void countryAcquisitionLookupUsesPessimisticWriteLock() throws NoSuchMethodException {
         Lock lock = CountryInfoRepository.class
-                .getMethod("findByCountryNameIgnoreCaseForUpdate", String.class)
+                .getMethod(
+                        "findFirstByCountryNameIgnoreCaseOrderByCountryInfoIdAsc",
+                        String.class)
                 .getAnnotation(Lock.class);
 
         assertThat(lock).isNotNull();

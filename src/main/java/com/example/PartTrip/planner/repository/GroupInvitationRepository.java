@@ -15,12 +15,22 @@ public interface GroupInvitationRepository extends JpaRepository<GroupInvitation
 
     Optional<GroupInvitationEntity> findByGroupIdAndInvitedUserId(Long groupId, String invitedUserId);
 
+    List<GroupInvitationEntity> findByGroupIdAndInvitedUserIdIn(Long groupId, List<String> invitedUserIds);
+
     List<GroupInvitationEntity> findByInvitedUserIdAndStatusOrderByCreatedAtDesc(
             String invitedUserId,
             InvitationStatus status
     );
 
+    List<GroupInvitationEntity> findByGroupIdAndStatusOrderByCreatedAtAsc(
+            Long groupId,
+            InvitationStatus status
+    );
+
     long countByGroupIdAndStatus(Long groupId, InvitationStatus status);
+
+    // 플래너 삭제용
+    void deleteByGroupId(Long groupId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT i FROM GroupInvitationEntity i WHERE i.invitationId = :invitationId")

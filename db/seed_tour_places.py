@@ -26,6 +26,8 @@ import time
 import urllib.parse
 import urllib.request
 
+import tour_place_ko
+
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
 
 # 시딩 대상 도시 (기능명세서 Func-008-02 인기 여행지 기준)
@@ -163,7 +165,10 @@ def build_description(tags, category, city_name):
 
     cuisine = tags.get("cuisine")
     if cuisine:
-        bits.append(cuisine.split(";")[0].replace("_", " ") + " 요리")
+        raw = cuisine.split(";")[0].replace("_", " ")
+        # 카페의 "coffee shop" 은 요리가 아니다. 표에 있는 말은 그대로 붙인다.
+        ko = tour_place_ko.CUISINES.get(raw)
+        bits.append(ko if ko else raw + " 요리")
 
     stars = tags.get("stars")
     if stars:
@@ -207,7 +212,8 @@ def main():
                     break
 
                 tags = el.get("tags") or {}
-                name = pick_name(tags)
+                # 앱에는 한국어만 보여야 한다. 표에 없으면 원문을 그대로 둔다.
+                name = tour_place_ko.name(pick_name(tags) or "")
                 if not name or name in seen:
                     continue
 

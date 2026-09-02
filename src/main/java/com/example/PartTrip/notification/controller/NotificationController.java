@@ -1,16 +1,11 @@
 package com.example.PartTrip.notification.controller;
 
 import com.example.PartTrip.notification.dto.NotificationPageResponseDto;
-import com.example.PartTrip.notification.dto.NotificationSettingResponseDto;
-import com.example.PartTrip.notification.dto.NotificationSettingUpdateRequestDto;
 import com.example.PartTrip.notification.dto.UnreadCountResponseDto;
 import com.example.PartTrip.notification.service.NotificationService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -23,13 +18,15 @@ public class NotificationController {
     @GetMapping
     public NotificationPageResponseDto getNotifications(
             Authentication authentication,
-            @RequestParam(defaultValue = "ALL") String category,
+            // 명세서(API-004-01)가 정한 이름은 type 이다.
+            // 값은 ALL / VOTE / RECORD 로 탭 구분이라 안에서는 category 로 부른다.
+            @RequestParam(defaultValue = "ALL") String type,
             @RequestParam(required = false) Long cursor,
             @RequestParam(required = false) Integer size) {
 
         String userId = (String) authentication.getPrincipal();
 
-        return notificationService.getNotifications(userId, category, cursor, size);
+        return notificationService.getNotifications(userId, type, cursor, size);
     }
 
     // Func-004-01 상단 배지
@@ -62,25 +59,5 @@ public class NotificationController {
 
         // 배지를 다시 그릴 수 있도록 남은 개수를 돌려준다
         return new UnreadCountResponseDto(notificationService.getUnreadCount(userId));
-    }
-
-    // Func-004-03 알림 설정 조회
-    @GetMapping("/settings")
-    public List<NotificationSettingResponseDto> getSettings(Authentication authentication) {
-
-        String userId = (String) authentication.getPrincipal();
-
-        return notificationService.getSettings(userId);
-    }
-
-    // Func-004-03 알림 설정 변경
-    @PutMapping("/settings")
-    public List<NotificationSettingResponseDto> updateSettings(
-            Authentication authentication,
-            @Valid @RequestBody NotificationSettingUpdateRequestDto request) {
-
-        String userId = (String) authentication.getPrincipal();
-
-        return notificationService.updateSettings(userId, request);
     }
 }

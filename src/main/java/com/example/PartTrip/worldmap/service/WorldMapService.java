@@ -26,6 +26,7 @@ import java.time.LocalDateTime;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
@@ -70,8 +71,11 @@ public class WorldMapService {
     public AcquireCountryResponseDto acquireCountry(String userId, Long tripId) {
         TripCardEntity trip = tripCardRepository.findByTripCardIdAndUserId(tripId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("여행 기록을 찾을 수 없거나 접근 권한이 없습니다."));
+        if (!trip.isDateOver()) {
+            throw new IllegalArgumentException("종료된 여행만 방문 국가로 등록할 수 있습니다.");
+        }
         CountryInfoEntity country = countryInfoRepository
-                .findByCountryNameIgnoreCaseForUpdate(trip.getCountryName())
+                .findFirstByCountryNameIgnoreCaseOrderByCountryInfoIdAsc(trip.getCountryName())
                 .orElseThrow(() -> new IllegalArgumentException("여행 기록의 국가가 국가 정보에 존재하지 않습니다."));
         String countryCode = requireCountryCode(country.getCountryName());
 
@@ -120,7 +124,7 @@ public class WorldMapService {
                 .toList();
         List<CountryTravelHistoryResponseDto.TripResponseDto> tripResponses = trips.stream()
                 .map(trip -> CountryTravelHistoryResponseDto.TripResponseDto.builder()
-                        .tripId(trip.getTripCardId())
+                        .tripCardId(trip.getTripCardId())
                         .cityName(trip.getCityName())
                         .startDate(trip.getStartDate())
                         .endDate(trip.getEndDate())
@@ -128,7 +132,7 @@ public class WorldMapService {
                 .toList();
 
         return CountryTravelHistoryResponseDto.builder()
-                .countryCode(countryCode.toUpperCase())
+                .countryCode(countryCode.toUpperCase(Locale.ROOT))
                 .countryName(country.getCountryName())
                 .visitCount(trips.size())
                 .cities(cities)
@@ -183,13 +187,15 @@ public class WorldMapService {
         if (countryName == null) {
             throw new IllegalArgumentException("존재하지 않는 국가 코드입니다.");
         }
-        return countryInfoRepository.findByCountryNameIgnoreCase(countryName)
+        return countryInfoRepository
+                .findFirstByCountryNameIgnoreCaseOrderByCountryInfoIdAsc(countryName)
                 .orElseThrow(() -> new IllegalArgumentException("국가 정보가 존재하지 않습니다."));
     }
 
     private List<TripCardEntity> findCountryTrips(String userId, String countryName) {
         List<TripCardEntity> trips = tripCardRepository
-                .findByUserIdAndCountryNameIgnoreCaseOrderByStartDateDesc(userId, countryName);
+                .findByUserIdAndCountryNameIgnoreCaseAndDateOverTrueOrderByStartDateDesc(
+                        userId, countryName);
         if (trips.isEmpty()) {
             throw new IllegalArgumentException("해당 국가의 여행 기록을 찾을 수 없습니다.");
         }

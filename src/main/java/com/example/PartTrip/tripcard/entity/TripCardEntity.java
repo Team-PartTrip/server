@@ -1,9 +1,7 @@
 package com.example.PartTrip.tripcard.entity;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -17,7 +15,9 @@ import java.time.LocalDateTime;
 @Table(name = "trip_card")
 @Getter
 @Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
 public class TripCardEntity {
 
     @Id
@@ -52,7 +52,8 @@ public class TripCardEntity {
 
     // D9 통계 — 함께한 사람 / 방문 장소 / 남긴 사진 / 이동 거리
     @Column(name = "companion_count")
-    private Integer companionCount;
+    @Builder.Default
+    private Integer companionCount = 1;
 
     @Column(name = "place_count")
     private Integer placeCount;
@@ -62,6 +63,11 @@ public class TripCardEntity {
 
     @Column(name = "distance_km")
     private Double distanceKm;
+
+    // 여행이 끝났는지. 여행 기간에는 사진을 계속 붙일 수 있고, 끝나면 수정이 막힌다.
+    // 세계지도 국가 획득도 이 값이 true 로 바뀐 뒤에 처리한다.
+    @Column(name = "is_date_over", nullable = false)
+    private boolean dateOver;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
