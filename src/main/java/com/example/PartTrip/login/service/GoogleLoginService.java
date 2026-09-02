@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -63,10 +64,12 @@ public class GoogleLoginService {
         if (email == null) {
             throw new IllegalArgumentException("유효하지 않은 Google 토큰입니다.");
         }
+        String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
 
         // 이메일로 회원 조회, 없으면 구글 계정으로 자동 가입
-        UserEntity user = userRepository.findByUserMail(email)
-                .orElseGet(() -> createGoogleUser(email, name));
+        UserEntity user = userRepository
+                .findFirstByUserMailIgnoreCaseOrderByUserIdAsc(normalizedEmail)
+                .orElseGet(() -> createGoogleUser(normalizedEmail, name));
 
         // 토큰 발급 (이메일 로그인과 동일)
         String accessToken = jwtUtil.createAccessToken(user.getUserId(), user.getUserMail());
