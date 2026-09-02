@@ -85,7 +85,7 @@ public class TourPlaceImportService {
             String countryName = parts[0].trim();
             String cityName = parts[1].trim();
 
-            List<TourPlaceEntity> places = fetchCity(countryName, cityName);
+            List<TourPlaceEntity> places = fetchCity(countryName, cityName, true);
             if (places.isEmpty()) {
                 // 하나도 못 받았는데 지우면 그 도시가 통째로 비어버린다
                 log.warn("{} {} — 받아온 장소가 없어 건너뜁니다", countryName, cityName);
@@ -102,8 +102,37 @@ public class TourPlaceImportService {
         return saved;
     }
 
+    /**
+     * 아직 한 번도 안 받아온 도시면 지금 받아온다.
+     *
+     * 여행지 검색이 나라 전체로 넓어지면서, 관광지 데이터가 없는 도시도
+     * 고를 수 있게 됐다. 그대로 두면 장소 목록이 비어 다음으로 못 넘어간다.
+     *
+     * 이미 있는 도시는 건드리지 않는다. 사용자를 기다리게 하는 자리라
+     * 사진은 받지 않는다(사진 한 장에 요청이 한 번 더 든다).
+     *
+     * @return 새로 채웠으면 true
+     */
+    public boolean importCityIfEmpty(String countryName, String cityName) {
+        if (countryName == null || cityName == null || cityName.isBlank()) {
+            return false;
+        }
+        if (!tourPlaceRepository.findByCityName(cityName).isEmpty()) {
+            return false;
+        }
+        List<TourPlaceEntity> places = fetchCity(countryName, cityName, false);
+        if (places.isEmpty()) {
+            log.info("{} {} — 받아올 장소가 없다", countryName, cityName);
+            return false;
+        }
+        tourPlaceRepository.saveAll(places);
+        log.info("{} {} — 처음 열려서 {}개 받아옴", countryName, cityName, places.size());
+        return true;
+    }
+
     /** 한 도시를 카테고리별로 받아 온다. 이름이 같으면 먼저 온 것만 남긴다 */
-    private List<TourPlaceEntity> fetchCity(String countryName, String cityName) {
+    private List<TourPlaceEntity> fetchCity(
+            String countryName, String cityName, boolean withPhotos) {
         Map<String, TourPlaceEntity> byName = new LinkedHashMap<>();
 
         for (TourPlaceCategory category : TourPlaceCategory.values()) {
@@ -122,7 +151,8 @@ public class TourPlaceImportService {
                 if (name == null || name.isBlank() || byName.containsKey(name)) {
                     continue;
                 }
-                byName.put(name, toEntity(place, countryName, cityName, category));
+                byName.put(name,
+                        toEntity(place, countryName, cityName, category, withPhotos));
             }
         }
         return new ArrayList<>(byName.values());
@@ -146,7 +176,8 @@ public class TourPlaceImportService {
             JsonNode place,
             String countryName,
             String cityName,
-            TourPlaceCategory category
+            TourPlaceCategory category,
+            boolean withPhotos
     ) {
         TourPlaceEntity entity = new TourPlaceEntity();
         entity.setCountryName(countryName);
@@ -167,7 +198,7 @@ public class TourPlaceImportService {
         entity.setLongitude(place.path("location").path("longitude").isNumber()
                 ? place.path("location").path("longitude").asDouble()
                 : null);
-        entity.setImageUrl(photoUrl(place));
+        entity.setImageUrl(withPhotos ? photoUrl(place) : null);
         return entity;
     }
 
