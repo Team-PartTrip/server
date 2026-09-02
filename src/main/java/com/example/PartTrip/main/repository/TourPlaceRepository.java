@@ -7,6 +7,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 
 public interface TourPlaceRepository extends JpaRepository<TourPlaceEntity, Long> {
@@ -53,4 +55,10 @@ public interface TourPlaceRepository extends JpaRepository<TourPlaceEntity, Long
              order by count(distinct p.planId) desc, t.cityName asc, t.countryName asc
             """)
     List<PopularCityResponseDto> findPopularCities(Pageable pageable);
+
+    // 구글 플레이스로 다시 채울 때 그 도시 것만 갈아끼운다
+    List<TourPlaceEntity> findByCityName(String cityName);
+
+    @Transactional
+    void deleteByCityName(String cityName);
 }

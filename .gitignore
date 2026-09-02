@@ -39,3 +39,7 @@ out/
 src/main/resources/application.properties
 /uploads
 .DS_Store
+
+# 관광지 다시 채우기가 남기는 백업 (TourPlaceImportService)
+tour_place_backup_*.sql
+tour_place_orphans_backup.sql
