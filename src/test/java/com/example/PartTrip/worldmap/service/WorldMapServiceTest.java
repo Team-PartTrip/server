@@ -18,6 +18,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Sort;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -66,8 +67,8 @@ class WorldMapServiceTest {
                 LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 4));
         when(tripCardRepository.findByTripCardIdAndUserId(2L, "user1"))
                 .thenReturn(Optional.of(recentTrip));
-        when(countryInfoRepository.findFirstByCountryNameIgnoreCaseOrderByCountryInfoIdAsc("일본"))
-                .thenReturn(Optional.of(japan));
+        when(countryInfoRepository.findByCountryNameIgnoreCaseForUpdate("일본"))
+                .thenReturn(List.of(japan));
         when(tripCardRepository.findByUserIdAndCountryNameIgnoreCaseAndDateOverTrueOrderByStartDateDesc(
                 "user1", "일본"))
                 .thenReturn(List.of(recentTrip, oldTrip));
@@ -95,8 +96,8 @@ class WorldMapServiceTest {
         VisitedCountryEntity existing = visited("user1", 10L);
         when(tripCardRepository.findByTripCardIdAndUserId(1L, "user1"))
                 .thenReturn(Optional.of(trip));
-        when(countryInfoRepository.findFirstByCountryNameIgnoreCaseOrderByCountryInfoIdAsc("일본"))
-                .thenReturn(Optional.of(japan));
+        when(countryInfoRepository.findByCountryNameIgnoreCaseForUpdate("일본"))
+                .thenReturn(List.of(japan));
         when(tripCardRepository.findByUserIdAndCountryNameIgnoreCaseAndDateOverTrueOrderByStartDateDesc(
                 "user1", "일본"))
                 .thenReturn(List.of(trip));
@@ -164,7 +165,9 @@ class WorldMapServiceTest {
         CountryInfoEntity korea = country(1L, "한국");
         CountryInfoEntity japan = country(2L, "일본");
         CountryInfoEntity france = country(3L, "프랑스");
-        when(countryInfoRepository.findAll()).thenReturn(List.of(korea, japan, france));
+        when(countryInfoRepository.findAll(
+                Sort.by(Sort.Direction.ASC, "countryInfoId")))
+                .thenReturn(List.of(korea, japan, france));
         when(visitedCountryRepository.findByUserIdOrderByFirstVisitedAtAsc("user1"))
                 .thenReturn(List.of(visited("user1", 2L)));
 
@@ -184,7 +187,9 @@ class WorldMapServiceTest {
 
     @Test
     void returnsZeroPercentageWhenCountryMasterIsEmpty() {
-        when(countryInfoRepository.findAll()).thenReturn(List.of());
+        when(countryInfoRepository.findAll(
+                Sort.by(Sort.Direction.ASC, "countryInfoId")))
+                .thenReturn(List.of());
         when(visitedCountryRepository.findByUserIdOrderByFirstVisitedAtAsc("user1"))
                 .thenReturn(List.of());
 

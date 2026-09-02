@@ -14,9 +14,18 @@ public interface CountryInfoRepository extends JpaRepository<CountryInfoEntity, 
 
     Optional<CountryInfoEntity> findByCountryName(String countryName);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<CountryInfoEntity> findFirstByCountryNameIgnoreCaseOrderByCountryInfoIdAsc(
             String countryName
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT c FROM CountryInfoEntity c
+            WHERE LOWER(c.countryName) = LOWER(:countryName)
+            ORDER BY c.countryInfoId ASC
+            """)
+    List<CountryInfoEntity> findByCountryNameIgnoreCaseForUpdate(
+            @Param("countryName") String countryName
     );
 
     @Query("select count(distinct c.countryName) from CountryInfoEntity c")

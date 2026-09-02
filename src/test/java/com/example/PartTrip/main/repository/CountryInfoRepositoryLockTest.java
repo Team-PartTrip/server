@@ -11,12 +11,21 @@ class CountryInfoRepositoryLockTest {
     @Test
     void countryAcquisitionLookupUsesPessimisticWriteLock() throws NoSuchMethodException {
         Lock lock = CountryInfoRepository.class
+                .getMethod("findByCountryNameIgnoreCaseForUpdate", String.class)
+                .getAnnotation(Lock.class);
+
+        assertThat(lock).isNotNull();
+        assertThat(lock.value()).isEqualTo(LockModeType.PESSIMISTIC_WRITE);
+    }
+
+    @Test
+    void ordinaryCountryLookupDoesNotAcquireWriteLock() throws NoSuchMethodException {
+        Lock lock = CountryInfoRepository.class
                 .getMethod(
                         "findFirstByCountryNameIgnoreCaseOrderByCountryInfoIdAsc",
                         String.class)
                 .getAnnotation(Lock.class);
 
-        assertThat(lock).isNotNull();
-        assertThat(lock.value()).isEqualTo(LockModeType.PESSIMISTIC_WRITE);
+        assertThat(lock).isNull();
     }
 }

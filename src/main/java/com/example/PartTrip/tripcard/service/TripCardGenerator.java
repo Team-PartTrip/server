@@ -1,12 +1,10 @@
 package com.example.PartTrip.tripcard.service;
 
 import com.example.PartTrip.tripcard.entity.TripCardEntity;
-import com.example.PartTrip.tripcard.repository.TripCardRepository;
 import com.example.PartTrip.worldmap.service.WorldMapService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -23,18 +21,14 @@ import java.util.List;
 @Slf4j
 public class TripCardGenerator {
 
-    private final TripCardRepository tripCardRepository;
+    private final TripCardCloseService tripCardCloseService;
     private final WorldMapService worldMapService;
 
     /** 종료일이 지난 카드를 잠근다. 이 시점부터 사진을 붙이거나 지울 수 없다. */
-    @Transactional
     public int closeCardsBefore(LocalDate date) {
-
-        List<TripCardEntity> finished =
-                tripCardRepository.findByDateOverFalseAndEndDateBefore(date);
+        List<TripCardEntity> finished = tripCardCloseService.closeCardsBefore(date);
 
         for (TripCardEntity card : finished) {
-            card.setDateOver(true);
             try {
                 worldMapService.acquireCountry(card.getUserId(), card.getTripCardId());
             } catch (IllegalArgumentException exception) {

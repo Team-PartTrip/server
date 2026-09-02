@@ -17,6 +17,7 @@ import com.example.PartTrip.worldmap.repository.VisitedCountryRepository;
 import com.example.PartTrip.worldmap.support.CountryContinentMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -75,7 +76,9 @@ public class WorldMapService {
             throw new IllegalArgumentException("종료된 여행만 방문 국가로 등록할 수 있습니다.");
         }
         CountryInfoEntity country = countryInfoRepository
-                .findFirstByCountryNameIgnoreCaseOrderByCountryInfoIdAsc(trip.getCountryName())
+                .findByCountryNameIgnoreCaseForUpdate(trip.getCountryName())
+                .stream()
+                .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("여행 기록의 국가가 국가 정보에 존재하지 않습니다."));
         String countryCode = requireCountryCode(country.getCountryName());
 
@@ -142,7 +145,8 @@ public class WorldMapService {
 
     @Transactional(readOnly = true)
     public WorldMapStatsResponseDto getStats(String userId) {
-        List<CountryInfoEntity> countries = distinctCountries(countryInfoRepository.findAll());
+        List<CountryInfoEntity> countries = distinctCountries(countryInfoRepository.findAll(
+                Sort.by(Sort.Direction.ASC, "countryInfoId")));
         Map<Long, CountryInfoEntity> countryById = countries.stream()
                 .collect(Collectors.toMap(CountryInfoEntity::getCountryInfoId, Function.identity()));
         List<VisitedCountryEntity> visitedCountries =
