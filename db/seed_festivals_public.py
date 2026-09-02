@@ -116,7 +116,7 @@ def run_sparql(query: str, attempts: int = 4):
 
 def escape(value: str) -> str:
     """SQL 문자열 리터럴에 안전하게 넣기 위한 이스케이프"""
-    return value.replace("\\", "\\\\").replace("'", "\\'")
+    return value.replace("'", "''")
 
 
 def korean_country_names() -> dict:
@@ -344,7 +344,7 @@ def main():
             f"SELECT '{escape(row['country_name'])}', '{escape(row['title'])}', "
             f"'{row['category']}', '{escape(row['description'])}', "
             f"'{row['start_date']}', NULL, '{escape(row['location'])}', {image}\n"
-            "FROM DUAL WHERE NOT EXISTS (\n"
+            "WHERE NOT EXISTS (\n"
             f"    SELECT 1 FROM festival WHERE country_name = '{escape(row['country_name'])}' "
             f"AND title = '{escape(row['title'])}' AND start_date = '{row['start_date']}');\n"
         )

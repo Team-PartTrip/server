@@ -42,7 +42,7 @@ public interface VoteRepository extends JpaRepository<VoteEntity, Long> {
     @Query("""
             SELECT v FROM VoteEntity v
              WHERE v.planId = (
-                   SELECT p.planId FROM GroupTravelPlanEntity p
+                   SELECT MAX(p.planId) FROM GroupTravelPlanEntity p
                     WHERE p.groupId = :plannerId
                       AND p.createdAt = (
                           SELECT MAX(p2.createdAt) FROM GroupTravelPlanEntity p2

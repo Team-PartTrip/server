@@ -60,6 +60,13 @@ public class PlannerInvitationService {
             throw new IllegalArgumentException("본인은 초대할 수 없습니다.");
         }
 
+        long memberCount = groupMemberRepository.countByGroupId(plannerId);
+        long pendingCount = groupInvitationRepository
+                .countByGroupIdAndStatus(plannerId, InvitationStatus.PENDING);
+        if (memberCount + pendingCount + userIds.size() > group.getHeadcount()) {
+            throw new IllegalArgumentException("설정한 여행 인원을 초과하여 초대할 수 없습니다.");
+        }
+
         Set<String> existingUserIds = userRepository.findAllById(userIds).stream()
                 .map(user -> user.getUserId())
                 .collect(Collectors.toSet());
@@ -73,20 +80,6 @@ public class PlannerInvitationService {
                         GroupInvitationEntity::getInvitedUserId,
                         Function.identity()
                 ));
-
-        long memberCount = groupMemberRepository.countByGroupId(plannerId);
-        long pendingCount = groupInvitationRepository
-                .countByGroupIdAndStatus(plannerId, InvitationStatus.PENDING);
-        long newInvitationCount = userIds.stream()
-                .filter(id -> !memberUserIds.contains(id))
-                .filter(id -> {
-                    GroupInvitationEntity invitation = invitationsByUserId.get(id);
-                    return invitation == null || invitation.getStatus() != InvitationStatus.PENDING;
-                })
-                .count();
-        if (memberCount + pendingCount + newInvitationCount > group.getHeadcount()) {
-            throw new IllegalArgumentException("설정한 여행 인원을 초과하여 초대할 수 없습니다.");
-        }
 
         LocalDateTime now = LocalDateTime.now();
         List<GroupInvitationEntity> invitationsToSave = new ArrayList<>();

@@ -79,6 +79,8 @@ public class GoogleLoginService {
         tokenEntity.setUserId(user.getUserId());
         tokenEntity.setRefreshToken(refreshToken);
         tokenEntity.setExpiredAt(LocalDateTime.now().plusDays(7));
+        tokenEntity.setPreviousToken(null);
+        tokenEntity.setPreviousValidUntil(null);
         tokenEntity.setCreateDate(LocalDateTime.now());
         refreshTokenRepository.save(tokenEntity);
 

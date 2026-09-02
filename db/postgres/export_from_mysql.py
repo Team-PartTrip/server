@@ -73,7 +73,19 @@ def literal(value: str) -> str:
         return "NULL"
     # Postgres 는 기본(standard_conforming_strings)에서 역슬래시를 글자로 본다.
     # 작은따옴표만 두 번 쓰면 된다.
-    value = value.replace("\\t", "\t").replace("\\n", "\n").replace("\\\\", "\\")
+    decoded = []
+    index = 0
+    escapes = {"t": "\t", "n": "\n", "\\": "\\"}
+    while index < len(value):
+        if value[index] == "\\" and index + 1 < len(value):
+            escaped = escapes.get(value[index + 1])
+            if escaped is not None:
+                decoded.append(escaped)
+                index += 2
+                continue
+        decoded.append(value[index])
+        index += 1
+    value = "".join(decoded)
     return "'" + value.replace("'", "''") + "'"
 
 

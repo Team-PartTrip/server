@@ -14,7 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -43,6 +45,7 @@ public class TravelPlanService {
         }
 
         LocalDate today = LocalDate.now();
+        Set<Long> groupsWithLatestPlan = new HashSet<>();
 
         // 이미 끝난 여행은 제외하고 시작일이 가장 이른 것을 고른다.
         // 여행 중인 계획은 끝나지 않았으므로 자연히 먼저 잡힌다.
@@ -50,6 +53,7 @@ public class TravelPlanService {
                 groupTravelPlanRepository
                         .findByGroupIdInOrderByCreatedAtDesc(groupIds)
                         .stream()
+                        .filter(plan -> groupsWithLatestPlan.add(plan.getGroupId()))
                         .filter(plan -> !plan.getEndDate().isBefore(today))
                         .min(Comparator.comparing(
                                 GroupTravelPlanEntity::getStartDate

@@ -42,9 +42,8 @@ public class PlannerDeleteService {
 
     @Transactional
     public void deletePlanner(Long plannerId, String userId) {
-        if (!travelGroupRepository.existsById(plannerId)) {
-            throw new NotFoundException("플래너가 존재하지 않습니다.");
-        }
+        travelGroupRepository.findByIdForUpdate(plannerId)
+                .orElseThrow(() -> new NotFoundException("플래너가 존재하지 않습니다."));
         // 남의 플래너를 지우려는 것도 "권한 없음" 이다. 404 로 답하면
         // 그 id 의 플래너가 있는지 없는지를 알려주는 셈이 된다.
         GroupMemberEntity member = groupMemberRepository

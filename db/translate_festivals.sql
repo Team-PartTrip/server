@@ -1,8 +1,10 @@
 -- 축제 이름·장소를 한국어 표기로 바꾼다 (db/festival_ko.py 기준).
 -- 이미 한국어인 행은 건드리지 않는다. 여러 번 실행해도 결과가 같다.
 
-UPDATE festival SET title = '싱가포르 푸드 페스티벌' WHERE festival_id = 1;
-UPDATE festival SET title = '앙코스 축제', location = '타코라디' WHERE festival_id = 41;
+UPDATE festival SET title = '싱가포르 푸드 페스티벌'
+WHERE country_name = '싱가포르' AND title = 'Singapore Food Festival' AND start_date = '2026-09-04';
+UPDATE festival SET title = '앙코스 축제', location = '타코라디'
+WHERE country_name = '가나' AND title = 'Ankos Festival' AND start_date = '2026-12-24';
 UPDATE festival SET title = '누페 문화의 날' WHERE festival_id = 42;
 UPDATE festival SET title = '에데아로 축제' WHERE festival_id = 43;
 UPDATE festival SET title = '케이프타운 민스트럴 카니발' WHERE festival_id = 44;

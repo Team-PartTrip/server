@@ -47,7 +47,7 @@ public class PlannerCartService {
             PlannerCartRequestDto dto,
             String userId
     ) {
-        TravelGroupEntity group = requireMember(plannerId, userId);
+        TravelGroupEntity group = requireMemberForUpdate(plannerId, userId);
         GroupTravelPlanEntity plan = requirePlan(plannerId);
         List<Long> placeIds = dto.getPlaceIds().stream().distinct().toList();
         Map<Long, TourPlaceEntity> placesById = tourPlaceRepository.findAllById(placeIds).stream()
@@ -156,6 +156,15 @@ public class PlannerCartService {
 
     private TravelGroupEntity requireMember(Long plannerId, String userId) {
         TravelGroupEntity group = travelGroupRepository.findById(plannerId)
+                .orElseThrow(() -> new IllegalArgumentException("플래너가 존재하지 않습니다."));
+        if (!groupMemberRepository.existsByGroupIdAndUserId(plannerId, userId)) {
+            throw new IllegalArgumentException("해당 플래너의 멤버만 장바구니를 사용할 수 있습니다.");
+        }
+        return group;
+    }
+
+    private TravelGroupEntity requireMemberForUpdate(Long plannerId, String userId) {
+        TravelGroupEntity group = travelGroupRepository.findByIdForUpdate(plannerId)
                 .orElseThrow(() -> new IllegalArgumentException("플래너가 존재하지 않습니다."));
         if (!groupMemberRepository.existsByGroupIdAndUserId(plannerId, userId)) {
             throw new IllegalArgumentException("해당 플래너의 멤버만 장바구니를 사용할 수 있습니다.");

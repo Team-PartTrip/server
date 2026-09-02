@@ -7,6 +7,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
+import org.springframework.boot.http.client.ClientHttpRequestFactorySettings;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -16,6 +18,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -59,13 +62,20 @@ public class TourPlaceImportService {
 
     /** 카테고리당 가져올 개수. 요청 수가 아니라 한 요청의 결과 수다 */
     private static final int PER_CATEGORY = 10;
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
+    private static final Duration READ_TIMEOUT = Duration.ofSeconds(30);
 
     private final TourPlaceRepository tourPlaceRepository;
 
     @Value("${google.places.api-key}")
     private String apiKey;
 
-    private final RestClient restClient = RestClient.create();
+    private final RestClient restClient = RestClient.builder()
+            .requestFactory(ClientHttpRequestFactoryBuilder.detect().build(
+                    ClientHttpRequestFactorySettings.defaults()
+                            .withConnectTimeout(CONNECT_TIMEOUT)
+                            .withReadTimeout(READ_TIMEOUT)))
+            .build();
 
     /**
      * 도시들을 다시 채운다.
@@ -93,8 +103,8 @@ public class TourPlaceImportService {
                 continue;
             }
 
-            backup(cityName);
-            tourPlaceRepository.deleteByCityName(cityName);
+            backup(countryName, cityName);
+            tourPlaceRepository.deleteByCountryNameAndCityName(countryName, cityName);
             tourPlaceRepository.saveAll(places);
             saved.put(entry, places.size());
             log.info("{} {} — {}개 저장", countryName, cityName, places.size());
@@ -117,7 +127,7 @@ public class TourPlaceImportService {
         if (countryName == null || cityName == null || cityName.isBlank()) {
             return false;
         }
-        if (!tourPlaceRepository.findByCityName(cityName).isEmpty()) {
+        if (!tourPlaceRepository.findByCountryNameAndCityName(countryName, cityName).isEmpty()) {
             return false;
         }
         List<TourPlaceEntity> places = fetchCity(countryName, cityName, false);
@@ -270,8 +280,9 @@ public class TourPlaceImportService {
     }
 
     /** 지우기 전에 되돌릴 수 있게 남긴다 */
-    private void backup(String cityName) {
-        List<TourPlaceEntity> old = tourPlaceRepository.findByCityName(cityName);
+    private void backup(String countryName, String cityName) {
+        List<TourPlaceEntity> old = tourPlaceRepository
+                .findByCountryNameAndCityName(countryName, cityName);
         if (old.isEmpty()) {
             return;
         }

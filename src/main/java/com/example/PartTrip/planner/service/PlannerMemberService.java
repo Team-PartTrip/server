@@ -6,6 +6,7 @@ import com.example.PartTrip.planner.dto.response.PlannerJoinResponseDto;
 import com.example.PartTrip.planner.entity.GroupMemberEntity;
 import com.example.PartTrip.planner.entity.TravelGroupEntity;
 import com.example.PartTrip.planner.enums.GroupRole;
+import com.example.PartTrip.planner.enums.GroupStatus;
 import com.example.PartTrip.planner.repository.GroupMemberRepository;
 import com.example.PartTrip.planner.repository.TravelGroupRepository;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,10 @@ public class PlannerMemberService {
         TravelGroupEntity group = travelGroupRepository
                 .findByInviteCodeForUpdate(inviteCode)
                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 초대 코드입니다."));
+
+        if (group.getStatus() != GroupStatus.PLANNING) {
+            throw new IllegalArgumentException("계획 중인 플래너에만 참여할 수 있습니다.");
+        }
 
         if (groupMemberRepository.existsByGroupIdAndUserId(group.getGroupId(), userId)) {
             throw new IllegalArgumentException("이미 참여한 플래너입니다.");

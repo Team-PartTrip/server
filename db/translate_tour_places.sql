@@ -7,7 +7,8 @@
 -- 베트남어·태국어 주소는 일부러 두었다. 현지 표기여야 택시나 지도에서
 -- 쓸 수 있다. 일본어 주소는 한자라 읽기 어려워 한글로 바꿨다.
 
-update tour_place set description='오사카의 맛집 · 해산물' where tour_place_id=6;
+update tour_place set description='오사카의 맛집 · 해산물'
+where country_name='일본' and city_name='오사카' and place_name='Gankozushi';
 update tour_place set place_name='사이제리야', description='오사카의 맛집 · 이탈리안', address='오사카부 오사카시 주오구 17' where tour_place_id=8;
 update tour_place set place_name='유카리', description='오사카의 맛집 · 일식' where tour_place_id=9;
 update tour_place set place_name='교자노오쇼', description='오사카의 맛집 · 중식' where tour_place_id=10;

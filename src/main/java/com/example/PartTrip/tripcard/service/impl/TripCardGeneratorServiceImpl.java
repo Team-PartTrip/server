@@ -1,13 +1,12 @@
 package com.example.PartTrip.tripcard.service.impl;
 
 import com.example.PartTrip.tripcard.entity.TripCardEntity;
-import com.example.PartTrip.tripcard.repository.TripCardRepository;
+import com.example.PartTrip.tripcard.service.TripCardCloseService;
 import com.example.PartTrip.worldmap.service.WorldMapService;
 import com.example.PartTrip.tripcard.service.TripCardGeneratorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -24,7 +23,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class TripCardGeneratorServiceImpl implements TripCardGeneratorService {
 
-    private final TripCardRepository tripCardRepository;
+    private final TripCardCloseService tripCardCloseService;
     private final WorldMapService worldMapService;
 
     /**
@@ -37,18 +36,9 @@ public class TripCardGeneratorServiceImpl implements TripCardGeneratorService {
      * 그날 잠긴 카드가 전부 되돌아간다. 카드는 먼저 잠그고 획득은 건별로
      * 넘어간다.
      */
-    @Transactional
     @Override
     public int closeCardsBefore(LocalDate date) {
-
-        List<TripCardEntity> finished =
-                tripCardRepository.findByDateOverFalseAndEndDateBefore(date);
-
-        for (TripCardEntity card : finished) {
-            card.setDateOver(true);
-        }
-        // 위 변경이 반영돼야 아래 획득이 "종료된 여행" 으로 본다
-        tripCardRepository.flush();
+        List<TripCardEntity> finished = tripCardCloseService.closeCardsBefore(date);
 
         for (TripCardEntity card : finished) {
             try {

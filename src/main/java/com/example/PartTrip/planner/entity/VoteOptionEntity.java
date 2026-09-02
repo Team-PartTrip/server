@@ -11,6 +11,9 @@ import java.time.LocalDateTime;
 @Entity
 @Table(
         name = "vote_option",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_vote_option_vote_place",
+                columnNames = {"vote_id", "tour_place_id"}),
         // 투표 화면을 열 때마다 vote_id 로 후보를 긁는다
         indexes = @Index(name = "idx_vote_option_vote", columnList = "vote_id")
 )

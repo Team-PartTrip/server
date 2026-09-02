@@ -57,8 +57,8 @@ public interface TourPlaceRepository extends JpaRepository<TourPlaceEntity, Long
     List<PopularCityResponseDto> findPopularCities(Pageable pageable);
 
     // 구글 플레이스로 다시 채울 때 그 도시 것만 갈아끼운다
-    List<TourPlaceEntity> findByCityName(String cityName);
+    List<TourPlaceEntity> findByCountryNameAndCityName(String countryName, String cityName);
 
     @Transactional
-    void deleteByCityName(String cityName);
+    void deleteByCountryNameAndCityName(String countryName, String cityName);
 }

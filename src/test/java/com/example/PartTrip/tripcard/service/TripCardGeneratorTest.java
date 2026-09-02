@@ -1,6 +1,7 @@
 package com.example.PartTrip.tripcard.service;
 
 import com.example.PartTrip.tripcard.entity.TripCardEntity;
+import com.example.PartTrip.tripcard.service.impl.TripCardGeneratorServiceImpl;
 import com.example.PartTrip.worldmap.service.WorldMapService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,7 +25,7 @@ class TripCardGeneratorTest {
     @Mock
     private WorldMapService worldMapService;
     @InjectMocks
-    private TripCardGenerator tripCardGenerator;
+    private TripCardGeneratorServiceImpl tripCardGenerator;
 
     @Test
     void keepsClosingResultWhenCountryAcquisitionFails() {

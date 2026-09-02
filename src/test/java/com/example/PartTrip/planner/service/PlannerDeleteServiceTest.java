@@ -4,6 +4,7 @@ import com.example.PartTrip.global.exception.ForbiddenException;
 import com.example.PartTrip.global.exception.NotFoundException;
 import com.example.PartTrip.planner.entity.GroupMemberEntity;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
+import com.example.PartTrip.planner.entity.TravelGroupEntity;
 import com.example.PartTrip.planner.entity.VoteEntity;
 import com.example.PartTrip.planner.enums.GroupRole;
 import com.example.PartTrip.planner.repository.GroupInvitationRepository;
@@ -56,7 +57,8 @@ class PlannerDeleteServiceTest {
 
     @BeforeEach
     void setUp() {
-        lenient().when(travelGroupRepository.existsById(PLANNER_ID)).thenReturn(true);
+        lenient().when(travelGroupRepository.findByIdForUpdate(PLANNER_ID))
+                .thenReturn(Optional.of(new TravelGroupEntity()));
     }
 
     private void givenRole(String userId, GroupRole role) {
@@ -125,7 +127,7 @@ class PlannerDeleteServiceTest {
 
     @Test
     void 없는_플래너면_거부한다() {
-        given(travelGroupRepository.existsById(PLANNER_ID)).willReturn(false);
+        given(travelGroupRepository.findByIdForUpdate(PLANNER_ID)).willReturn(Optional.empty());
 
         // 404 로 나가야 한다 (API-005-12)
         assertThatThrownBy(() -> plannerDeleteService.deletePlanner(PLANNER_ID, OWNER_ID))
