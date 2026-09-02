@@ -194,7 +194,7 @@ public class TourPlaceImportService {
         entity.setCityName(cityName);
         entity.setPlaceName(place.path("displayName").path("text").asText());
         entity.setCategory(category);
-        entity.setAddress(cleanAddress(text(place, "formattedAddress", 500)));
+        entity.setAddress(cleanAddress(text(place, "formattedAddress", 500), countryName));
         entity.setDescription(
                 place.path("editorialSummary").path("text").isMissingNode()
                         ? null
@@ -256,15 +256,17 @@ public class TourPlaceImportService {
      *   "323 Đ. Trần Hưng Đạo, An Hải, Đà Nẵng 550000 베트남"
      *     → "323 Đ. Trần Hưng Đạo, An Hải, Đà Nẵng"
      */
-    static String cleanAddress(String address) {
+    static String cleanAddress(String address, String countryName) {
         if (address == null || address.isBlank()) {
             return null;
         }
         String cleaned = address
                 // 일본 우편번호 (〒123-4567)
                 .replaceAll("〒\\s*\\d{3}-\\d{4}", " ")
-                // 나라 이름. 앞뒤 어디에 붙어도 뗀다
-                .replaceAll("(^|[,\\s])(일본|베트남|싱가포르|대한민국|태국|Japan|Vietnam|Singapore)($|[,\\s])", " ")
+                // 그 나라 이름. 앞뒤 어디에 붙어도 뗀다.
+                // 예전에는 목록을 박아뒀는데, 도시를 새로 받아올 때마다
+                // 목록에 없는 나라(프랑스…)가 주소 끝에 그대로 남았다.
+                .replaceAll(countryPattern(countryName), " ")
                 // 남은 우편번호 (123-4567 · 550000 · 059919)
                 .replaceAll("(^|[,\\s])\\d{3}-\\d{4}($|[,\\s])", " ")
                 .replaceAll("(^|[,\\s])\\d{5,6}($|[,\\s])", " ")
@@ -277,6 +279,37 @@ public class TourPlaceImportService {
                 .replaceAll("^[,\\s]+", "")
                 .replaceAll("[,\\s]+$", "");
         return cleaned.isBlank() ? null : cleaned;
+    }
+
+    /** 그 나라 이름과, 구글이 섞어 쓰는 영문 표기까지 함께 지운다 */
+    private static String countryPattern(String countryName) {
+        String korean = countryName == null || countryName.isBlank()
+                ? ""
+                : java.util.regex.Pattern.quote(countryName.trim());
+        String english = englishNameOf(countryName);
+        String names = korean.isEmpty() ? english
+                : english.isEmpty() ? korean
+                : korean + "|" + english;
+        if (names.isEmpty()) {
+            return "(?!)";  // 지울 것이 없으면 아무것도 안 맞게 둔다
+        }
+        return "(^|[,\\s])(" + names + ")($|[,\\s])";
+    }
+
+    /** "일본" → "Japan". ISO 목록에서 찾는다 */
+    private static String englishNameOf(String countryName) {
+        if (countryName == null || countryName.isBlank()) {
+            return "";
+        }
+        String target = countryName.trim();
+        for (String code : java.util.Locale.getISOCountries()) {
+            java.util.Locale locale = java.util.Locale.of("", code);
+            if (target.equals(locale.getDisplayCountry(java.util.Locale.KOREAN))) {
+                return java.util.regex.Pattern.quote(
+                        locale.getDisplayCountry(java.util.Locale.ENGLISH));
+            }
+        }
+        return "";
     }
 
     /** 지우기 전에 되돌릴 수 있게 남긴다 */
