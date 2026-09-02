@@ -7,7 +7,13 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "tour_place")
+@Table(
+        name = "tour_place",
+        // 메인 추천 · 장소 목록 · 인기 도시가 모두 이 두 컬럼으로 찾는다
+        indexes = @Index(
+                name = "idx_tour_place_country_city",
+                columnList = "country_name, city_name")
+)
 @Getter
 @Setter
 @NoArgsConstructor

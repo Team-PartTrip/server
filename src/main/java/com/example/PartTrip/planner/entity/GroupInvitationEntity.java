@@ -13,7 +13,11 @@ import java.time.LocalDateTime;
         name = "group_invitation",
         uniqueConstraints = @UniqueConstraint(
                 name = "uk_group_invitation_group_user",
-                columnNames = {"group_id", "invited_user_id"})
+                columnNames = {"group_id", "invited_user_id"}),
+        // 받은 초대 목록은 invited_user_id 로만 찾는다
+        indexes = @Index(
+                name = "idx_group_invitation_invited",
+                columnList = "invited_user_id")
 )
 @Getter
 @Setter

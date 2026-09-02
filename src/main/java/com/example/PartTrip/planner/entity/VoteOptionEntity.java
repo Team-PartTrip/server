@@ -9,7 +9,11 @@ import java.time.LocalDateTime;
 
 // 투표 후보 — 장바구니에 담긴 장소 (Func-008-03-1)
 @Entity
-@Table(name = "vote_option")
+@Table(
+        name = "vote_option",
+        // 투표 화면을 열 때마다 vote_id 로 후보를 긁는다
+        indexes = @Index(name = "idx_vote_option_vote", columnList = "vote_id")
+)
 @Getter
 @Setter
 @NoArgsConstructor

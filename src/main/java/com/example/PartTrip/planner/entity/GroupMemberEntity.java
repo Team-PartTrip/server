@@ -15,7 +15,10 @@ import java.time.LocalDateTime;
         name = "group_member",
         uniqueConstraints = @UniqueConstraint(
                 name = "uk_group_member_group_user",
-                columnNames = {"group_id", "user_id"})
+                columnNames = {"group_id", "user_id"}),
+        // 위 복합 유니크는 group_id 로만 쓸 수 있다. 내 플래너 목록은
+        // user_id 로 찾으므로 따로 걸어준다.
+        indexes = @Index(name = "idx_group_member_user", columnList = "user_id")
 )
 @Getter
 @Setter

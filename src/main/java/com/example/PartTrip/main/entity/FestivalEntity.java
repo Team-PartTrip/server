@@ -5,7 +5,10 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "festival")
+@Table(
+        name = "festival",
+        indexes = @Index(name = "idx_festival_country", columnList = "countryName")
+)
 @Getter
 @Setter
 public class FestivalEntity {

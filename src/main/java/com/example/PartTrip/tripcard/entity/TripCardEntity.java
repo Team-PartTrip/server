@@ -12,7 +12,11 @@ import java.time.LocalDateTime;
 // 이동 거리 86km" 가 이 한 행에 해당한다.
 // 집계값은 매번 세지 않고 카드에 들고 있는다.
 @Entity
-@Table(name = "trip_card")
+@Table(
+        name = "trip_card",
+        // 기록 탭이 내 여행 카드를 user_id 로 찾는다
+        indexes = @Index(name = "idx_trip_card_user", columnList = "user_id")
+)
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

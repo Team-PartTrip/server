@@ -12,7 +12,14 @@ import java.time.LocalDateTime;
 // 앱 D11 은 갤러리에서 사진을 골라 담고 코멘트를 남긴다.
 // 해설 카메라(Func-005)로 찍은 사진이면 photo_id 로 연결한다.
 @Entity
-@Table(name = "trip_card_photo")
+@Table(
+        name = "trip_card_photo",
+        // 카드 상세는 카드 단위로, 장소별 사진은 place 단위로 긁는다
+        indexes = {
+                @Index(name = "idx_trip_card_photo_card", columnList = "trip_card_id"),
+                @Index(name = "idx_trip_card_photo_place", columnList = "trip_card_place_id")
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor
