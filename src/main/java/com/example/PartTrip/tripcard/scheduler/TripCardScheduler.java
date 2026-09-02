@@ -1,6 +1,6 @@
 package com.example.PartTrip.tripcard.scheduler;
 
-import com.example.PartTrip.tripcard.service.TripCardGenerator;
+import com.example.PartTrip.tripcard.service.TripCardGeneratorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -20,14 +20,14 @@ import java.time.LocalDate;
 @RequiredArgsConstructor
 public class TripCardScheduler {
 
-    private final TripCardGenerator tripCardGenerator;
+    private final TripCardGeneratorService tripCardGeneratorService;
 
     // 매일 새벽 1시. 하루 한 번이면 충분하다.
     // 값을 밖으로 뺀 것은 시연이나 테스트에서 짧게 돌리기 위해서다.
     @Scheduled(cron = "${part-trip.trip-card.close-cron:0 0 1 * * *}")
     public void closeFinishedCards() {
         try {
-            int closed = tripCardGenerator.closeCardsBefore(LocalDate.now());
+            int closed = tripCardGeneratorService.closeCardsBefore(LocalDate.now());
             if (closed > 0) {
                 log.info("여행 종료 처리 {}건", closed);
             }
