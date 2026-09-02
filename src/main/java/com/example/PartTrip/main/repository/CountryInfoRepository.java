@@ -12,6 +12,10 @@ public interface CountryInfoRepository extends JpaRepository<CountryInfoEntity, 
 
     Optional<CountryInfoEntity> findByCountryName(String countryName);
 
+    Optional<CountryInfoEntity> findFirstByCountryNameIgnoreCaseOrderByCountryInfoIdAsc(
+            String countryName
+    );
+
     // 검색어가 포함된 국가만 조회
     List<CountryInfoEntity> findTop20ByCountryNameContainingOrderByCountryNameAsc(
             String keyword

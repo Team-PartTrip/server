@@ -8,12 +8,12 @@ import lombok.Setter;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-// 방문 국가 — 세계지도 땅따먹기 (Func-009)
+// 방문 국가 — 세계지도 땅따먹기 (API-006)
 //
-// 명세서 Func-009-02: "이미 획득한 국가는 중복 등록하지 않는다"
+// 명세서 API-006-02: "이미 획득한 국가는 중복 등록하지 않는다"
 // → (user_id, country_info_id) 를 유니크로 두어 DB 가 보장한다.
 //
-// visit_count 와 방문일로 Func-009-03(국가별 기록), Func-009-04(달성 현황)까지 커버한다.
+// visit_count 와 방문일로 API-006-03(국가별 기록), API-006-04(달성 현황)까지 커버한다.
 @Entity
 @Table(
         name = "visited_country",
