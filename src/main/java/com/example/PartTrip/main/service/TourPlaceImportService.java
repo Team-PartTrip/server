@@ -153,7 +153,7 @@ public class TourPlaceImportService {
         entity.setCityName(cityName);
         entity.setPlaceName(place.path("displayName").path("text").asText());
         entity.setCategory(category);
-        entity.setAddress(text(place, "formattedAddress", 500));
+        entity.setAddress(cleanAddress(text(place, "formattedAddress", 500)));
         entity.setDescription(
                 place.path("editorialSummary").path("text").isMissingNode()
                         ? null
@@ -200,6 +200,42 @@ public class TourPlaceImportService {
             log.warn("사진 주소 실패 ({}): {}", photoName, e.getMessage());
             return null;
         }
+    }
+
+
+    /**
+     * 구글이 주는 주소를 화면에 넣을 만큼만 남긴다.
+     *
+     * formattedAddress 는 나라 이름과 우편번호가 앞이나 뒤에 붙어 오는데
+     * (형식이 나라마다 다르다), 목록에서는 한 줄로 잘려서 정작 필요한
+     * 도시·구가 안 보인다.
+     *
+     *   "일본 〒542-0076 Osaka, Chuo Ward, Namba, 1-chōme−6−８"
+     *     → "Osaka, Chuo Ward, Namba, 1-chōme−6−８"
+     *   "323 Đ. Trần Hưng Đạo, An Hải, Đà Nẵng 550000 베트남"
+     *     → "323 Đ. Trần Hưng Đạo, An Hải, Đà Nẵng"
+     */
+    static String cleanAddress(String address) {
+        if (address == null || address.isBlank()) {
+            return null;
+        }
+        String cleaned = address
+                // 일본 우편번호 (〒123-4567)
+                .replaceAll("〒\\s*\\d{3}-\\d{4}", " ")
+                // 나라 이름. 앞뒤 어디에 붙어도 뗀다
+                .replaceAll("(^|[,\\s])(일본|베트남|싱가포르|대한민국|태국|Japan|Vietnam|Singapore)($|[,\\s])", " ")
+                // 남은 우편번호 (123-4567 · 550000 · 059919)
+                .replaceAll("(^|[,\\s])\\d{3}-\\d{4}($|[,\\s])", " ")
+                .replaceAll("(^|[,\\s])\\d{5,6}($|[,\\s])", " ")
+                // 국가 코드가 끝에 남는 경우 (… 2층 KR)
+                .replaceAll("[,\\s]+[A-Z]{2}$", "")
+                // 위에서 지운 자리에 남은 빈 칸·쉼표 정리
+                .replaceAll("\\s*,\\s*,\\s*", ", ")
+                .replaceAll("\\s{2,}", " ")
+                .trim()
+                .replaceAll("^[,\\s]+", "")
+                .replaceAll("[,\\s]+$", "");
+        return cleaned.isBlank() ? null : cleaned;
     }
 
     /** 지우기 전에 되돌릴 수 있게 남긴다 */

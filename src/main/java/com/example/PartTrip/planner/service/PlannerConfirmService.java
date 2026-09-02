@@ -94,9 +94,10 @@ public class PlannerConfirmService {
             // 아무도 투표하지 않은 장바구니는 모든 후보가 0표 동점이다.
             // 고른 것을 함께 보내면 그걸로 확정하고, 없을 때만 막는다.
             if (chosenOptionId == null && Boolean.TRUE.equals(closed.getTied())) {
+                // voteId 는 사용자에게 아무 의미가 없다. 어느 투표인지 알려준다.
                 throw new IllegalArgumentException(
-                        "동점 투표가 있습니다. 그룹장이 공동 1위 후보를 먼저 선택해주세요. voteId="
-                                + vote.getVoteId());
+                        vote.getCategory().getLabel()
+                                + " 투표가 동점이에요. 공동 1위 중에서 하나를 먼저 골라주세요.");
             }
 
             VoteConfirmRequestDto confirmRequest = new VoteConfirmRequestDto();
