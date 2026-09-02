@@ -36,4 +36,25 @@ public interface GroupMemberRepository extends JpaRepository<GroupMemberEntity, 
             GROUP BY m.groupId
             """)
     List<Object[]> countMembersByGroupIds(@Param("groupIds") Collection<Long> groupIds);
+
+    /**
+     * 플래너 목록 한 번에 받기.
+     *
+     * 예전에는 멤버십 → 그룹 → 최신 계획 → 참여 인원을 각각 물어서 왕복이
+     * 네 번이었다. Supabase 가 도쿄에 있어 왕복 한 번이 60~100ms 라,
+     * 목록 하나에 300ms 가 걸렸다. 한 번에 받는다.
+     *
+     * 그룹에 계획이 여러 개면 행도 여러 개 나온다. 최신순으로 정렬해두고
+     * 서비스에서 그룹별 첫 행만 쓴다.
+     */
+    @Query("""
+            SELECT m, g, p,
+                   (SELECT COUNT(m2) FROM GroupMemberEntity m2 WHERE m2.groupId = m.groupId)
+            FROM GroupMemberEntity m
+            JOIN TravelGroupEntity g ON g.groupId = m.groupId
+            LEFT JOIN GroupTravelPlanEntity p ON p.groupId = m.groupId
+            WHERE m.userId = :userId
+            ORDER BY g.createdAt DESC, p.createdAt DESC
+            """)
+    List<Object[]> findMyPlannerRows(@Param("userId") String userId);
 }

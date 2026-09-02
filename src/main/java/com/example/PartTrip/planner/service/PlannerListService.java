@@ -5,71 +5,37 @@ import com.example.PartTrip.planner.entity.GroupMemberEntity;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
 import com.example.PartTrip.planner.entity.TravelGroupEntity;
 import com.example.PartTrip.planner.repository.GroupMemberRepository;
-import com.example.PartTrip.planner.repository.GroupTravelPlanRepository;
-import com.example.PartTrip.planner.repository.TravelGroupRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Comparator;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class PlannerListService {
 
-    private final TravelGroupRepository travelGroupRepository;
     private final GroupMemberRepository groupMemberRepository;
-    private final GroupTravelPlanRepository groupTravelPlanRepository;
 
     @Transactional(readOnly = true)
     public List<PlannerListResponseDto> getMyPlanners(String userId) {
-        List<GroupMemberEntity> memberships = groupMemberRepository.findByUserId(userId);
-        if (memberships.isEmpty()) {
-            return List.of();
+        // 쿼리가 그룹 생성순 → 계획 최신순으로 정렬해 온다.
+        // 그룹마다 첫 행이 최신 계획이라, 뒤에 오는 옛 계획은 버린다.
+        Map<Long, PlannerListResponseDto> byGroupId = new LinkedHashMap<>();
+
+        for (Object[] row : groupMemberRepository.findMyPlannerRows(userId)) {
+            GroupMemberEntity membership = (GroupMemberEntity) row[0];
+            TravelGroupEntity group = (TravelGroupEntity) row[1];
+            GroupTravelPlanEntity plan = (GroupTravelPlanEntity) row[2];
+            long joinedMemberCount = (Long) row[3];
+
+            byGroupId.computeIfAbsent(
+                    group.getGroupId(),
+                    id -> toResponse(membership, group, plan, joinedMemberCount));
         }
-
-        List<Long> groupIds = memberships.stream()
-                .map(GroupMemberEntity::getGroupId)
-                .toList();
-
-        Map<Long, TravelGroupEntity> groupsById = travelGroupRepository
-                .findAllById(groupIds)
-                .stream()
-                .collect(Collectors.toMap(
-                        TravelGroupEntity::getGroupId,
-                        Function.identity()
-                ));
-
-        Map<Long, GroupTravelPlanEntity> plansByGroupId = new HashMap<>();
-        groupTravelPlanRepository.findByGroupIdInOrderByCreatedAtDesc(groupIds)
-                .forEach(plan -> plansByGroupId.putIfAbsent(plan.getGroupId(), plan));
-
-        Map<Long, Long> joinedCountByGroupId = groupMemberRepository
-                .countMembersByGroupIds(groupIds)
-                .stream()
-                .collect(Collectors.toMap(
-                        row -> (Long) row[0],
-                        row -> (Long) row[1]
-                ));
-
-        return memberships.stream()
-                .filter(membership -> groupsById.containsKey(membership.getGroupId()))
-                .sorted(Comparator.comparing(
-                        membership -> groupsById.get(membership.getGroupId()).getCreatedAt(),
-                        Comparator.reverseOrder()
-                ))
-                .map(membership -> toResponse(
-                        membership,
-                        groupsById.get(membership.getGroupId()),
-                        plansByGroupId.get(membership.getGroupId()),
-                        joinedCountByGroupId.getOrDefault(membership.getGroupId(), 0L)
-                ))
-                .toList();
+        return List.copyOf(byGroupId.values());
     }
 
     private PlannerListResponseDto toResponse(
