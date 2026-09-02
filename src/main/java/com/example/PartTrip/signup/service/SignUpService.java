@@ -7,6 +7,7 @@ import com.example.PartTrip.signup.repository.PendingSignUpRepository;
 import com.example.PartTrip.signup.repository.UserRepository;
 import com.example.PartTrip.signup.support.NickNameGenerator;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -109,7 +110,12 @@ public class SignUpService {
         user.setCreateDate(LocalDateTime.now());
 
         // user_manage 테이블에 진짜 회원 저장
-        UserEntity savedUser = userRepository.save(user);
+        UserEntity savedUser;
+        try {
+            savedUser = userRepository.saveAndFlush(user);
+        } catch (DataIntegrityViolationException e) {
+            throw new IllegalArgumentException("이미 가입된 이메일입니다.", e);
+        }
 
         // 회원가입 완료됐으니 임시 데이터 삭제
         pendingSignUpRepository.delete(pending);

@@ -31,6 +31,7 @@ class MailServiceTest {
                 ArgumentCaptor.forClass(EmailVerificationEntity.class);
         verify(emailVerificationRepository).save(captor.capture());
         assertThat(captor.getValue().getEmail()).isEqualTo("090626ihs@dgsw.hs.kr");
+        assertThat(captor.getValue().getCode()).matches("[1-9][0-9]{5}");
         assertThat(captor.getValue().isVerified()).isFalse();
     }
 }

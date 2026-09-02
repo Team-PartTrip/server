@@ -11,6 +11,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Locale;
 
 @Service
@@ -28,11 +29,7 @@ public class FindPasswordService {
         String normalizedEmail = normalizeEmail(email);
 
         // 가입되지 않은 이메일이면 비밀번호를 찾을 수 없음
-        if (userRepository
-                .findFirstByUserMailIgnoreCaseOrderByUserIdAsc(normalizedEmail)
-                .isEmpty()) {
-            throw new IllegalArgumentException("가입되지 않은 이메일입니다.");
-        }
+        findUniqueUserByEmail(normalizedEmail);
 
         // 기존 이메일 인증 로직 재활용
         mailService.sendCode(normalizedEmail);
@@ -64,9 +61,7 @@ public class FindPasswordService {
         }
 
         // 비밀번호를 변경할 회원 조회
-        UserEntity user = userRepository
-                .findFirstByUserMailIgnoreCaseOrderByUserIdAsc(normalizedEmail)
-                .orElseThrow(() -> new IllegalArgumentException("가입되지 않은 이메일입니다."));
+        UserEntity user = findUniqueUserByEmail(normalizedEmail);
 
         // 새 비밀번호를 암호화해서 저장
         user.setUserPwd(passwordEncoder.encode(dto.getNewPassword()));
@@ -78,5 +73,17 @@ public class FindPasswordService {
 
     private String normalizeEmail(String email) {
         return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private UserEntity findUniqueUserByEmail(String email) {
+        List<UserEntity> users = userRepository
+                .findAllByUserMailIgnoreCaseOrderByUserIdAsc(email);
+        if (users.isEmpty()) {
+            throw new IllegalArgumentException("가입되지 않은 이메일입니다.");
+        }
+        if (users.size() > 1) {
+            throw new IllegalArgumentException("이메일에 연결된 계정이 여러 개입니다.");
+        }
+        return users.get(0);
     }
 }

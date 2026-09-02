@@ -1,6 +1,8 @@
 package com.example.PartTrip.signup.service;
 
 import com.example.PartTrip.signup.dto.SignUpRequestDto;
+import com.example.PartTrip.signup.entity.PendingSignUpEntity;
+import com.example.PartTrip.signup.entity.UserEntity;
 import com.example.PartTrip.signup.repository.PendingSignUpRepository;
 import com.example.PartTrip.signup.repository.UserRepository;
 import com.example.PartTrip.signup.support.NickNameGenerator;
@@ -9,7 +11,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.ArgumentMatchers.any;
@@ -49,5 +55,26 @@ class SignUpServiceTest {
 
         verify(pendingSignUpRepository, never()).save(any());
         verify(mailService, never()).sendCode(anyString());
+    }
+
+    @Test
+    void translatesConcurrentDuplicateEmailConstraintViolation() {
+        PendingSignUpEntity pending = new PendingSignUpEntity();
+        pending.setUserId("newuser1");
+        pending.setUserMail("user@example.com");
+        pending.setUserPwd("encoded-password");
+        pending.setExpiredAt(LocalDateTime.now().plusMinutes(5));
+
+        when(pendingSignUpRepository.findById("user@example.com"))
+                .thenReturn(Optional.of(pending));
+        when(nickNameGenerator.generate()).thenReturn("traveler123");
+        when(userRepository.saveAndFlush(any(UserEntity.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate email"));
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> signUpService.completeSignUp(" USER@EXAMPLE.COM "))
+                .withMessage("이미 가입된 이메일입니다.");
+
+        verify(pendingSignUpRepository, never()).delete(any());
     }
 }

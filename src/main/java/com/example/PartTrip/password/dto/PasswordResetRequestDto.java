@@ -1,5 +1,6 @@
 package com.example.PartTrip.password.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -8,6 +9,7 @@ import lombok.Setter;
 public class PasswordResetRequestDto {
 
     // 비밀번호를 변경할 이메일
+    @NotBlank(message = "이메일을 입력해주세요.")
     private String email;
 
     // 새 비밀번호

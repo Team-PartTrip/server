@@ -4,6 +4,7 @@ import com.example.PartTrip.password.dto.PasswordResetRequestDto;
 import com.example.PartTrip.password.service.FindPasswordService;
 import com.example.PartTrip.signup.dto.EmailSendRequestDto;
 import com.example.PartTrip.signup.dto.EmailVerifyRequestDto;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,7 +20,7 @@ public class FindPasswordController {
 
     // 1단계: 이메일 입력 -> 인증번호 발송
     @PostMapping("/send-code")
-    public String sendCode(@RequestBody EmailSendRequestDto dto) {
+    public String sendCode(@Valid @RequestBody EmailSendRequestDto dto) {
 
         findPasswordService.sendResetCode(dto.getEmail());
 
@@ -37,7 +38,7 @@ public class FindPasswordController {
 
     // 3단계: 새 비밀번호 입력 + 재입력 -> 비밀번호 변경
     @PostMapping("/reset")
-    public String resetPassword(@RequestBody PasswordResetRequestDto dto) {
+    public String resetPassword(@Valid @RequestBody PasswordResetRequestDto dto) {
 
         findPasswordService.resetPassword(dto);
 

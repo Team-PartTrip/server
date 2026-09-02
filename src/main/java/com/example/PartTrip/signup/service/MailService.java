@@ -9,13 +9,15 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Locale;
-import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
 public class MailService {
+
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final JavaMailSender mailSender;
     private final EmailVerificationRepository emailVerificationRepository;
@@ -26,7 +28,7 @@ public class MailService {
         String normalizedEmail = normalizeEmail(email);
 
         // 숫자를 랜덤으로 뽑아 인증 코드 생성 + 인증 코드를 문자열로 변환
-        String code = String.valueOf(new Random().nextInt(900000) + 100000);
+        String code = String.valueOf(SECURE_RANDOM.nextInt(900000) + 100000);
 
         EmailVerificationEntity entity = new EmailVerificationEntity();
         // 사용자가 이력한 이메일을 Entity에 넣음
