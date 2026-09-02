@@ -7,6 +7,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -33,5 +35,15 @@ class TripCardCloseServiceTest {
 
         assertThat(result).containsExactly(card);
         assertThat(card.isDateOver()).isTrue();
+    }
+
+    @Test
+    void cardClosingAlwaysUsesAnIndependentTransaction() throws NoSuchMethodException {
+        Transactional transactional = TripCardCloseService.class
+                .getMethod("closeCardsBefore", LocalDate.class)
+                .getAnnotation(Transactional.class);
+
+        assertThat(transactional).isNotNull();
+        assertThat(transactional.propagation()).isEqualTo(Propagation.REQUIRES_NEW);
     }
 }
