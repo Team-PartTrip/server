@@ -8,6 +8,7 @@ import com.example.PartTrip.planner.dto.response.VoteCloseResponseDto;
 import com.example.PartTrip.planner.entity.GroupMemberEntity;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
 import com.example.PartTrip.planner.entity.TravelGroupEntity;
+import com.example.PartTrip.main.enums.TourPlaceCategory;
 import com.example.PartTrip.planner.entity.VoteEntity;
 import com.example.PartTrip.planner.enums.GroupRole;
 import com.example.PartTrip.planner.enums.VoteStatus;
@@ -85,6 +86,7 @@ class PlannerConfirmServiceTest {
         vote.setVoteId(VOTE_ID);
         vote.setPlanId(PLAN_ID);
         vote.setStatus(VoteStatus.OPEN);
+        vote.setCategory(TourPlaceCategory.RESTAURANT);
 
         given(travelGroupRepository.findById(PLANNER_ID)).willReturn(Optional.of(group));
         given(groupMemberRepository.findByGroupIdAndUserId(PLANNER_ID, OWNER_ID))
@@ -158,7 +160,10 @@ class PlannerConfirmServiceTest {
         assertThatThrownBy(() ->
                 plannerConfirmService.confirmPlanner(PLANNER_ID, null, OWNER_ID))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("동점 투표가 있습니다");
+                .hasMessageContaining("맛집")
+                .hasMessageContaining("동점")
+                // voteId 같은 내부 번호를 사용자에게 보여주지 않는다
+                .hasMessageNotContaining("voteId");
     }
 
     @Test
