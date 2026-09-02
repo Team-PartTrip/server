@@ -33,15 +33,9 @@ public class SignUpRequestDto {
     @Email(message = "이메일 형식이 올바르지 않습니다.")
     private String userMail;
 
-    // 전화번호: 국가번호(+82) 포함 가능, 하이픈 허용
-    @NotBlank(message = "전화번호를 입력해주세요.")
-    @Pattern(
-            regexp = "^\\+?[0-9-]{9,20}$",
-            message = "전화번호 형식이 올바르지 않습니다."
-    )
-    private String phoneNumber;
+    // 전화번호·국적은 기능명세서에서 빠졌다. 회원가입에서 받지 않는다.
+    // user_manage 의 phone_number · my_country 컬럼은 남아 있지만
+    // 여기서 채우지 않는다(ddl-auto=update 는 컬럼을 지우지 않는다).
 
     private String signUpDivision;
-
-    private String myCountry;
 }

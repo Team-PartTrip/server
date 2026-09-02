@@ -51,13 +51,11 @@ public class SignUpService {
         pending.setUserPwd(passwordEncoder.encode(dto.getUserPwd()));
 
         // 전화번호 저장
-        pending.setPhoneNumber(dto.getPhoneNumber());
 
         // 가입 방식 저장
         pending.setSignupDivision(dto.getSignUpDivision());
 
         // 국가 저장
-        pending.setMyCountry(dto.getMyCountry());
 
         // 10분 안에 인증해야 함
         pending.setExpiredAt(LocalDateTime.now().plusMinutes(10));
@@ -89,9 +87,7 @@ public class SignUpService {
         user.setUserId(pending.getUserId());
         user.setUserPwd(pending.getUserPwd());
         user.setUserMail(pending.getUserMail());
-        user.setPhoneNumber(pending.getPhoneNumber());
         user.setSignUpDivision(pending.getSignupDivision());
-        user.setMyCountry(pending.getMyCountry());
         // 닉네임 자동 생성 (랜덤 접미사 · 중복 확인 포함)
         user.setNickName(nickNameGenerator.generate());
 
