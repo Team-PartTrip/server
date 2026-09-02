@@ -19,8 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Comparator;
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -43,15 +43,14 @@ public class VoteStatusService {
     public List<VoteStatusResponseDto> getVotes(Long plannerId, String userId) {
         requirePlannerMember(plannerId, userId);
 
-        GroupTravelPlanEntity plan = groupTravelPlanRepository
-                .findFirstByGroupIdOrderByCreatedAtDesc(plannerId)
-                .orElseThrow(() -> new IllegalArgumentException("플래너의 여행 계획이 없습니다."));
-
-        List<VoteEntity> votes = voteRepository.findByPlanId(plan.getPlanId()).stream()
-                .sorted(Comparator.comparing(VoteEntity::getCreatedAt))
-                .toList();
+        List<VoteEntity> votes = voteRepository.findLatestPlanVotes(plannerId);
 
         if (votes.isEmpty()) {
+            // 투표가 없는 것과 계획 자체가 없는 것은 다르다.
+            // 비어 있을 때만 확인하므로 정상 경로에서는 왕복이 늘지 않는다.
+            groupTravelPlanRepository
+                    .findFirstByGroupIdOrderByCreatedAtDesc(plannerId)
+                    .orElseThrow(() -> new IllegalArgumentException("플래너의 여행 계획이 없습니다."));
             return List.of();
         }
 
@@ -81,26 +80,25 @@ public class VoteStatusService {
             String userId
     ) {
         List<Long> voteIds = votes.stream().map(VoteEntity::getVoteId).toList();
-        List<VoteOptionEntity> options = voteOptionRepository
-                .findByVoteIdInOrderByCreatedAtAsc(voteIds);
+
+        // 후보 + 관광지를 한 번에 받는다
+        List<VoteOptionEntity> options = new ArrayList<>();
+        Map<Long, TourPlaceEntity> placesById = new HashMap<>();
+        for (Object[] row : voteOptionRepository.findOptionsWithPlaces(voteIds)) {
+            VoteOptionEntity option = (VoteOptionEntity) row[0];
+            TourPlaceEntity place = (TourPlaceEntity) row[1];
+            options.add(option);
+            if (place != null) {
+                placesById.put(place.getTourPlaceId(), place);
+            }
+        }
+
         List<VoteRecordEntity> records = voteRecordRepository.findByVoteIdIn(voteIds);
 
         Map<Long, List<VoteOptionEntity>> optionsByVoteId = options.stream()
                 .collect(Collectors.groupingBy(VoteOptionEntity::getVoteId));
         Map<Long, List<VoteRecordEntity>> recordsByVoteId = records.stream()
                 .collect(Collectors.groupingBy(VoteRecordEntity::getVoteId));
-
-        Set<Long> tourPlaceIds = options.stream()
-                .map(VoteOptionEntity::getTourPlaceId)
-                .filter(id -> id != null)
-                .collect(Collectors.toSet());
-        Map<Long, TourPlaceEntity> placesById = tourPlaceIds.isEmpty()
-                ? Map.of()
-                : tourPlaceRepository.findAllById(tourPlaceIds).stream()
-                        .collect(Collectors.toMap(
-                                TourPlaceEntity::getTourPlaceId,
-                                Function.identity()
-                        ));
 
         long eligibleMemberCount = groupMemberRepository.countByGroupId(plannerId);
 
@@ -186,13 +184,20 @@ public class VoteStatusService {
                 .build();
     }
 
+    /**
+     * 멤버인지 확인한다.
+     *
+     * 예전에는 "플래너가 있나"와 "내가 멤버인가"를 따로 물어 왕복이 두 번이었다.
+     * 멤버면 플래너도 있는 것이므로, 통과하는 경우에는 한 번이면 된다.
+     * 막히는 경우에만 이유를 가르려고 한 번 더 묻는다.
+     */
     private void requirePlannerMember(Long plannerId, String userId) {
+        if (groupMemberRepository.existsByGroupIdAndUserId(plannerId, userId)) {
+            return;
+        }
         if (!travelGroupRepository.existsById(plannerId)) {
             throw new IllegalArgumentException("플래너가 존재하지 않습니다.");
         }
-
-        if (!groupMemberRepository.existsByGroupIdAndUserId(plannerId, userId)) {
-            throw new IllegalArgumentException("해당 플래너의 멤버만 투표를 조회할 수 있습니다.");
-        }
+        throw new IllegalArgumentException("해당 플래너의 멤버만 투표를 조회할 수 있습니다.");
     }
 }

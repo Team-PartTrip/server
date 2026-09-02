@@ -35,11 +35,12 @@ public class PlannerMemberListService {
             Long plannerId,
             String userId
     ) {
-        if (!travelGroupRepository.existsById(plannerId)) {
-            throw new IllegalArgumentException("플래너가 존재하지 않습니다.");
-        }
-
+        // 멤버면 플래너도 있는 것이므로, 통과하는 경우에는 한 번만 물으면 된다.
+        // 막히는 경우에만 이유를 가르려고 한 번 더 묻는다.
         if (!groupMemberRepository.existsByGroupIdAndUserId(plannerId, userId)) {
+            if (!travelGroupRepository.existsById(plannerId)) {
+                throw new IllegalArgumentException("플래너가 존재하지 않습니다.");
+            }
             throw new IllegalArgumentException("해당 플래너의 멤버만 조회할 수 있습니다.");
         }
 

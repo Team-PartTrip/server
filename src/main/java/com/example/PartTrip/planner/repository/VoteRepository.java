@@ -32,4 +32,23 @@ public interface VoteRepository extends JpaRepository<VoteEntity, Long> {
     // 마감 임박 알림용 — 아직 열려 있고 마감이 임박한 투표
     List<VoteEntity> findByStatusAndDeadlineBetween(
             VoteStatus status, LocalDateTime from, LocalDateTime to);
+
+    /**
+     * 그룹의 '최신 계획'에 달린 투표를 한 번에 가져온다.
+     *
+     * 예전에는 최신 계획을 먼저 찾고(왕복 1) 그 planId 로 투표를 물었다(왕복 2).
+     * Supabase 가 도쿄에 있어 왕복 한 번이 60~100ms 라 그냥 합친다.
+     */
+    @Query("""
+            SELECT v FROM VoteEntity v
+             WHERE v.planId = (
+                   SELECT p.planId FROM GroupTravelPlanEntity p
+                    WHERE p.groupId = :plannerId
+                      AND p.createdAt = (
+                          SELECT MAX(p2.createdAt) FROM GroupTravelPlanEntity p2
+                           WHERE p2.groupId = :plannerId)
+             )
+             ORDER BY v.createdAt ASC
+            """)
+    List<VoteEntity> findLatestPlanVotes(@Param("plannerId") Long plannerId);
 }
