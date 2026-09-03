@@ -14,7 +14,9 @@ import com.example.PartTrip.tripcard.repository.TripCardPhotoRepository;
 import com.example.PartTrip.tripcard.repository.TripCardPlaceRepository;
 import com.example.PartTrip.tripcard.repository.TripCardRepository;
 import com.example.PartTrip.tripcard.service.TripCardService;
+import com.example.PartTrip.global.storage.ImageStorageService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +32,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class TripCardServiceImpl implements TripCardService {
 
@@ -38,6 +41,7 @@ public class TripCardServiceImpl implements TripCardService {
     private final TripCardPlaceRepository tripCardPlaceRepository;
     private final TripCardPhotoRepository tripCardPhotoRepository;
     private final TourPlaceRepository tourPlaceRepository;
+    private final ImageStorageService imageStorageService;
 
     @Transactional(readOnly = true)
     @Override
@@ -86,7 +90,21 @@ public class TripCardServiceImpl implements TripCardService {
             }
         }
 
+        // 카드 행만 지우면 업로드된 파일이 계속 남는다. 지울 URL 을 먼저 모은다.
+        List<String> imageUrls = tripCardPhotoRepository.findByTripCardIdIn(cardIds).stream()
+                .map(TripCardPhotoEntity::getImageUrl)
+                .filter(Objects::nonNull)
+                .toList();
+
         tripCardRepository.deleteAllById(cardIds);
+
+        // 파일 삭제는 DB 가 정리된 뒤에 한다. 여기서 실패해도 삭제 자체는
+        // 끝난 것이라 되돌리지 않고 남은 파일만 로그로 남긴다.
+        for (String imageUrl : imageUrls) {
+            if (!imageStorageService.delete(imageUrl)) {
+                log.warn("여행 카드 이미지 파일을 지우지 못했습니다: {}", imageUrl);
+            }
+        }
 
         return "삭제 완료";
     }

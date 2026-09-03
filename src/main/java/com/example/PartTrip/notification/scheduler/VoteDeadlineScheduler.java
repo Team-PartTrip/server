@@ -27,9 +27,12 @@ public class VoteDeadlineScheduler {
     // 마감 몇 시간 전에 알릴지
     private static final int NOTIFY_BEFORE_HOURS = 24;
 
-    // 매시 정각. 아래 조회 구간이 한 시간이므로 주기도 한 시간이어야 한다.
-    // 값을 밖으로 뺀 것은 운영 중에 주기를 바꾸거나 테스트에서 짧게 돌리기 위해서다.
-    @Scheduled(cron = "${part-trip.notification.vote-deadline-cron:0 0 * * * *}")
+    // 매시 정각. 조회 구간이 한 시간이라 주기도 한 시간이어야 한다.
+    //
+    // 예전에는 주기를 속성으로 뺐다. 그런데 구간은 늘 한 시간이라 30분으로
+    // 줄이면 같은 투표가 두 번 잡히고, 두 시간으로 늘리면 그 사이 투표가
+    // 통째로 빠진다. 둘을 따로 둘 이유가 없어 값을 코드에 박는다.
+    @Scheduled(cron = "0 0 * * * *")
     public void publishDeadlineSoon() {
 
         LocalDateTime now = LocalDateTime.now();

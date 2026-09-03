@@ -172,9 +172,9 @@ WHERE NOT EXISTS (
     SELECT 1 FROM festival WHERE country_name = '싱가포르' AND title = '디파발리' AND start_date = '2026-11-08');
 
 INSERT INTO festival (country_name, title, category, description, start_date, start_time, location, image_url)
-SELECT '프랑스', '니스 카니발', '공연', '꽃 전차와 가장행렬이 이어지는 겨울 축제', '2026-02-14', NULL, '니스 마세나 광장', NULL
+SELECT '프랑스', '니스 카니발', '공연', '꽃 전차와 가장행렬이 이어지는 겨울 축제', '2026-02-11', NULL, '니스 마세나 광장', NULL
 WHERE NOT EXISTS (
-    SELECT 1 FROM festival WHERE country_name = '프랑스' AND title = '니스 카니발' AND start_date = '2026-02-14');
+    SELECT 1 FROM festival WHERE country_name = '프랑스' AND title = '니스 카니발' AND start_date = '2026-02-11');
 
 INSERT INTO festival (country_name, title, category, description, start_date, start_time, location, image_url)
 SELECT '프랑스', '파리 음악 축제', '공연', '하지에 거리 곳곳에서 무료 공연이 열리는 날', '2026-06-21', '17:00', '파리 전역', NULL

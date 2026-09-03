@@ -5,11 +5,15 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 
 public interface TripCardPhotoRepository extends JpaRepository<TripCardPhotoEntity, Long> {
 
     List<TripCardPhotoEntity> findByTripCardIdOrderByTakenAtAsc(Long tripCardId);
+
+    // 카드를 지울 때 남은 이미지 파일을 정리하려고 URL 을 먼저 모은다
+    List<TripCardPhotoEntity> findByTripCardIdIn(Collection<Long> tripCardIds);
 
     List<TripCardPhotoEntity> findByTripCardPlaceIdOrderBySortOrderAsc(Long tripCardPlaceId);
 

@@ -34,12 +34,15 @@ class TravelPlanServiceTest {
         LocalDate today = LocalDate.now();
         GroupMemberEntity firstMembership = membership(1L);
         GroupMemberEntity secondMembership = membership(2L);
+        // age 는 createdAt 을 지금에서 몇 시간 뺄지다. 저장소는 createdAt
+        // 내림차순으로 주므로 최신일수록 age 가 작아야 한다. 아래 mock 이
+        // 돌려주는 순서와 맞춰둔다.
         GroupTravelPlanEntity latestFinished = plan(
-                1L, "최신 종료 계획", today.minusDays(5), today.minusDays(1), 3);
+                1L, "최신 종료 계획", today.minusDays(5), today.minusDays(1), 1);
         GroupTravelPlanEntity otherGroup = plan(
                 2L, "선택할 계획", today.plusDays(5), today.plusDays(10), 2);
         GroupTravelPlanEntity olderUpcoming = plan(
-                1L, "무시할 예전 계획", today.plusDays(1), today.plusDays(2), 1);
+                1L, "무시할 예전 계획", today.plusDays(1), today.plusDays(2), 3);
         TravelGroupEntity group = new TravelGroupEntity();
         group.setHeadcount(4);
 

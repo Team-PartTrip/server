@@ -9,8 +9,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
+import org.springframework.boot.http.client.ClientHttpRequestFactorySettings;
 import org.springframework.web.client.RestClient;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -36,7 +39,20 @@ public class CountryCityNameService {
     @Value("${google.places.api-key}")
     private String apiKey;
 
-    private final RestClient restClient = RestClient.create();
+    /**
+     * 타임아웃 없는 기본 클라이언트를 쓰면 상대가 응답을 안 줄 때 무한정
+     * 기다린다. 이 작업은 트랜잭션 안에서 장소마다 도는 동기 호출이라,
+     * 한 번 멈추면 커넥션을 쥔 채로 서버가 함께 묶인다.
+     */
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
+    private static final Duration READ_TIMEOUT = Duration.ofSeconds(10);
+
+    private final RestClient restClient = RestClient.builder()
+            .requestFactory(ClientHttpRequestFactoryBuilder.detect().build(
+                    ClientHttpRequestFactorySettings.defaults()
+                            .withConnectTimeout(CONNECT_TIMEOUT)
+                            .withReadTimeout(READ_TIMEOUT)))
+            .build();
 
     /** @return 바꾼 줄 수 */
     @Transactional

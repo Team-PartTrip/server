@@ -46,6 +46,10 @@ public interface GroupMemberRepository extends JpaRepository<GroupMemberEntity, 
      *
      * 그룹에 계획이 여러 개면 행도 여러 개 나온다. 최신순으로 정렬해두고
      * 서비스에서 그룹별 첫 행만 쓴다.
+     *
+     * createdAt 이 같을 때를 대비해 planId 로 한 번 더 정렬한다. 안 그러면
+     * 목록·상세·D-Day 가 서로 다른 계획을 골라 화면마다 값이 달라진다.
+     * VoteRepository.findLatestPlanVotes 도 MAX(planId) 를 쓴다.
      */
     @Query("""
             SELECT m, g, p,
@@ -54,7 +58,7 @@ public interface GroupMemberRepository extends JpaRepository<GroupMemberEntity, 
             JOIN TravelGroupEntity g ON g.groupId = m.groupId
             LEFT JOIN GroupTravelPlanEntity p ON p.groupId = m.groupId
             WHERE m.userId = :userId
-            ORDER BY g.createdAt DESC, p.createdAt DESC
+            ORDER BY g.createdAt DESC, p.createdAt DESC, p.planId DESC
             """)
     List<Object[]> findMyPlannerRows(@Param("userId") String userId);
 }

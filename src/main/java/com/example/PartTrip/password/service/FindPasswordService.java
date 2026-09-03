@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -59,7 +61,9 @@ public class FindPasswordService {
                 .orElseThrow(() -> new IllegalArgumentException("인증번호를 먼저 요청해주세요."));
 
         String token = UUID.randomUUID().toString();
-        verification.setResetToken(token);
+        // 원문을 저장하면 DB 를 읽을 수 있는 사람이 곧바로 남의 비밀번호를
+        // 바꿀 수 있다. 해시만 남기고 원문은 인증한 쪽에만 돌려준다.
+        verification.setResetToken(hash(token));
         emailVerificationRepository.save(verification);
         return token;
     }
@@ -84,16 +88,21 @@ public class FindPasswordService {
 
         // 인증을 마친 그 사람이 맞는지 확인한다. 이메일만 보면, 피해자가
         // 인증을 끝낸 사이에 이메일만 아는 사람도 비밀번호를 바꿀 수 있다.
+        //
+        // 행을 잠그고 읽는다. 확인과 삭제 사이가 열려 있으면 같은 토큰으로
+        // 들어온 두 요청이 둘 다 통과한다.
         EmailVerificationEntity verification = emailVerificationRepository
-                .findById(normalizedEmail)
+                .findByEmailForUpdate(normalizedEmail)
                 .orElseThrow(() -> new IllegalArgumentException("이메일 인증을 먼저 완료해주세요."));
         String issued = verification.getResetToken();
         if (issued == null
                 || !MessageDigest.isEqual(
                         issued.getBytes(StandardCharsets.UTF_8),
-                        dto.getResetToken().getBytes(StandardCharsets.UTF_8))) {
+                        hash(dto.getResetToken()).getBytes(StandardCharsets.UTF_8))) {
             throw new IllegalArgumentException("이메일 인증을 먼저 완료해주세요.");
         }
+        // 토큰을 먼저 지운다. 아래에서 실패해도 이 토큰은 다시 못 쓴다.
+        verification.setResetToken(null);
 
         // 비밀번호를 변경할 회원 조회
         UserEntity user = findUniqueUserByEmail(normalizedEmail);
@@ -108,6 +117,18 @@ public class FindPasswordService {
 
     private String normalizeEmail(String email) {
         return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    /** 토큰은 원문 대신 해시로 저장한다 */
+    private String hash(String token) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(token.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException e) {
+            // SHA-256 은 모든 JVM 에 있다. 없으면 환경이 잘못된 것이다.
+            throw new IllegalStateException("SHA-256 을 쓸 수 없습니다.", e);
+        }
     }
 
     private UserEntity findUniqueUserByEmail(String email) {

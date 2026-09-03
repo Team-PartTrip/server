@@ -11,6 +11,7 @@ import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
 import org.springframework.boot.http.client.ClientHttpRequestFactorySettings;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
 
 import java.io.IOException;
@@ -66,6 +67,7 @@ public class TourPlaceImportService {
     private static final Duration READ_TIMEOUT = Duration.ofSeconds(30);
 
     private final TourPlaceRepository tourPlaceRepository;
+    private final TransactionTemplate transactionTemplate;
 
     @Value("${google.places.api-key}")
     private String apiKey;
@@ -103,9 +105,14 @@ public class TourPlaceImportService {
                 continue;
             }
 
+            // 파일 백업은 트랜잭션 밖에서 먼저 끝낸다
             backup(countryName, cityName);
-            tourPlaceRepository.deleteByCountryNameAndCityName(countryName, cityName);
-            tourPlaceRepository.saveAll(places);
+            // 지우기와 넣기를 한 트랜잭션으로 묶는다. 따로 두면 삭제가 먼저
+            // 커밋되고 저장이 실패했을 때 그 도시가 통째로 비어버린다.
+            transactionTemplate.executeWithoutResult(status -> {
+                tourPlaceRepository.deleteByCountryNameAndCityName(countryName, cityName);
+                tourPlaceRepository.saveAll(places);
+            });
             saved.put(entry, places.size());
             log.info("{} {} — {}개 저장", countryName, cityName, places.size());
         }
