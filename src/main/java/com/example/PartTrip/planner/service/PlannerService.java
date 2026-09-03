@@ -25,6 +25,7 @@ public class PlannerService {
     private final GroupMemberRepository groupMemberRepository;
     private final GroupTravelPlanRepository groupTravelPlanRepository;
     private final PlannerInviteLinkFactory inviteLinkFactory;
+    private final PlannerScheduleLockService plannerScheduleLockService;
 
     @Transactional
     public PlannerCreateResponseDto createPlanner(
@@ -32,6 +33,8 @@ public class PlannerService {
             String userId
     ) {
         validateRequest(dto);
+        plannerScheduleLockService.lockUser(userId);
+        validateNoOverlappingPlan(dto, userId);
 
         int headcount = Boolean.TRUE.equals(dto.getIsSolo())
                 ? 1
@@ -68,6 +71,16 @@ public class PlannerService {
                 .cityName(travelPlan == null ? null : travelPlan.getCityName())
                 .inviteLink(inviteLinkFactory.create(savedGroup.getInviteCode()))
                 .build();
+    }
+
+    private void validateNoOverlappingPlan(CreatePlannerRequestDto dto, String userId) {
+        if (dto.getStartDate() == null) {
+            return;
+        }
+        if (groupTravelPlanRepository.existsOverlappingPlanForUser(
+                userId, dto.getStartDate(), dto.getEndDate())) {
+            throw new IllegalArgumentException("해당 기간에 이미 등록된 여행 계획이 있습니다.");
+        }
     }
 
     private void validateRequest(CreatePlannerRequestDto dto) {

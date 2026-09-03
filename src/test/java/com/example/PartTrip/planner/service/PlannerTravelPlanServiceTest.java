@@ -39,6 +39,8 @@ class PlannerTravelPlanServiceTest {
     private GroupMemberRepository groupMemberRepository;
     @Mock
     private GroupTravelPlanRepository groupTravelPlanRepository;
+    @Mock
+    private PlannerScheduleLockService plannerScheduleLockService;
     @InjectMocks
     private PlannerTravelPlanService plannerTravelPlanService;
 
@@ -123,6 +125,26 @@ class PlannerTravelPlanServiceTest {
                 .withMessage("혼자 여행의 인원은 1명이어야 합니다.");
         verify(groupMemberRepository, never()).countByGroupId(any());
         verify(groupTravelPlanRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsTravelPlanOverlappingAnotherJoinedPlanner() {
+        SavePlannerTravelPlanRequestDto request = request();
+        given(groupTravelPlanRepository.existsOverlappingPlanForGroupMembersExcludingGroup(
+                PLANNER_ID, request.getStartDate(), request.getEndDate()))
+                .willReturn(true);
+        GroupMemberEntity owner = new GroupMemberEntity();
+        owner.setUserId(OWNER_ID);
+        given(groupMemberRepository.findByGroupIdOrderByJoinedAtAsc(PLANNER_ID))
+                .willReturn(java.util.List.of(owner));
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> plannerTravelPlanService.saveTravelPlan(
+                        PLANNER_ID, request, OWNER_ID))
+                .withMessage("해당 기간에 이미 등록된 여행 계획이 있습니다.");
+
+        verify(groupTravelPlanRepository, never()).save(any());
+        verify(groupMemberRepository, never()).countByGroupId(any());
     }
 
     private SavePlannerTravelPlanRequestDto request() {
