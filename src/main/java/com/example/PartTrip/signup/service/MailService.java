@@ -22,6 +22,9 @@ public class MailService {
     private final JavaMailSender mailSender;
     private final EmailVerificationRepository emailVerificationRepository;
 
+    /** 인증을 마친 뒤 비밀번호를 바꿀 수 있는 시간(분) */
+    private static final int VERIFIED_TTL_MINUTES = 10;
+
     @Transactional
     public void sendCode(String email) {
 
@@ -70,16 +73,24 @@ public class MailService {
         }
 
         entity.setVerified(true);
+        // 인증에 성공하면 만료 시각을 다시 잡는다.
+        //
+        // 그냥 두면 인증 상태가 코드 발급 5분에 묶인다. 4분 50초에 인증한
+        // 사람은 비밀번호를 바꿀 시간이 10초뿐이다. 반대로 만료를 아예 안
+        // 보면 인증 기록이 영원히 살아 있어, 한 번 인증한 메일로 언제든
+        // 비밀번호를 바꿀 수 있다.
+        entity.setExpiredAt(LocalDateTime.now().plusMinutes(VERIFIED_TTL_MINUTES));
         emailVerificationRepository.save(entity);
 
     }
 
+    /** 인증을 마쳤고 아직 유효한가. 만료된 인증은 안 한 것으로 본다 */
     @Transactional(readOnly = true)
     public boolean isVerified(String email) {
-        // DB에서 해당 이메일 인증 정보를 찾음
         return emailVerificationRepository.findById(normalizeEmail(email))
-                // 찾으면 그 Entity의 verified값을 꺼냄
-                .map(EmailVerificationEntity::isVerified)
+                .map(entity -> entity.isVerified()
+                        && entity.getExpiredAt() != null
+                        && entity.getExpiredAt().isAfter(LocalDateTime.now()))
                 .orElse(false);
     }
 

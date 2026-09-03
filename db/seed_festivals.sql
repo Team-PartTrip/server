@@ -162,9 +162,9 @@ WHERE NOT EXISTS (
     SELECT 1 FROM festival WHERE country_name = '싱가포르' AND title = '싱가포르 나이트 페스티벌' AND start_date = '2026-08-21');
 
 INSERT INTO festival (country_name, title, category, description, start_date, start_time, location, image_url)
-SELECT '싱가포르', 'F1 싱가포르 그랑프리', '체험', '도심 야간 서킷에서 열리는 자동차 경주와 공연', '2026-09-18', NULL, '마리나 베이 스트리트 서킷', NULL
+SELECT '싱가포르', 'F1 싱가포르 그랑프리', '체험', '도심 야간 서킷에서 열리는 자동차 경주와 공연', '2026-10-09', NULL, '마리나 베이 스트리트 서킷', NULL
 WHERE NOT EXISTS (
-    SELECT 1 FROM festival WHERE country_name = '싱가포르' AND title = 'F1 싱가포르 그랑프리' AND start_date = '2026-09-18');
+    SELECT 1 FROM festival WHERE country_name = '싱가포르' AND title = 'F1 싱가포르 그랑프리' AND start_date = '2026-10-09');
 
 INSERT INTO festival (country_name, title, category, description, start_date, start_time, location, image_url)
 SELECT '싱가포르', '디파발리', '공연', '리틀인디아를 등불로 밝히는 빛의 축제', '2026-11-08', NULL, '리틀인디아', NULL
