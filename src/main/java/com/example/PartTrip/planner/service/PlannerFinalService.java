@@ -70,8 +70,21 @@ public class PlannerFinalService {
             throw new IllegalArgumentException("모든 카테고리 투표가 확정된 후 조회할 수 있습니다.");
         }
 
-        List<Long> optionIds = votes.stream()
+        List<VoteOptionEntity> confirmedOptions = voteOptionRepository
+                .findByVoteIdInAndConfirmedTrue(votes.stream().map(VoteEntity::getVoteId).toList());
+        Map<Long, VoteOptionEntity> confirmedById = confirmedOptions.stream()
+                .collect(Collectors.toMap(VoteOptionEntity::getOptionId, Function.identity()));
+        List<Long> missingLegacyIds = votes.stream()
                 .map(VoteEntity::getConfirmedOptionId)
+                .filter(id -> !confirmedById.containsKey(id))
+                .toList();
+        if (!missingLegacyIds.isEmpty()) {
+            voteOptionRepository.findAllById(missingLegacyIds)
+                    .forEach(option -> confirmedById.put(option.getOptionId(), option));
+        }
+        confirmedOptions = confirmedById.values().stream().toList();
+        List<Long> optionIds = confirmedOptions.stream()
+                .map(VoteOptionEntity::getOptionId)
                 .toList();
         Map<Long, VoteOptionEntity> optionsById = voteOptionRepository
                 .findAllById(optionIds)
@@ -94,22 +107,30 @@ public class PlannerFinalService {
                                 Function.identity()
                         ));
 
-        Map<Long, Long> confirmedVoteCountByVoteId = voteRecordRepository
+        Map<Long, Long> voteCountByOptionId = voteRecordRepository
                 .findByVoteIdIn(votes.stream().map(VoteEntity::getVoteId).toList())
                 .stream()
-                .filter(record -> isConfirmedRecord(record, votes))
+                .filter(record -> optionsById.containsKey(record.getOptionId()))
                 .collect(Collectors.groupingBy(
-                        VoteRecordEntity::getVoteId,
+                        VoteRecordEntity::getOptionId,
                         Collectors.counting()
                 ));
 
-        List<ConfirmedPlaceResponseDto> confirmedPlaces = votes.stream()
-                .map(vote -> toConfirmedPlace(
-                        vote,
-                        optionsById.get(vote.getConfirmedOptionId()),
-                        placesById,
-                        confirmedVoteCountByVoteId.getOrDefault(vote.getVoteId(), 0L)
-                ))
+        Map<Long, VoteEntity> votesById = votes.stream()
+                .collect(Collectors.toMap(VoteEntity::getVoteId, Function.identity()));
+        List<ConfirmedPlaceResponseDto> confirmedPlaces = confirmedOptions.stream()
+                .sorted(Comparator
+                        .comparing((VoteOptionEntity option) ->
+                                votesById.get(option.getVoteId()).getCategory().ordinal())
+                        .thenComparing(Comparator.comparingLong(
+                                (VoteOptionEntity option) -> voteCountByOptionId
+                                        .getOrDefault(option.getOptionId(), 0L)).reversed())
+                        .thenComparing(VoteOptionEntity::getCreatedAt,
+                                Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(VoteOptionEntity::getOptionId))
+                .map(option -> toConfirmedPlace(
+                        votesById.get(option.getVoteId()), option, placesById,
+                        voteCountByOptionId.getOrDefault(option.getOptionId(), 0L)))
                 .toList();
 
         return PlannerFinalResponseDto.builder()
@@ -122,16 +143,6 @@ public class PlannerFinalService {
                 .status(group.getStatus().name())
                 .places(confirmedPlaces)
                 .build();
-    }
-
-    private boolean isConfirmedRecord(
-            VoteRecordEntity record,
-            List<VoteEntity> votes
-    ) {
-        return votes.stream()
-                .filter(vote -> vote.getVoteId().equals(record.getVoteId()))
-                .map(VoteEntity::getConfirmedOptionId)
-                .anyMatch(optionId -> optionId.equals(record.getOptionId()));
     }
 
     private ConfirmedPlaceResponseDto toConfirmedPlace(
