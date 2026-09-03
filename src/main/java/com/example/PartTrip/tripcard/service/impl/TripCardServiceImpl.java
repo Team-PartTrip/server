@@ -19,6 +19,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -98,13 +100,21 @@ public class TripCardServiceImpl implements TripCardService {
 
         tripCardRepository.deleteAllById(cardIds);
 
-        // 파일 삭제는 DB 가 정리된 뒤에 한다. 여기서 실패해도 삭제 자체는
-        // 끝난 것이라 되돌리지 않고 남은 파일만 로그로 남긴다.
-        for (String imageUrl : imageUrls) {
-            if (!imageStorageService.delete(imageUrl)) {
-                log.warn("여행 카드 이미지 파일을 지우지 못했습니다: {}", imageUrl);
-            }
-        }
+        // 파일 삭제는 커밋이 끝난 뒤에 한다.
+        //
+        // 트랜잭션 안에서 지우면, 뒤에서 롤백됐을 때 카드 행은 살아 있는데
+        // 사진 파일만 사라진다. 되돌릴 수 없는 작업이라 커밋을 확인하고 한다.
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        for (String imageUrl : imageUrls) {
+                            if (!imageStorageService.delete(imageUrl)) {
+                                log.warn("여행 카드 이미지 파일을 지우지 못했습니다: {}", imageUrl);
+                            }
+                        }
+                    }
+                });
 
         return "삭제 완료";
     }
