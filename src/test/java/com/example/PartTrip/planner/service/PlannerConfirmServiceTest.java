@@ -3,6 +3,7 @@ package com.example.PartTrip.planner.service;
 import com.example.PartTrip.main.repository.TourPlaceRepository;
 import com.example.PartTrip.planner.dto.request.PlannerConfirmRequestDto;
 import com.example.PartTrip.planner.dto.request.VoteConfirmRequestDto;
+import com.example.PartTrip.planner.dto.response.ConfirmedPlaceResponseDto;
 import com.example.PartTrip.planner.dto.response.PlannerFinalResponseDto;
 import com.example.PartTrip.planner.dto.response.VoteCloseResponseDto;
 import com.example.PartTrip.planner.entity.GroupMemberEntity;
@@ -17,6 +18,7 @@ import com.example.PartTrip.planner.repository.GroupTravelPlanRepository;
 import com.example.PartTrip.planner.repository.TravelGroupRepository;
 import com.example.PartTrip.planner.repository.VoteRepository;
 import com.example.PartTrip.tripcard.entity.TripCardEntity;
+import com.example.PartTrip.tripcard.entity.TripCardPlaceEntity;
 import com.example.PartTrip.tripcard.repository.TripCardPlaceRepository;
 import com.example.PartTrip.tripcard.repository.TripCardRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,6 +30,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -68,6 +71,7 @@ class PlannerConfirmServiceTest {
     @InjectMocks private PlannerConfirmService plannerConfirmService;
 
     private VoteEntity vote;
+    private GroupTravelPlanEntity plan;
 
     @BeforeEach
     void setUp() {
@@ -78,7 +82,7 @@ class PlannerConfirmServiceTest {
 
         GroupMemberEntity owner = owner();
 
-        GroupTravelPlanEntity plan = new GroupTravelPlanEntity();
+        plan = new GroupTravelPlanEntity();
         plan.setPlanId(PLAN_ID);
         plan.setGroupId(PLANNER_ID);
 
@@ -237,5 +241,43 @@ class PlannerConfirmServiceTest {
                 .closeVote(anyLong(), anyLong(), anyString());
         verify(voteConfirmService, org.mockito.Mockito.never())
                 .confirmVote(anyLong(), anyLong(), any(), anyString());
+    }
+
+    @Test
+    void 숙소는_전_날짜에_맛집은_하루_두_곳씩_배치한다() {
+        plan.setStartDate(LocalDate.of(2026, 9, 1));
+        plan.setEndDate(LocalDate.of(2026, 9, 2));
+        vote.setStatus(VoteStatus.CONFIRMED);
+        givenTripCardCreation();
+        List<ConfirmedPlaceResponseDto> places = List.of(
+                confirmed("ACCOMMODATION", 1L),
+                confirmed("RESTAURANT", 2L),
+                confirmed("RESTAURANT", 3L),
+                confirmed("RESTAURANT", 4L));
+        given(plannerFinalService.getConfirmedPlaces(PLANNER_ID, OWNER_ID))
+                .willReturn(PlannerFinalResponseDto.builder().places(places).build());
+
+        plannerConfirmService.confirmPlanner(PLANNER_ID, null, OWNER_ID);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<TripCardPlaceEntity>> captor = ArgumentCaptor.forClass(List.class);
+        verify(tripCardPlaceRepository).saveAll(captor.capture());
+        assertThat(captor.getValue())
+                .extracting(TripCardPlaceEntity::getTourPlaceId,
+                        TripCardPlaceEntity::getVisitedDate)
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple(1L, LocalDate.of(2026, 9, 1)),
+                        org.assertj.core.groups.Tuple.tuple(1L, LocalDate.of(2026, 9, 2)),
+                        org.assertj.core.groups.Tuple.tuple(2L, LocalDate.of(2026, 9, 1)),
+                        org.assertj.core.groups.Tuple.tuple(3L, LocalDate.of(2026, 9, 1)),
+                        org.assertj.core.groups.Tuple.tuple(4L, LocalDate.of(2026, 9, 2)));
+    }
+
+    private ConfirmedPlaceResponseDto confirmed(String category, Long tourPlaceId) {
+        return ConfirmedPlaceResponseDto.builder()
+                .category(category)
+                .tourPlaceId(tourPlaceId)
+                .placeName("장소 " + tourPlaceId)
+                .build();
     }
 }

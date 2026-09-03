@@ -28,7 +28,9 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -101,7 +103,7 @@ public class PlannerConfirmService {
                         ? "일부"
                         : vote.getCategory().getLabel();
                 throw new IllegalArgumentException(
-                        label + " 투표가 동점이에요. 공동 1위 중에서 하나를 먼저 골라주세요.");
+                        label + "의 마지막 자리가 동점이에요. 확정할 후보를 골라주세요.");
             }
 
             VoteConfirmRequestDto confirmRequest = new VoteConfirmRequestDto();
@@ -195,14 +197,13 @@ public class PlannerConfirmService {
                 .collect(Collectors.toSet());
         Map<Long, TourPlaceEntity> tourPlacesById = tourPlaceRepository.findAllById(tourPlaceIds).stream()
                 .collect(Collectors.toMap(TourPlaceEntity::getTourPlaceId, Function.identity()));
+        List<ScheduledPlace> schedule = scheduledPlaces(plan, places);
         List<TripCardPlaceEntity> cardPlaces = savedCards.stream()
-                .flatMap(card -> java.util.stream.IntStream.range(0, places.size())
-                        .mapToObj(index -> newTripCardPlace(
-                                card.getTripCardId(),
-                                plan,
-                                places.get(index),
-                                tourPlacesById.get(places.get(index).getTourPlaceId()),
-                                index + 1)))
+                .flatMap(card -> schedule.stream()
+                        .map(scheduled -> newTripCardPlace(
+                                card.getTripCardId(), scheduled.place(),
+                                tourPlacesById.get(scheduled.place().getTourPlaceId()),
+                                scheduled.date(), scheduled.sortOrder())))
                 .toList();
         tripCardPlaceRepository.saveAll(cardPlaces);
         savedCards.forEach(card -> eventPublisher.publishEvent(
@@ -240,9 +241,9 @@ public class PlannerConfirmService {
 
     private TripCardPlaceEntity newTripCardPlace(
             Long tripCardId,
-            GroupTravelPlanEntity plan,
             ConfirmedPlaceResponseDto confirmed,
             TourPlaceEntity place,
+            LocalDate visitedDate,
             int sortOrder
     ) {
         TripCardPlaceEntity cardPlace = new TripCardPlaceEntity();
@@ -250,10 +251,51 @@ public class PlannerConfirmService {
         cardPlace.setTourPlaceId(confirmed.getTourPlaceId());
         cardPlace.setPlaceName(confirmed.getPlaceName());
         cardPlace.setAddress(confirmed.getAddress());
-        cardPlace.setVisitedDate(plan.getStartDate());
+        cardPlace.setVisitedDate(visitedDate);
         cardPlace.setLatitude(place == null ? null : place.getLatitude());
         cardPlace.setLongitude(place == null ? null : place.getLongitude());
         cardPlace.setSortOrder(sortOrder);
         return cardPlace;
     }
+
+    private List<ScheduledPlace> scheduledPlaces(
+            GroupTravelPlanEntity plan,
+            List<ConfirmedPlaceResponseDto> places
+    ) {
+        if (places.isEmpty()) {
+            return List.of();
+        }
+        int tripDays = Math.toIntExact(
+                ChronoUnit.DAYS.between(plan.getStartDate(), plan.getEndDate()) + 1);
+        if (tripDays <= 0) {
+            throw new IllegalArgumentException("여행 기간이 올바르지 않습니다.");
+        }
+
+        Map<String, Integer> categoryIndexes = new HashMap<>();
+        List<ScheduledPlace> scheduled = new java.util.ArrayList<>();
+        for (ConfirmedPlaceResponseDto place : places) {
+            if ("ACCOMMODATION".equals(place.getCategory())) {
+                for (int day = 0; day < tripDays; day++) {
+                    scheduled.add(new ScheduledPlace(
+                            place, plan.getStartDate().plusDays(day), scheduled.size() + 1));
+                }
+                continue;
+            }
+
+            int categoryIndex = categoryIndexes.merge(place.getCategory(), 1, Integer::sum) - 1;
+            int dayOffset = "RESTAURANT".equals(place.getCategory())
+                    ? categoryIndex / 2
+                    : categoryIndex;
+            dayOffset = Math.min(dayOffset, tripDays - 1);
+            scheduled.add(new ScheduledPlace(
+                    place, plan.getStartDate().plusDays(dayOffset), scheduled.size() + 1));
+        }
+        return scheduled;
+    }
+
+    private record ScheduledPlace(
+            ConfirmedPlaceResponseDto place,
+            LocalDate date,
+            int sortOrder
+    ) {}
 }

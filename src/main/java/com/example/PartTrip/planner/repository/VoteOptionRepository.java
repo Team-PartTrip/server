@@ -14,6 +14,8 @@ public interface VoteOptionRepository extends JpaRepository<VoteOptionEntity, Lo
 
     List<VoteOptionEntity> findByVoteIdInOrderByCreatedAtAsc(List<Long> voteIds);
 
+    List<VoteOptionEntity> findByVoteIdInAndConfirmedTrue(List<Long> voteIds);
+
     // 삭제 시 어느 투표의 후보인지까지 확인한다
     Optional<VoteOptionEntity> findByOptionIdAndVoteId(Long optionId, Long voteId);
 
