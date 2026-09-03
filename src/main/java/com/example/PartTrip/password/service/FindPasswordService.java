@@ -2,6 +2,7 @@ package com.example.PartTrip.password.service;
 
 import com.example.PartTrip.password.dto.PasswordResetRequestDto;
 import com.example.PartTrip.signup.dto.EmailVerifyRequestDto;
+import com.example.PartTrip.signup.entity.EmailVerificationEntity;
 import com.example.PartTrip.signup.entity.UserEntity;
 import com.example.PartTrip.signup.repository.EmailVerificationRepository;
 import com.example.PartTrip.signup.repository.UserRepository;
@@ -11,8 +12,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -35,11 +39,29 @@ public class FindPasswordService {
         mailService.sendCode(normalizedEmail);
     }
 
-    // 2단계: 이메일로 받은 인증번호 확인
-    public void verifyResetCode(EmailVerifyRequestDto dto) {
+    /**
+     * 2단계: 이메일로 받은 인증번호 확인.
+     *
+     * 인증에 성공한 쪽에만 일회용 토큰을 돌려준다. 3단계는 이 토큰을 다시
+     * 받아, 인증한 사람과 비밀번호를 바꾸는 사람이 같은지 확인한다.
+     *
+     * @return 재설정에 쓸 일회용 토큰
+     */
+    @Transactional
+    public String verifyResetCode(EmailVerifyRequestDto dto) {
 
         // 기존 인증번호 검증 로직 재활용 (인증 성공 시 verified = true 로 저장됨)
         mailService.verifyCode(dto);
+
+        String normalizedEmail = normalizeEmail(dto.getEmail());
+        EmailVerificationEntity verification = emailVerificationRepository
+                .findById(normalizedEmail)
+                .orElseThrow(() -> new IllegalArgumentException("인증번호를 먼저 요청해주세요."));
+
+        String token = UUID.randomUUID().toString();
+        verification.setResetToken(token);
+        emailVerificationRepository.save(verification);
+        return token;
     }
 
     // 3단계: 새 비밀번호로 변경
@@ -57,6 +79,19 @@ public class FindPasswordService {
 
         // 이메일 인증을 먼저 완료했는지 확인
         if (!mailService.isVerified(normalizedEmail)) {
+            throw new IllegalArgumentException("이메일 인증을 먼저 완료해주세요.");
+        }
+
+        // 인증을 마친 그 사람이 맞는지 확인한다. 이메일만 보면, 피해자가
+        // 인증을 끝낸 사이에 이메일만 아는 사람도 비밀번호를 바꿀 수 있다.
+        EmailVerificationEntity verification = emailVerificationRepository
+                .findById(normalizedEmail)
+                .orElseThrow(() -> new IllegalArgumentException("이메일 인증을 먼저 완료해주세요."));
+        String issued = verification.getResetToken();
+        if (issued == null
+                || !MessageDigest.isEqual(
+                        issued.getBytes(StandardCharsets.UTF_8),
+                        dto.getResetToken().getBytes(StandardCharsets.UTF_8))) {
             throw new IllegalArgumentException("이메일 인증을 먼저 완료해주세요.");
         }
 

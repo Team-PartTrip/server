@@ -34,4 +34,14 @@ public class EmailVerificationEntity {
     @Column(name = "expired_at", nullable = false)
     private LocalDateTime expiredAt;
 
+    /**
+     * 비밀번호 재설정용 일회용 토큰.
+     *
+     * 인증 상태를 이메일에만 묶어두면, 피해자가 인증을 마친 사이에 이메일만
+     * 아는 사람이 재설정을 호출할 수 있다. 인증에 성공한 쪽에만 이 값을
+     * 돌려주고 재설정 때 다시 받아서 같은 사람인지 확인한다.
+     */
+    @Column(name = "reset_token")
+    private String resetToken;
+
 }
