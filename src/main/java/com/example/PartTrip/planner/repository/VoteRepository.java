@@ -29,8 +29,15 @@ public interface VoteRepository extends JpaRepository<VoteEntity, Long> {
 
     Optional<VoteEntity> findByPlanIdAndCategory(Long planId, TourPlaceCategory category);
 
-    // 마감 임박 알림용 — 아직 열려 있고 마감이 임박한 투표
-    List<VoteEntity> findByStatusAndDeadlineBetween(
+    /**
+     * 마감 임박 알림용 — 아직 열려 있고 마감이 임박한 투표.
+     *
+     * 구간을 반만 닫는다(from 포함, to 제외). Between 은 양끝을 다 넣어서,
+     * 앞 실행의 to 와 다음 실행의 from 이 같은 시각이면 마감이 정확히 그
+     * 시각인 투표가 두 번 잡힌다. 발송 여부를 따로 기록하지 않으므로 그대로
+     * 알림이 두 번 나간다.
+     */
+    List<VoteEntity> findByStatusAndDeadlineGreaterThanEqualAndDeadlineLessThan(
             VoteStatus status, LocalDateTime from, LocalDateTime to);
 
     /**

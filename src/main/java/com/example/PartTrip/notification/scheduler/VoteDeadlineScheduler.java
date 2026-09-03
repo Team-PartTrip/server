@@ -35,7 +35,9 @@ public class VoteDeadlineScheduler {
         LocalDateTime now = LocalDateTime.now();
 
         // 마감 24시간 전부터 23시간 전 사이의 투표만 고른다.
-        // 각 투표는 이 한 시간 구간을 정확히 한 번만 지나가므로 같은 알림이 반복되지 않는다.
+        // 구간은 from 을 넣고 to 를 뺀다. 양끝을 다 넣으면 앞 실행의 끝과
+        // 다음 실행의 시작이 같은 시각이라 그 경계의 투표가 두 번 잡힌다.
+        // 각 투표는 이 한 시간 구간을 정확히 한 번만 지나간다.
         // 별도 발송 여부 컬럼을 두지 않으려고 이렇게 잡았다.
         // 서버가 그 시간대에 꺼져 있으면 해당 투표는 건너뛴다.
         LocalDateTime from = now.plusHours(NOTIFY_BEFORE_HOURS - 1);
@@ -43,7 +45,9 @@ public class VoteDeadlineScheduler {
 
         try {
             List<VoteEntity> votes =
-                    voteRepository.findByStatusAndDeadlineBetween(VoteStatus.OPEN, from, to);
+                    voteRepository
+                            .findByStatusAndDeadlineGreaterThanEqualAndDeadlineLessThan(
+                                    VoteStatus.OPEN, from, to);
 
             if (votes.isEmpty()) {
                 return;
