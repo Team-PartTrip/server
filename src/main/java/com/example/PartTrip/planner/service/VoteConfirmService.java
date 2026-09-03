@@ -244,7 +244,7 @@ public class VoteConfirmService {
 
         VoteOptionEntity requested = findRequestedOption(requestedOptionId, result.rankedOptions());
         List<VoteOptionEntity> resultOptions = result.rankedOptions().stream()
-                .filter(option -> !result.selectionOptionIds().contains(option.getOptionId()))
+                .takeWhile(option -> !result.selectionOptionIds().contains(option.getOptionId()))
                 .limit(result.requiredCount())
                 .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
         int boundarySeatsBeforeLast = result.requiredCount() - resultOptions.size() - 1;

@@ -139,7 +139,9 @@ class VoteConfirmServiceTest {
 
     @Test
     void 마지막_자리_동점은_선택한_후보를_포함한다() {
-        List<VoteOptionEntity> options = options(7);
+        // 8번은 경계 동점(1표)보다 낮은 0표 후보이다. 이 후보가 보장 후보로
+        // 잘못 수집되면 boundarySeatsBeforeLast 가 음수가 된다.
+        List<VoteOptionEntity> options = options(8);
         given(voteOptionRepository.findByVoteIdOrderByCreatedAtAsc(VOTE_ID))
                 .willReturn(options);
         given(voteRecordRepository.countByOption(VOTE_ID)).willReturn(List.of(
