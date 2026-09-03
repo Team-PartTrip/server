@@ -6,7 +6,10 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "country_info")
+@Table(
+        name = "country_info",
+        indexes = @Index(name = "idx_country_info_country", columnList = "country_name")
+)
 @Getter
 @Setter
 @NoArgsConstructor

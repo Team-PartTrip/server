@@ -21,7 +21,7 @@ public class UserEntity {
     @Column(name = "user_pwd", nullable = false)
     private String userPwd;
 
-    @Column(name = "user_mail", nullable = false)
+    @Column(name = "user_mail", nullable = false, unique = true)
     private String userMail;
 
     @Column(name = "phone_number")
@@ -43,11 +43,6 @@ public class UserEntity {
     @Column(name = "img_url")
     private String imgUrl;
 
-
-
-
-    // 여행 타입 (Func-007-01) — 프로필에 "계획형 모험가" 처럼 표시된다
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "theme_id")
-    private com.example.PartTrip.profile.entity.TravelThemeEntity travelTheme;
+    // 여행 타입은 기능에서 뺐다. user.theme_id 컬럼과 travel_theme 표는
+    // 남아 있지만 매핑하지 않는다. ddl-auto=update 는 컬럼을 지우지 않는다.
 }

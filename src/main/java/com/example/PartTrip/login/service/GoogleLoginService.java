@@ -22,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -63,10 +65,10 @@ public class GoogleLoginService {
         if (email == null) {
             throw new IllegalArgumentException("유효하지 않은 Google 토큰입니다.");
         }
+        String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
 
         // 이메일로 회원 조회, 없으면 구글 계정으로 자동 가입
-        UserEntity user = userRepository.findByUserMail(email)
-                .orElseGet(() -> createGoogleUser(email, name));
+        UserEntity user = resolveGoogleUser(normalizedEmail, name);
 
         // 토큰 발급 (이메일 로그인과 동일)
         String accessToken = jwtUtil.createAccessToken(user.getUserId(), user.getUserMail());
@@ -77,10 +79,23 @@ public class GoogleLoginService {
         tokenEntity.setUserId(user.getUserId());
         tokenEntity.setRefreshToken(refreshToken);
         tokenEntity.setExpiredAt(LocalDateTime.now().plusDays(7));
+        tokenEntity.setPreviousToken(null);
+        tokenEntity.setPreviousValidUntil(null);
         tokenEntity.setCreateDate(LocalDateTime.now());
         refreshTokenRepository.save(tokenEntity);
 
         return new TokenResponseDto(accessToken, refreshToken);
+    }
+
+    UserEntity resolveGoogleUser(String normalizedEmail, String name) {
+        List<UserEntity> users = userRepository
+                .findAllByUserMailIgnoreCaseOrderByUserIdAsc(normalizedEmail);
+        if (users.size() > 1) {
+            throw new IllegalArgumentException("중복된 이메일 계정으로 Google 로그인할 수 없습니다.");
+        }
+        return users.isEmpty()
+                ? createGoogleUser(normalizedEmail, name)
+                : users.get(0);
     }
 
     // [웹] auth code 를 Google 토큰 엔드포인트에서 교환하여 idToken 획득

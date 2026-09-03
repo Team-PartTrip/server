@@ -14,6 +14,7 @@ import java.util.List;
 public class TourPlaceService {
 
     private final TourPlaceRepository tourPlaceRepository;
+    private final TourPlaceImportService tourPlaceImportService;
 
     // 관광지 조회 (도시 · 카테고리는 선택)
     public List<TourPlaceResponseDto> getTourPlace(String countryName,
@@ -28,6 +29,14 @@ public class TourPlaceService {
 
         List<TourPlaceEntity> places =
                 tourPlaceRepository.search(countryName, city, tourPlaceCategory);
+
+        // 여행지 검색이 나라 전체로 넓어져서, 아직 안 받아온 도시도 고를 수
+        // 있게 됐다. 비어 있으면 그 자리에서 받아온다. 이미 있는 도시는
+        // 건드리지 않으므로 두 번째부터는 그냥 조회다.
+        if (places.isEmpty() && city != null
+                && tourPlaceImportService.importCityIfEmpty(countryName, city)) {
+            places = tourPlaceRepository.search(countryName, city, tourPlaceCategory);
+        }
 
         // Entity -> DTO 변환
         return places.stream()

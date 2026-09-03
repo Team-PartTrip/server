@@ -10,7 +10,10 @@ import java.time.LocalDate;
 // 여행 카드의 방문 장소 (Func-003-02)
 // 앱 D10 타임라인에서 날짜 아래에 붙는 장소 노드
 @Entity
-@Table(name = "trip_card_place")
+@Table(
+        name = "trip_card_place",
+        indexes = @Index(name = "idx_trip_card_place_card", columnList = "trip_card_id")
+)
 @Getter
 @Setter
 @NoArgsConstructor

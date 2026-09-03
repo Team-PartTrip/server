@@ -13,7 +13,11 @@ import java.time.LocalDateTime;
 // 개인 D-day 용 travel_plan(Func-002)과 이름이 겹치지 않도록
 // group_travel_plan 으로 둔다. 둘은 서로 다른 테이블이다.
 @Entity
-@Table(name = "group_travel_plan")
+@Table(
+        name = "group_travel_plan",
+        // 플래너 거의 모든 요청이 group_id 로 최신 계획을 찾는다
+        indexes = @Index(name = "idx_group_travel_plan_group", columnList = "group_id")
+)
 @Getter
 @Setter
 @NoArgsConstructor

@@ -12,6 +12,9 @@ import io.jsonwebtoken.SignatureAlgorithm;
 // JWT Key 생성용 클래스
 import io.jsonwebtoken.security.Keys;
 
+// 설정 파일의 값을 주입받기 위한 애노테이션
+import org.springframework.beans.factory.annotation.Value;
+
 // 스프링이 관리하는 객체(Bean)로 등록
 import org.springframework.stereotype.Component;
 
@@ -28,16 +31,20 @@ import java.util.Date;
 @Component
 public class JwtUtil {
 
-    // JWT를 암호화하고 검증할 때 사용하는 비밀키
-    // 서버만 알고 있어야 함
-    private final String SECRET_KEY =
-            "parttrip-secret-key-parttrip-secret-key-1234567890";
+    // JWT를 암호화하고 검증할 때 사용하는 비밀키.
+    //
+    // 소스에 두면 리포지토리를 볼 수 있는 사람은 누구나 아무 사용자의 토큰을
+    // 위조할 수 있다. 서명만 맞으면 서버가 통과시키기 때문이다.
+    // 그래서 application.properties 의 jwt.secret 에서 읽는다.
+    // 그 파일은 gitignore 되어 있고, 채울 항목은 application.properties.example 에 있다.
+    //
+    // 값이 없으면 서버가 뜨지 않는다. 기본값을 두면 그게 다시 하드코딩이라
+    // 일부러 두지 않았다.
+    private final Key key;
 
-    // SECRET_KEY를 JWT에서 사용할 Key 객체로 변환
-    private final Key key =
-            Keys.hmacShaKeyFor(
-                    SECRET_KEY.getBytes(StandardCharsets.UTF_8)
-            );
+    public JwtUtil(@Value("${jwt.secret}") String secret) {
+        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    }
 
     // Access Token 유효 시간
     // 1000ms = 1초

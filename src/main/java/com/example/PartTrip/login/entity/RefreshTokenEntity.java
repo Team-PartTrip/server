@@ -32,6 +32,15 @@ public class RefreshTokenEntity {
     @Column(name = "expired_at", nullable = false)
     private LocalDateTime expiredAt;
 
+    // 갱신 직전에 쓰던 토큰. 응답이 유실되면 앱은 옛 토큰을 그대로 들고 있어
+    // 다시 보내는데, 그때 쫓아내지 않으려고 짧은 동안만 함께 받아준다.
+    @Column(name = "previous_token", length = 500)
+    private String previousToken;
+
+    // previousToken 을 언제까지 받아줄지
+    @Column(name = "previous_valid_until")
+    private LocalDateTime previousValidUntil;
+
     // Refresh Token 생성 시간
     @Column(name = "create_date", nullable = false)
     private LocalDateTime createDate;
