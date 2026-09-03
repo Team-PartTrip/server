@@ -12,6 +12,7 @@ import com.example.PartTrip.planner.enums.GroupRole;
 import com.example.PartTrip.planner.enums.InvitationStatus;
 import com.example.PartTrip.planner.repository.GroupInvitationRepository;
 import com.example.PartTrip.planner.repository.GroupMemberRepository;
+import com.example.PartTrip.planner.repository.GroupTravelPlanRepository;
 import com.example.PartTrip.planner.repository.TravelGroupRepository;
 import com.example.PartTrip.signup.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class PlannerInvitationService {
 
     private final TravelGroupRepository travelGroupRepository;
     private final GroupMemberRepository groupMemberRepository;
+    private final GroupTravelPlanRepository groupTravelPlanRepository;
     private final GroupInvitationRepository groupInvitationRepository;
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
@@ -148,6 +150,7 @@ public class PlannerInvitationService {
         if (groupMemberRepository.existsByGroupIdAndUserId(group.getGroupId(), userId)) {
             throw new IllegalArgumentException("이미 참여한 플래너입니다.");
         }
+        validateNoOverlappingPlan(group.getGroupId(), userId);
         if (groupMemberRepository.countByGroupId(group.getGroupId()) >= group.getHeadcount()) {
             throw new IllegalArgumentException("참여 가능한 인원이 모두 찼습니다.");
         }
@@ -164,6 +167,15 @@ public class PlannerInvitationService {
         groupInvitationRepository.save(invitation);
         eventPublisher.publishEvent(new GroupInviteAcceptedEvent(group.getGroupId(), userId));
         return toResponse(group, invitation);
+    }
+
+    private void validateNoOverlappingPlan(Long groupId, String userId) {
+        groupTravelPlanRepository.findFirstByGroupIdOrderByCreatedAtDesc(groupId)
+                .filter(plan -> groupTravelPlanRepository.existsOverlappingPlanForUser(
+                        userId, plan.getStartDate(), plan.getEndDate()))
+                .ifPresent(plan -> {
+                    throw new IllegalArgumentException("해당 기간에 이미 등록된 여행 계획이 있습니다.");
+                });
     }
 
     @Transactional

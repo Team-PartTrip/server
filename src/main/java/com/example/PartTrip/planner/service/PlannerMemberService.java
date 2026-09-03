@@ -8,6 +8,7 @@ import com.example.PartTrip.planner.entity.TravelGroupEntity;
 import com.example.PartTrip.planner.enums.GroupRole;
 import com.example.PartTrip.planner.enums.GroupStatus;
 import com.example.PartTrip.planner.repository.GroupMemberRepository;
+import com.example.PartTrip.planner.repository.GroupTravelPlanRepository;
 import com.example.PartTrip.planner.repository.TravelGroupRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -22,6 +23,7 @@ public class PlannerMemberService {
 
     private final TravelGroupRepository travelGroupRepository;
     private final GroupMemberRepository groupMemberRepository;
+    private final GroupTravelPlanRepository groupTravelPlanRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
@@ -42,6 +44,8 @@ public class PlannerMemberService {
         if (groupMemberRepository.existsByGroupIdAndUserId(group.getGroupId(), userId)) {
             throw new IllegalArgumentException("이미 참여한 플래너입니다.");
         }
+
+        validateNoOverlappingPlan(group.getGroupId(), userId);
 
         long currentMemberCount = groupMemberRepository.countByGroupId(group.getGroupId());
         if (currentMemberCount >= group.getHeadcount()) {
@@ -65,6 +69,15 @@ public class PlannerMemberService {
                 .memberCount(group.getHeadcount())
                 .joinedMemberCount(currentMemberCount + 1)
                 .build();
+    }
+
+    private void validateNoOverlappingPlan(Long groupId, String userId) {
+        groupTravelPlanRepository.findFirstByGroupIdOrderByCreatedAtDesc(groupId)
+                .filter(plan -> groupTravelPlanRepository.existsOverlappingPlanForUser(
+                        userId, plan.getStartDate(), plan.getEndDate()))
+                .ifPresent(plan -> {
+                    throw new IllegalArgumentException("해당 기간에 이미 등록된 여행 계획이 있습니다.");
+                });
     }
 
 }

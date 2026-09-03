@@ -125,6 +125,22 @@ class PlannerTravelPlanServiceTest {
         verify(groupTravelPlanRepository, never()).save(any());
     }
 
+    @Test
+    void rejectsTravelPlanOverlappingAnotherJoinedPlanner() {
+        SavePlannerTravelPlanRequestDto request = request();
+        given(groupTravelPlanRepository.existsOverlappingPlanForGroupMembersExcludingGroup(
+                PLANNER_ID, request.getStartDate(), request.getEndDate()))
+                .willReturn(true);
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> plannerTravelPlanService.saveTravelPlan(
+                        PLANNER_ID, request, OWNER_ID))
+                .withMessage("해당 기간에 이미 등록된 여행 계획이 있습니다.");
+
+        verify(groupTravelPlanRepository, never()).save(any());
+        verify(groupMemberRepository, never()).countByGroupId(any());
+    }
+
     private SavePlannerTravelPlanRequestDto request() {
         SavePlannerTravelPlanRequestDto request = new SavePlannerTravelPlanRequestDto();
         request.setCountryName("일본");
