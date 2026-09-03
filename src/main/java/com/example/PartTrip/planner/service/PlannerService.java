@@ -25,6 +25,7 @@ public class PlannerService {
     private final GroupMemberRepository groupMemberRepository;
     private final GroupTravelPlanRepository groupTravelPlanRepository;
     private final PlannerInviteLinkFactory inviteLinkFactory;
+    private final PlannerScheduleLockService plannerScheduleLockService;
 
     @Transactional
     public PlannerCreateResponseDto createPlanner(
@@ -32,6 +33,7 @@ public class PlannerService {
             String userId
     ) {
         validateRequest(dto);
+        plannerScheduleLockService.lockUser(userId);
         validateNoOverlappingPlan(dto, userId);
 
         int headcount = Boolean.TRUE.equals(dto.getIsSolo())

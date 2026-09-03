@@ -39,6 +39,8 @@ class PlannerTravelPlanServiceTest {
     private GroupMemberRepository groupMemberRepository;
     @Mock
     private GroupTravelPlanRepository groupTravelPlanRepository;
+    @Mock
+    private PlannerScheduleLockService plannerScheduleLockService;
     @InjectMocks
     private PlannerTravelPlanService plannerTravelPlanService;
 
@@ -131,6 +133,10 @@ class PlannerTravelPlanServiceTest {
         given(groupTravelPlanRepository.existsOverlappingPlanForGroupMembersExcludingGroup(
                 PLANNER_ID, request.getStartDate(), request.getEndDate()))
                 .willReturn(true);
+        GroupMemberEntity owner = new GroupMemberEntity();
+        owner.setUserId(OWNER_ID);
+        given(groupMemberRepository.findByGroupIdOrderByJoinedAtAsc(PLANNER_ID))
+                .willReturn(java.util.List.of(owner));
 
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> plannerTravelPlanService.saveTravelPlan(

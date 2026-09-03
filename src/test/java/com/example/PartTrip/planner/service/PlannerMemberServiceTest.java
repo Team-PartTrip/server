@@ -31,6 +31,7 @@ class PlannerMemberServiceTest {
     @Mock private GroupMemberRepository groupMemberRepository;
     @Mock private GroupTravelPlanRepository groupTravelPlanRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private PlannerScheduleLockService plannerScheduleLockService;
     @InjectMocks private PlannerMemberService plannerMemberService;
 
     @Test

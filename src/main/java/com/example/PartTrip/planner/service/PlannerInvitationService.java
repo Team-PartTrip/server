@@ -39,6 +39,7 @@ public class PlannerInvitationService {
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final PlannerInviteLinkFactory inviteLinkFactory;
+    private final PlannerScheduleLockService plannerScheduleLockService;
 
     @Transactional
     public PlannerInviteResponseDto inviteMembers(
@@ -150,6 +151,7 @@ public class PlannerInvitationService {
         if (groupMemberRepository.existsByGroupIdAndUserId(group.getGroupId(), userId)) {
             throw new IllegalArgumentException("이미 참여한 플래너입니다.");
         }
+        plannerScheduleLockService.lockUser(userId);
         validateNoOverlappingPlan(group.getGroupId(), userId);
         if (groupMemberRepository.countByGroupId(group.getGroupId()) >= group.getHeadcount()) {
             throw new IllegalArgumentException("참여 가능한 인원이 모두 찼습니다.");

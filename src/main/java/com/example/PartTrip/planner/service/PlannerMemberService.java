@@ -25,6 +25,7 @@ public class PlannerMemberService {
     private final GroupMemberRepository groupMemberRepository;
     private final GroupTravelPlanRepository groupTravelPlanRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final PlannerScheduleLockService plannerScheduleLockService;
 
     @Transactional
     public PlannerJoinResponseDto joinPlanner(
@@ -45,6 +46,7 @@ public class PlannerMemberService {
             throw new IllegalArgumentException("이미 참여한 플래너입니다.");
         }
 
+        plannerScheduleLockService.lockUser(userId);
         validateNoOverlappingPlan(group.getGroupId(), userId);
 
         long currentMemberCount = groupMemberRepository.countByGroupId(group.getGroupId());

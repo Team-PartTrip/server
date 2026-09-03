@@ -23,6 +23,7 @@ public class PlannerTravelPlanService {
     private final TravelGroupRepository travelGroupRepository;
     private final GroupMemberRepository groupMemberRepository;
     private final GroupTravelPlanRepository groupTravelPlanRepository;
+    private final PlannerScheduleLockService plannerScheduleLockService;
 
     @Transactional
     public PlannerTravelPlanResponseDto saveTravelPlan(
@@ -49,6 +50,11 @@ public class PlannerTravelPlanService {
             throw new IllegalArgumentException("여행 종료일은 시작일보다 빠를 수 없습니다.");
         }
 
+        plannerScheduleLockService.lockUsers(groupMemberRepository
+                .findByGroupIdOrderByJoinedAtAsc(plannerId)
+                .stream()
+                .map(GroupMemberEntity::getUserId)
+                .toList());
         if (groupTravelPlanRepository.existsOverlappingPlanForGroupMembersExcludingGroup(
                 plannerId, dto.getStartDate(), dto.getEndDate())) {
             throw new IllegalArgumentException("해당 기간에 이미 등록된 여행 계획이 있습니다.");

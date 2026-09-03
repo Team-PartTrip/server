@@ -39,6 +39,7 @@ class PlannerInvitationServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private PlannerInviteLinkFactory inviteLinkFactory;
+    @Mock private PlannerScheduleLockService plannerScheduleLockService;
     @InjectMocks private PlannerInvitationService plannerInvitationService;
 
     @Test
