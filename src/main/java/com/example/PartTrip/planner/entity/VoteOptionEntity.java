@@ -42,6 +42,11 @@ public class VoteOptionEntity {
     @Column(name = "added_by_user_id")
     private String addedByUserId;
 
+    // 복수 확정 결과. vote.confirmed_option_id 는 기존 화면 호환을 위해
+    // 최고 득표 후보 한 곳을 계속 가리킨다.
+    @Column(name = "confirmed", columnDefinition = "boolean default false")
+    private Boolean confirmed = false;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 }

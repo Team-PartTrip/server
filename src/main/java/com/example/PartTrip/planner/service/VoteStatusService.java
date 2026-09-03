@@ -168,7 +168,7 @@ public class VoteStatusService {
             TourPlaceEntity place,
             long voteCount,
             Long selectedOptionId,
-            Long confirmedOptionId
+            Long legacyConfirmedOptionId
     ) {
         return VoteOptionStatusResponseDto.builder()
                 .optionId(option.getOptionId())
@@ -180,7 +180,8 @@ public class VoteStatusService {
                 .addedByUserId(option.getAddedByUserId())
                 .voteCount(voteCount)
                 .selectedByMe(option.getOptionId().equals(selectedOptionId))
-                .confirmed(option.getOptionId().equals(confirmedOptionId))
+                .confirmed(Boolean.TRUE.equals(option.getConfirmed())
+                        || option.getOptionId().equals(legacyConfirmedOptionId))
                 .build();
     }
 

@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,6 +17,37 @@ public interface GroupTravelPlanRepository extends JpaRepository<GroupTravelPlan
     void deleteByGroupId(Long groupId);
 
     Optional<GroupTravelPlanEntity> findByPlanIdAndGroupId(Long planId, Long groupId);
+
+    @Query("""
+            SELECT CASE WHEN COUNT(p) > 0 THEN true ELSE false END
+            FROM GroupTravelPlanEntity p
+            JOIN GroupMemberEntity m ON m.groupId = p.groupId
+            WHERE m.userId = :userId
+              AND p.startDate <= :endDate
+              AND p.endDate >= :startDate
+            """)
+    boolean existsOverlappingPlanForUser(
+            @Param("userId") String userId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
+    @Query("""
+            SELECT CASE WHEN COUNT(p) > 0 THEN true ELSE false END
+            FROM GroupTravelPlanEntity p
+            JOIN GroupMemberEntity existingMember ON existingMember.groupId = p.groupId
+            WHERE existingMember.userId IN (
+                  SELECT currentMember.userId
+                  FROM GroupMemberEntity currentMember
+                  WHERE currentMember.groupId = :groupId
+            )
+              AND p.groupId <> :groupId
+              AND p.startDate <= :endDate
+              AND p.endDate >= :startDate
+            """)
+    boolean existsOverlappingPlanForGroupMembersExcludingGroup(
+            @Param("groupId") Long groupId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
 
     /**
      * 플래너 상세 화면에 보여줄 가장 최근 여행 계획.
