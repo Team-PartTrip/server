@@ -79,8 +79,14 @@ public class PlannerFinalService {
                 .filter(id -> !confirmedById.containsKey(id))
                 .toList();
         if (!missingLegacyIds.isEmpty()) {
-            voteOptionRepository.findAllById(missingLegacyIds)
-                    .forEach(option -> confirmedById.put(option.getOptionId(), option));
+            List<VoteOptionEntity> legacyOptions = voteOptionRepository.findAllById(missingLegacyIds);
+            Set<Long> resolvedLegacyIds = legacyOptions.stream()
+                    .map(VoteOptionEntity::getOptionId)
+                    .collect(Collectors.toSet());
+            if (!resolvedLegacyIds.containsAll(missingLegacyIds)) {
+                throw new IllegalArgumentException("확정된 투표 후보 정보를 찾을 수 없습니다.");
+            }
+            legacyOptions.forEach(option -> confirmedById.put(option.getOptionId(), option));
         }
         confirmedOptions = confirmedById.values().stream().toList();
         List<Long> optionIds = confirmedOptions.stream()
