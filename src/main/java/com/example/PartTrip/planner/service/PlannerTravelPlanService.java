@@ -24,6 +24,7 @@ public class PlannerTravelPlanService {
     private final GroupMemberRepository groupMemberRepository;
     private final GroupTravelPlanRepository groupTravelPlanRepository;
     private final PlannerScheduleLockService plannerScheduleLockService;
+    private final PlannerCityWriter plannerCityWriter;
 
     @Transactional
     public PlannerTravelPlanResponseDto saveTravelPlan(
@@ -77,7 +78,14 @@ public class PlannerTravelPlanService {
         plan.setStartDate(dto.getStartDate());
         plan.setEndDate(dto.getEndDate());
 
+        if (dto.getCities() != null && !dto.getCities().isEmpty()) {
+            // 첫 도시를 대표로 둔다. 도시 하나만 보던 기존 코드가 이걸 읽는다
+            plan.setCountryName(dto.getCities().get(0).getCountryName().trim());
+            plan.setCityName(dto.getCities().get(0).getCityName().trim());
+        }
+
         GroupTravelPlanEntity savedPlan = groupTravelPlanRepository.save(plan);
+        plannerCityWriter.replace(savedPlan, dto.getCities());
 
         return PlannerTravelPlanResponseDto.builder()
                 .plannerId(group.getGroupId())

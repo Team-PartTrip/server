@@ -1,5 +1,6 @@
 package com.example.PartTrip.planner.dto.request;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -9,6 +10,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Getter
 @Setter
@@ -33,4 +35,13 @@ public class SavePlannerTravelPlanRequestDto {
 
     @NotNull(message = "여행 종료일을 입력해주세요.")
     private LocalDate endDate;
+
+    /**
+     * 도는 도시들. 도시마다 며칠씩인지 그룹장이 정한다.
+     *
+     * 비워두면 countryName / cityName 한 곳만 쓰는 여행이 된다.
+     * 채우면 첫 도시가 대표 도시로 들어간다.
+     */
+    @Valid
+    private List<PlannerCityRequestDto> cities;
 }

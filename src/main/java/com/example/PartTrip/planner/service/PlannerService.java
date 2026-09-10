@@ -5,21 +5,17 @@ import com.example.PartTrip.planner.dto.response.PlannerCreateResponseDto;
 import com.example.PartTrip.planner.entity.GroupMemberEntity;
 import com.example.PartTrip.planner.dto.request.PlannerCityRequestDto;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
-import com.example.PartTrip.planner.entity.PlannerCityEntity;
 import com.example.PartTrip.planner.entity.TravelGroupEntity;
 import com.example.PartTrip.planner.enums.GroupRole;
 import com.example.PartTrip.planner.enums.GroupStatus;
 import com.example.PartTrip.planner.repository.GroupMemberRepository;
 import com.example.PartTrip.planner.repository.GroupTravelPlanRepository;
-import com.example.PartTrip.planner.repository.PlannerCityRepository;
 import com.example.PartTrip.planner.repository.TravelGroupRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -30,7 +26,7 @@ public class PlannerService {
     private final TravelGroupRepository travelGroupRepository;
     private final GroupMemberRepository groupMemberRepository;
     private final GroupTravelPlanRepository groupTravelPlanRepository;
-    private final PlannerCityRepository plannerCityRepository;
+    private final PlannerCityWriter plannerCityWriter;
     private final PlannerInviteLinkFactory inviteLinkFactory;
     private final PlannerScheduleLockService plannerScheduleLockService;
 
@@ -142,52 +138,8 @@ public class PlannerService {
 
         GroupTravelPlanEntity saved = groupTravelPlanRepository.save(travelPlan);
 
-        if (cities != null && !cities.isEmpty()) {
-            saveCities(saved, cities);
-        }
+        plannerCityWriter.replace(saved, cities);
         return saved;
-    }
-
-    /**
-     * 도시별 기간을 저장한다.
-     *
-     * 여행 기간을 빈틈 없이 이어 덮어야 한다. 하루라도 비면 AI 가 그날
-     * 어느 도시에서 일정을 짤지 알 수 없다.
-     */
-    private void saveCities(GroupTravelPlanEntity plan, List<PlannerCityRequestDto> cities) {
-        List<PlannerCityEntity> rows = new ArrayList<>(cities.size());
-        LocalDate expected = plan.getStartDate();
-
-        for (int i = 0; i < cities.size(); i++) {
-            PlannerCityRequestDto city = cities.get(i);
-
-            if (city.getEndDate().isBefore(city.getStartDate())) {
-                throw new IllegalArgumentException(
-                        city.getCityName() + " 의 종료일이 시작일보다 빠릅니다.");
-            }
-            if (!city.getStartDate().equals(expected)) {
-                throw new IllegalArgumentException(
-                        "도시별 기간이 이어지지 않습니다. " + expected + " 부터 시작해야 합니다.");
-            }
-
-            PlannerCityEntity row = new PlannerCityEntity();
-            row.setPlanId(plan.getPlanId());
-            row.setSeq(i);
-            row.setCountryName(city.getCountryName().trim());
-            row.setCityName(city.getCityName().trim());
-            row.setStartDate(city.getStartDate());
-            row.setEndDate(city.getEndDate());
-            rows.add(row);
-
-            expected = city.getEndDate().plusDays(1);
-        }
-
-        if (!expected.minusDays(1).equals(plan.getEndDate())) {
-            throw new IllegalArgumentException(
-                    "도시별 기간이 여행 기간을 다 덮지 않습니다. 마지막 도시는 "
-                            + plan.getEndDate() + " 에 끝나야 합니다.");
-        }
-        plannerCityRepository.saveAll(rows);
     }
 
     private String createUniqueInviteCode() {
