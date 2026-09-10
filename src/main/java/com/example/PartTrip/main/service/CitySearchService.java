@@ -1,8 +1,10 @@
 package com.example.PartTrip.main.service;
 
 import com.example.PartTrip.main.dto.CitySearchResponseDto;
+import com.example.PartTrip.main.repository.TourPlaceRepository;
 import com.example.PartTrip.util.CountryCodeMapper;
 import com.fasterxml.jackson.databind.JsonNode;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
@@ -19,18 +21,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * 한 나라 안의 도시를 이름으로 찾는다.
- *
- * country_info 에는 나라당 수도 한 곳만 있어서 "오사카" 를 칠 곳이 없었다.
- * 구글 자동완성에 도시 타입만 걸어 받아온다. 나라를 주면 그 안에서만,
- * 안 주면 전 세계에서 찾는다. 고른 도시에 관광지가 없으면
- * TourPlaceImportService.importCityIfEmpty 가 그때 채우므로,
- * 여기서는 이름만 주면 된다.
- */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class CitySearchService {
+
+    private static final String ADMIN_SUFFIXES = "시구군정촌현도";
+
+    private final TourPlaceRepository tourPlaceRepository;
 
     private static final String AUTOCOMPLETE_URL =
             "https://places.googleapis.com/v1/places:autocomplete";
@@ -66,7 +64,7 @@ public class CitySearchService {
             return List.of();
         }
         try {
-            return parse(request(countryName, trimmed), countryName);
+            return withKnownNames(parse(request(countryName, trimmed), countryName));
         } catch (Exception e) {
             // 검색이 안 되는 것과 앱이 죽는 것은 다르다. 비어서 돌려준다.
             log.warn("도시 검색 실패 ({} / {}): {}", countryName, trimmed, e.getMessage());
@@ -97,6 +95,38 @@ public class CitySearchService {
                 .body(body)
                 .retrieve()
                 .body(JsonNode.class);
+    }
+
+    List<CitySearchResponseDto> withKnownNames(List<CitySearchResponseDto> cities) {
+        List<CitySearchResponseDto> fixed = new ArrayList<>(cities.size());
+        Map<String, List<String>> knownByCountry = new HashMap<>();
+
+        for (CitySearchResponseDto city : cities) {
+            List<String> known = knownByCountry.computeIfAbsent(
+                    city.getCountryName(),
+                    country -> country == null || country.isBlank()
+                            ? List.of()
+                            : tourPlaceRepository.findCityNames(country));
+            String matched = knownName(city.getCityName(), known);
+            fixed.add(matched == null
+                    ? city
+                    : new CitySearchResponseDto(matched, city.getCountryName()));
+        }
+        return fixed;
+    }
+
+    private String knownName(String cityName, List<String> known) {
+        for (String name : known) {
+            if (name.equals(cityName)) {
+                return null;    // 이미 같은 이름이라 바꿀 것이 없다
+            }
+            if (cityName.length() == name.length() + 1
+                    && cityName.startsWith(name)
+                    && ADMIN_SUFFIXES.indexOf(cityName.charAt(name.length())) >= 0) {
+                return name;
+            }
+        }
+        return null;
     }
 
     /** 같은 도시가 두 번 오는 일이 있어 이름으로 한 번 거른다 */

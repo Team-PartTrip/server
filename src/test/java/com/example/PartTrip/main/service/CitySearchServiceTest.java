@@ -1,10 +1,12 @@
 package com.example.PartTrip.main.service;
 
 import com.example.PartTrip.main.dto.CitySearchResponseDto;
+import com.example.PartTrip.main.repository.TourPlaceRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.util.List;
 
@@ -12,7 +14,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class CitySearchServiceTest {
 
-    private final CitySearchService service = new CitySearchService();
+    private final TourPlaceRepository tourPlaceRepository =
+            Mockito.mock(TourPlaceRepository.class);
+    private final CitySearchService service = new CitySearchService(tourPlaceRepository);
     private final ObjectMapper mapper = new ObjectMapper();
 
     private JsonNode json(String raw) throws Exception {
@@ -88,6 +92,45 @@ class CitySearchServiceTest {
     void parseEmpty() throws Exception {
         assertThat(service.parse(json("{}"), "일본")).isEmpty();
         assertThat(service.parse(null, "일본")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("이미 담아둔 도시가 있으면 그 이름으로 바꾼다 - 오사카시 → 오사카")
+    void reusesKnownCityName() throws Exception {
+        Mockito.when(tourPlaceRepository.findCityNames("일본"))
+                .thenReturn(List.of("오사카", "후쿠오카"));
+
+        JsonNode body = json("""
+                {"suggestions":[
+                  {"placePrediction":{"structuredFormat":{
+                    "mainText":{"text":"오사카시"},
+                    "secondaryText":{"text":"일본 오사카부"}}}},
+                  {"placePrediction":{"structuredFormat":{
+                    "mainText":{"text":"교토시"},
+                    "secondaryText":{"text":"일본 교토부"}}}}]}
+                """);
+
+        List<CitySearchResponseDto> cities = service.withKnownNames(service.parse(body, "일본"));
+
+        assertThat(cities.get(0).getCityName()).isEqualTo("오사카");
+        // 담아둔 적 없는 도시는 구글이 준 이름 그대로 둔다
+        assertThat(cities.get(1).getCityName()).isEqualTo("교토시");
+    }
+
+    @Test
+    @DisplayName("두 글자 이상 다르면 다른 도시로 둔다")
+    void doesNotMatchDifferentCity() throws Exception {
+        Mockito.when(tourPlaceRepository.findCityNames("일본")).thenReturn(List.of("오사카"));
+
+        JsonNode body = json("""
+                {"suggestions":[
+                  {"placePrediction":{"structuredFormat":{
+                    "mainText":{"text":"오사카사야마시"},
+                    "secondaryText":{"text":"일본 오사카부"}}}}]}
+                """);
+
+        assertThat(service.withKnownNames(service.parse(body, "일본")).get(0).getCityName())
+                .isEqualTo("오사카사야마시");
     }
 
     @Test
