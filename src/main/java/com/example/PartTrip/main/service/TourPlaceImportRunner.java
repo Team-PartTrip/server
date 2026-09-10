@@ -34,7 +34,6 @@ public class TourPlaceImportRunner implements ApplicationRunner {
 
     private final TourPlaceImportService tourPlaceImportService;
     private final CountryCityNameService countryCityNameService;
-    private final TourPlaceAddressService tourPlaceAddressService;
     /**
      * 빈을 만들지 말지는 @ConditionalOnExpression 이 Environment 를 보고 정한다.
      * 여기서 명령줄 옵션만 보면, application.properties 나 환경변수로 준
@@ -65,7 +64,6 @@ public class TourPlaceImportRunner implements ApplicationRunner {
 
         if (hasText(environment.getProperty("parttrip.places.translate-addresses"))) {
             log.info("관광지 주소 한글화 시작");
-            log.info("관광지 주소 한글화 끝: {}줄", tourPlaceAddressService.translateAddresses());
         }
     }
 }
