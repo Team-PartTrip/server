@@ -35,12 +35,4 @@ public class CountryInfoController {
         return citySearchService.search(countryName, keyword);
     }
 
-    // 국가 정보 조회
-    @GetMapping("/country-info")
-    public CountryInfoResponseDto getCountryInfo(
-            @RequestParam String countryName
-    ) {
-        return countryInfoService.getCountryInfo(countryName);
-    }
-
 }

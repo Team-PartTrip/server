@@ -12,7 +12,6 @@ import java.util.Optional;
 
 public interface CountryInfoRepository extends JpaRepository<CountryInfoEntity, Long> {
 
-    Optional<CountryInfoEntity> findByCountryName(String countryName);
 
     Optional<CountryInfoEntity> findFirstByCountryNameIgnoreCaseOrderByCountryInfoIdAsc(
             String countryName
