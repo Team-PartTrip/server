@@ -9,7 +9,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -20,13 +19,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * 도시별 기간은 여행 기간을 빈틈 없이 이어 덮어야 한다.
  * 하루라도 비면 AI 가 그날 어느 도시에서 일정을 짤지 알 수 없다.
+ *
+ * 플래너 생성과 여행지 저장이 둘 다 여기를 지나므로 검증은 한 벌만 있다.
  */
-class PlannerCityRangeTest {
+class PlannerCityWriterTest {
 
     private final PlannerCityRepository repository =
             Mockito.mock(PlannerCityRepository.class);
-    private final PlannerService service =
-            new PlannerService(null, null, null, repository, null, null);
+    private final PlannerCityWriter writer = new PlannerCityWriter(repository);
 
     private static GroupTravelPlanEntity plan() {
         GroupTravelPlanEntity plan = new GroupTravelPlanEntity();
@@ -46,7 +46,7 @@ class PlannerCityRangeTest {
     }
 
     private void save(List<PlannerCityRequestDto> cities) {
-        ReflectionTestUtils.invokeMethod(service, "saveCities", plan(), cities);
+        writer.replace(plan(), cities);
     }
 
     @Test
@@ -80,6 +80,24 @@ class PlannerCityRangeTest {
         assertThatThrownBy(() -> save(List.of(city("오사카", "2026-08-23", "2026-08-25"))))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("다 덮지 않습니다");
+    }
+
+    @Test
+    @DisplayName("다시 저장하면 이전 도시 목록을 지운다")
+    void replacesPreviousCities() {
+        save(List.of(city("오사카", "2026-08-23", "2026-08-27")));
+
+        // 지우기가 저장보다 먼저 일어나야 기간이 두 번 덮이지 않는다
+        Mockito.verify(repository).deleteByPlanId(1L);
+    }
+
+    @Test
+    @DisplayName("빈 목록이면 지우기만 하고 저장하지 않는다")
+    void clearsWhenEmpty() {
+        save(List.of());
+
+        Mockito.verify(repository).deleteByPlanId(1L);
+        Mockito.verify(repository, Mockito.never()).saveAll(Mockito.anyList());
     }
 
     @Test

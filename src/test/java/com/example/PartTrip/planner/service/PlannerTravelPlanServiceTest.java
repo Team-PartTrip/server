@@ -41,6 +41,9 @@ class PlannerTravelPlanServiceTest {
     private GroupTravelPlanRepository groupTravelPlanRepository;
     @Mock
     private PlannerScheduleLockService plannerScheduleLockService;
+    @Mock
+    private PlannerCityWriter plannerCityWriter;
+
     @InjectMocks
     private PlannerTravelPlanService plannerTravelPlanService;
 
