@@ -1,5 +1,6 @@
 package com.example.PartTrip.main.controller;
 
+import com.example.PartTrip.main.dto.MoreTourPlacesResponseDto;
 import com.example.PartTrip.main.dto.TourPlaceResponseDto;
 import com.example.PartTrip.main.service.TourPlaceService;
 import lombok.RequiredArgsConstructor;
@@ -23,5 +24,15 @@ public class TourPlaceController {
             @RequestParam(required = false) String category
     ) {
         return tourPlaceService.getTourPlace(countryName, cityName, category);
+    }
+
+    @GetMapping("/tour-place/more")
+    public MoreTourPlacesResponseDto getMoreTourPlace(
+            @RequestParam String countryName,
+            @RequestParam String cityName,
+            @RequestParam String category,
+            @RequestParam(required = false) String cursor
+    ) {
+        return tourPlaceService.getMoreTourPlace(countryName, cityName, category, cursor);
     }
 }

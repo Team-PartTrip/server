@@ -24,8 +24,12 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.Base64;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 구글 플레이스로 tour_place 를 다시 채운다.
@@ -63,6 +67,25 @@ public class TourPlaceImportService {
 
     /** 카테고리당 가져올 개수. 요청 수가 아니라 한 요청의 결과 수다 */
     private static final int PER_CATEGORY = 10;
+
+    static final Map<TourPlaceCategory, List<String>> MORE_KEYWORDS = Map.of(
+            TourPlaceCategory.RESTAURANT, List.of("맛집", "음식점", "현지 맛집", "레스토랑", "식당"),
+            TourPlaceCategory.ATTRACTION, List.of("관광 명소", "가볼만한 곳", "랜드마크", "박물관", "공원"),
+            TourPlaceCategory.ACCOMMODATION, List.of("호텔", "숙소", "게스트하우스", "리조트"),
+            TourPlaceCategory.CAFE, List.of("카페", "디저트 카페", "베이커리", "찻집"),
+            TourPlaceCategory.ACTIVITY, List.of("액티비티 체험", "투어", "테마파크", "체험"),
+            TourPlaceCategory.SHOPPING, List.of("쇼핑", "쇼핑몰", "시장", "기념품 가게"));
+
+    private static final int PAGE_SIZE = 20;
+    private static final int ENOUGH = 10;
+    private static final int MAX_CALLS_PER_REQUEST = 3;
+
+    private static final String PAGE_FIELD_MASK = String.join(",",
+            "places.displayName",
+            "places.formattedAddress",
+            "places.rating",
+            "places.location",
+            "nextPageToken");
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
     private static final Duration READ_TIMEOUT = Duration.ofSeconds(30);
 
@@ -71,6 +94,8 @@ public class TourPlaceImportService {
 
     @Value("${google.places.api-key}")
     private String apiKey;
+
+    private final Map<String, Object> moreLocks = new ConcurrentHashMap<>();
 
     private final RestClient restClient = RestClient.builder()
             .requestFactory(ClientHttpRequestFactoryBuilder.detect().build(
@@ -173,6 +198,107 @@ public class TourPlaceImportService {
             }
         }
         return new ArrayList<>(byName.values());
+    }
+
+    /** 더 받은 결과. cursor 가 null 이면 구글이 더 줄 게 없다 */
+    public record MoreResult(List<TourPlaceEntity> places, String cursor) {}
+
+    record Cursor(int keyword, String pageToken) {
+
+        static Cursor decode(String value) {
+            if (value == null || value.isBlank()) {
+                return new Cursor(0, null);
+            }
+            try {
+                String raw = new String(Base64.getUrlDecoder().decode(value), StandardCharsets.UTF_8);
+                int bar = raw.indexOf('|');
+                int keyword = Integer.parseInt(raw.substring(0, bar));
+                String token = raw.substring(bar + 1);
+                return new Cursor(keyword, token.isEmpty() ? null : token);
+            } catch (RuntimeException e) {
+                throw new IllegalArgumentException("cursor 가 올바르지 않습니다.");
+            }
+        }
+
+        String encode() {
+            String raw = keyword + "|" + (pageToken == null ? "" : pageToken);
+            return Base64.getUrlEncoder().withoutPadding()
+                    .encodeToString(raw.getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    /** 다음 쪽이 있으면 그 쪽, 없으면 다음 검색어, 검색어도 끝났으면 null */
+    static Cursor next(Cursor current, String nextPageToken, int keywordCount) {
+        if (nextPageToken != null && !nextPageToken.isBlank()) {
+            return new Cursor(current.keyword(), nextPageToken);
+        }
+        if (current.keyword() + 1 < keywordCount) {
+            return new Cursor(current.keyword() + 1, null);
+        }
+        return null;
+    }
+
+    public MoreResult fetchMore(
+            String countryName, String cityName, TourPlaceCategory category, String cursorValue) {
+        List<String> keywords = MORE_KEYWORDS.get(category);
+        Cursor cursor = Cursor.decode(cursorValue);
+        if (cursor.keyword() < 0 || cursor.keyword() >= keywords.size()) {
+            throw new IllegalArgumentException("cursor 가 올바르지 않습니다.");
+        }
+
+        // 같은 도시·카테고리를 두 사람이 동시에 내리면 둘 다 같은 장소를
+        // 새것으로 보고 저장한다. 도시·카테고리마다 한 줄로 세운다.
+        String lockKey = countryName + "|" + cityName + "|" + category;
+        synchronized (moreLocks.computeIfAbsent(lockKey, key -> new Object())) {
+            Set<String> known = new HashSet<>();
+            tourPlaceRepository.findByCountryNameAndCityName(countryName, cityName)
+                    .forEach(place -> known.add(place.getPlaceName()));
+
+            List<TourPlaceEntity> fresh = new ArrayList<>();
+            int calls = 0;
+            while (cursor != null && fresh.size() < ENOUGH && calls < MAX_CALLS_PER_REQUEST) {
+                String query = cityName + " " + keywords.get(cursor.keyword());
+                JsonNode body;
+                try {
+                    body = searchPage(query, cursor.pageToken());
+                } catch (Exception e) {
+                    log.warn("{} 더 받기 실패: {}", query, e.getMessage());
+                    break;
+                }
+                calls++;
+
+                for (JsonNode place : body.path("places")) {
+                    String name = place.path("displayName").path("text").asText(null);
+                    if (name == null || name.isBlank() || !known.add(name)) {
+                        continue;
+                    }
+                    fresh.add(toEntity(place, countryName, cityName, category, false));
+                }
+                cursor = next(cursor, body.path("nextPageToken").asText(null), keywords.size());
+            }
+
+            List<TourPlaceEntity> saved = fresh.isEmpty() ? List.of() : tourPlaceRepository.saveAll(fresh);
+            log.info("{} {} {} — {}곳 더 받음 (구글 {}번)", countryName, cityName, category, saved.size(), calls);
+            return new MoreResult(saved, cursor == null ? null : cursor.encode());
+        }
+    }
+
+    private JsonNode searchPage(String textQuery, String pageToken) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("textQuery", textQuery);
+        body.put("languageCode", "ko");
+        body.put("pageSize", PAGE_SIZE);
+        if (pageToken != null) {
+            body.put("pageToken", pageToken);
+        }
+        return restClient.post()
+                .uri(SEARCH_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-Goog-Api-Key", apiKey)
+                .header("X-Goog-FieldMask", PAGE_FIELD_MASK)
+                .body(body)
+                .retrieve()
+                .body(JsonNode.class);
     }
 
     private JsonNode search(String textQuery) {

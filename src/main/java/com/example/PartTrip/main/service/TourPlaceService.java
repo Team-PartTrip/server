@@ -1,5 +1,6 @@
 package com.example.PartTrip.main.service;
 
+import com.example.PartTrip.main.dto.MoreTourPlacesResponseDto;
 import com.example.PartTrip.main.dto.TourPlaceResponseDto;
 import com.example.PartTrip.main.entity.TourPlaceEntity;
 import com.example.PartTrip.main.enums.TourPlaceCategory;
@@ -38,20 +39,40 @@ public class TourPlaceService {
             places = tourPlaceRepository.search(countryName, city, tourPlaceCategory);
         }
 
-        // Entity -> DTO 변환
-        return places.stream()
-                .map(place -> new TourPlaceResponseDto(
-                        place.getTourPlaceId(),
-                        place.getPlaceName(),
-                        place.getCategory() == null ? null : place.getCategory().getLabel(),
-                        place.getDescription(),
-                        place.getAddress(),
-                        place.getRating(),
-                        place.getImageUrl(),
-                        place.getLatitude(),
-                        place.getLongitude()
-                ))
-                .toList();
+        return places.stream().map(TourPlaceService::toDto).toList();
+    }
+
+    public MoreTourPlacesResponseDto getMoreTourPlace(String countryName,
+                                                      String cityName,
+                                                      String category,
+                                                      String cursor) {
+        TourPlaceCategory tourPlaceCategory = TourPlaceCategory.from(category);
+        if (tourPlaceCategory == null) {
+            // 카테고리마다 검색어가 달라서, 전체를 한꺼번에 더 받을 수는 없다
+            throw new IllegalArgumentException("카테고리를 입력해주세요.");
+        }
+        if (cityName == null || cityName.isBlank()) {
+            throw new IllegalArgumentException("도시를 입력해주세요.");
+        }
+
+        TourPlaceImportService.MoreResult result = tourPlaceImportService.fetchMore(
+                countryName, cityName.trim(), tourPlaceCategory, cursor);
+        return new MoreTourPlacesResponseDto(
+                result.places().stream().map(TourPlaceService::toDto).toList(),
+                result.cursor());
+    }
+
+    private static TourPlaceResponseDto toDto(TourPlaceEntity place) {
+        return new TourPlaceResponseDto(
+                place.getTourPlaceId(),
+                place.getPlaceName(),
+                place.getCategory() == null ? null : place.getCategory().getLabel(),
+                place.getDescription(),
+                place.getAddress(),
+                place.getRating(),
+                place.getImageUrl(),
+                place.getLatitude(),
+                place.getLongitude());
     }
 
 }
