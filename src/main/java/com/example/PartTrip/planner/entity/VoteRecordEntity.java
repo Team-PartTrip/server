@@ -7,16 +7,13 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-// 투표 기록 — 누가 무엇을 골랐는지 (Func-008-05)
-//
-// (vote_id, user_id) 를 유니크로 두어 한 투표에 1인 1표를 보장한다.
-// 표를 바꾸는 경우 새로 넣지 말고 기존 행의 option_id 를 수정한다.
 @Entity
 @Table(
         name = "vote_record",
         uniqueConstraints = @UniqueConstraint(
-                name = "uk_vote_record_vote_user",
-                columnNames = {"vote_id", "user_id"})
+                name = "uk_vote_record_option_user",
+                columnNames = {"option_id", "user_id"}),
+        indexes = @Index(name = "idx_vote_record_vote", columnList = "vote_id")
 )
 @Getter
 @Setter

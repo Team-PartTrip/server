@@ -93,6 +93,29 @@ public class PlannerVoteController {
         );
     }
 
+    // 장소 목록에서 바로 투표 (C6). 카테고리 투표와 후보는 처음 투표할 때 생긴다
+    @PutMapping("/{plannerId}/places/{tourPlaceId}/ballot")
+    public ResponseEntity<VoteBallotResponseDto> voteForPlace(
+            Authentication authentication,
+            @PathVariable Long plannerId,
+            @PathVariable Long tourPlaceId
+    ) {
+        return ResponseEntity.ok(
+                voteBallotService.voteForPlace(plannerId, tourPlaceId, authentication.getName())
+        );
+    }
+
+    // 장소에 던진 표 거두기
+    @DeleteMapping("/{plannerId}/places/{tourPlaceId}/ballot")
+    public ResponseEntity<Void> cancelPlaceVote(
+            Authentication authentication,
+            @PathVariable Long plannerId,
+            @PathVariable Long tourPlaceId
+    ) {
+        voteBallotService.cancelPlaceVote(plannerId, tourPlaceId, authentication.getName());
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/{plannerId}/votes")
     public ResponseEntity<List<VoteStatusResponseDto>> getVotes(
             Authentication authentication,

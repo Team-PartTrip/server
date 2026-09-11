@@ -129,18 +129,18 @@ public class VoteStatusService {
             countByOptionId.merge(record.getOptionId(), 1L, Long::sum);
         }
 
-        Long selectedOptionId = records.stream()
+        // 여러 곳에 투표할 수 있어 내가 고른 후보도 여러 개다
+        Set<Long> selectedOptionIds = records.stream()
                 .filter(record -> userId.equals(record.getUserId()))
                 .map(VoteRecordEntity::getOptionId)
-                .findFirst()
-                .orElse(null);
+                .collect(Collectors.toSet());
 
         List<VoteOptionStatusResponseDto> optionResponses = options.stream()
                 .map(option -> toOptionResponse(
                         option,
                         placesById.get(option.getTourPlaceId()),
                         countByOptionId.getOrDefault(option.getOptionId(), 0L),
-                        selectedOptionId,
+                        selectedOptionIds,
                         vote.getConfirmedOptionId()
                 ))
                 .toList();
@@ -157,7 +157,11 @@ public class VoteStatusService {
                 .deadline(vote.getDeadline())
                 .deadlinePassed(deadlinePassed)
                 .eligibleMemberCount(eligibleMemberCount)
-                .votedMemberCount((long) records.size())
+                // 표 수가 아니라 사람 수다. 한 사람이 세 곳에 투표하면 표는 3 이다
+                .votedMemberCount(records.stream()
+                        .map(VoteRecordEntity::getUserId)
+                        .distinct()
+                        .count())
                 .confirmedOptionId(vote.getConfirmedOptionId())
                 .options(optionResponses)
                 .build();
@@ -167,7 +171,7 @@ public class VoteStatusService {
             VoteOptionEntity option,
             TourPlaceEntity place,
             long voteCount,
-            Long selectedOptionId,
+            Set<Long> selectedOptionIds,
             Long legacyConfirmedOptionId
     ) {
         return VoteOptionStatusResponseDto.builder()
@@ -179,7 +183,7 @@ public class VoteStatusService {
                 .rating(place == null ? null : place.getRating())
                 .addedByUserId(option.getAddedByUserId())
                 .voteCount(voteCount)
-                .selectedByMe(option.getOptionId().equals(selectedOptionId))
+                .selectedByMe(selectedOptionIds.contains(option.getOptionId()))
                 .confirmed(Boolean.TRUE.equals(option.getConfirmed())
                         || option.getOptionId().equals(legacyConfirmedOptionId))
                 .build();

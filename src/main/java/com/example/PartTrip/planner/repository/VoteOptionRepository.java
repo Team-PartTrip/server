@@ -21,6 +21,8 @@ public interface VoteOptionRepository extends JpaRepository<VoteOptionEntity, Lo
 
     boolean existsByVoteIdAndTourPlaceId(Long voteId, Long tourPlaceId);
 
+    Optional<VoteOptionEntity> findByVoteIdAndTourPlaceId(Long voteId, Long tourPlaceId);
+
     boolean existsByVoteIdAndPlaceNameIgnoreCase(Long voteId, String placeName);
 
     void deleteByVoteId(Long voteId);
