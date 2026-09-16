@@ -20,4 +20,6 @@ public class DdayResponseDto {
     private Integer headcount;
 
     private String dday;
+
+    private TripPhase status;
 }

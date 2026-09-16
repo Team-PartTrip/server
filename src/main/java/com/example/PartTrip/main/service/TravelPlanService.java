@@ -1,6 +1,7 @@
 package com.example.PartTrip.main.service;
 
 import com.example.PartTrip.main.dto.DdayResponseDto;
+import com.example.PartTrip.main.dto.TripPhase;
 import com.example.PartTrip.planner.entity.GroupMemberEntity;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
 import com.example.PartTrip.planner.entity.TravelGroupEntity;
@@ -78,9 +79,10 @@ public class TravelPlanService {
         );
     }
 
-    // 보여줄 여행이 없을 때. 앱은 날짜가 null 이면 '쉬는 중' 화면을 그린다.
+    // 보여줄 여행이 없을 때. 문구는 클라이언트가 status 를 보고 정한다.
     private DdayResponseDto restingDto() {
-        return new DdayResponseDto(null, null, null, null, null, "쉬는 중");
+        return new DdayResponseDto(
+                null, null, null, null, null, "쉬는 중", TripPhase.NO_TRIP);
     }
 
     // 여행 정보 -> DdayResponseDto 변환
@@ -97,15 +99,20 @@ public class TravelPlanService {
         long days = ChronoUnit.DAYS.between(today, startDate);
 
         String dday;
+        TripPhase status;
 
         if (days > 0) {
             dday = "D - " + days;
+            status = TripPhase.BEFORE;
         } else if (days == 0) {
             dday = "D-Day";
+            status = TripPhase.DURING;
         } else if (!today.isAfter(endDate)) {
             dday = "여행 중";
+            status = TripPhase.DURING;
         } else {
             dday = "여행 종료";
+            status = TripPhase.ENDED;
         }
 
         return new DdayResponseDto(
@@ -114,7 +121,8 @@ public class TravelPlanService {
                 startDate,
                 endDate,
                 headcount,
-                dday
+                dday,
+                status
         );
     }
 }
