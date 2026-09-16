@@ -12,6 +12,7 @@ import com.example.PartTrip.planner.dto.response.VoteCreateResponseDto;
 import com.example.PartTrip.planner.dto.response.VoteReminderResponseDto;
 import com.example.PartTrip.planner.dto.response.VoteStatusResponseDto;
 import com.example.PartTrip.planner.service.VoteBallotService;
+import com.example.PartTrip.planner.service.PlannerCartService;
 import com.example.PartTrip.planner.service.VoteConfirmService;
 import com.example.PartTrip.planner.service.VoteCreateService;
 import com.example.PartTrip.planner.service.VoteOptionService;
@@ -39,11 +40,22 @@ import java.util.List;
 public class PlannerVoteController {
 
     private final VoteCreateService voteCreateService;
+    private final PlannerCartService plannerCartService;
     private final VoteOptionService voteOptionService;
     private final VoteBallotService voteBallotService;
     private final VoteStatusService voteStatusService;
     private final VoteConfirmService voteConfirmService;
     private final VoteReminderService voteReminderService;
+
+    @PostMapping("/{plannerId}/votes/start")
+    public ResponseEntity<String> startVoting(
+            Authentication authentication,
+            @PathVariable Long plannerId
+    ) {
+        return ResponseEntity.ok(
+                plannerCartService.startVoting(plannerId, authentication.getName())
+        );
+    }
 
     @PostMapping("/{plannerId}/votes")
     public ResponseEntity<VoteCreateResponseDto> createVote(

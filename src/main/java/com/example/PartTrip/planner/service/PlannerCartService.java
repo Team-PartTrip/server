@@ -58,8 +58,40 @@ public class PlannerCartService {
                 .ifPresent(placeId -> {
                     throw new IllegalArgumentException("관광지가 존재하지 않습니다: " + placeId);
                 });
+        List<TourPlaceEntity> places = placeIds.stream().map(placesById::get).toList();
+        int addedCount = addPlaceCandidates(group, plan, places, userId);
+        return addedCount + "개 장소를 장바구니에 담았습니다.";
+    }
 
-        Set<TourPlaceCategory> requiredCategories = placesById.values().stream()
+    @Transactional
+    public String startVoting(Long plannerId, String userId) {
+        TravelGroupEntity group = requireMemberForUpdate(plannerId, userId);
+        if (!userId.equals(group.getOwnerUserId())) {
+            throw new IllegalArgumentException("플래너 그룹장만 전체 장소 투표를 시작할 수 있습니다.");
+        }
+        if (group.getStatus() != GroupStatus.PLANNING
+                && group.getStatus() != GroupStatus.VOTING) {
+            throw new IllegalArgumentException("현재 상태에서는 투표를 시작할 수 없습니다.");
+        }
+
+        GroupTravelPlanEntity plan = requirePlan(plannerId);
+        List<TourPlaceEntity> places = tourPlaceRepository
+                .findByCountryNameAndCityName(plan.getCountryName(), plan.getCityName());
+        if (places.isEmpty()) {
+            throw new IllegalArgumentException("해당 여행지에 투표할 장소가 없습니다.");
+        }
+
+        int addedCount = addPlaceCandidates(group, plan, places, userId);
+        return addedCount + "개 장소를 투표 후보로 등록했습니다.";
+    }
+
+    private int addPlaceCandidates(
+            TravelGroupEntity group,
+            GroupTravelPlanEntity plan,
+            List<TourPlaceEntity> places,
+            String userId
+    ) {
+        Set<TourPlaceCategory> requiredCategories = places.stream()
                 .map(TourPlaceEntity::getCategory)
                 .collect(Collectors.toSet());
         if (requiredCategories.contains(null)) {
@@ -88,8 +120,7 @@ public class PlannerCartService {
                 .map(option -> option.getVoteId() + ":" + option.getTourPlaceId())
                 .collect(Collectors.toCollection(HashSet::new));
         LocalDateTime now = LocalDateTime.now();
-        List<VoteOptionEntity> optionsToSave = placeIds.stream()
-                .map(placesById::get)
+        List<VoteOptionEntity> optionsToSave = places.stream()
                 .filter(place -> !existingPairs.contains(
                         votesByCategory.get(place.getCategory()).getVoteId() + ":" + place.getTourPlaceId()))
                 .map(place -> newOption(
@@ -101,7 +132,7 @@ public class PlannerCartService {
         if (addedCount > 0) {
             group.setStatus(GroupStatus.VOTING);
         }
-        return addedCount + "개 장소를 장바구니에 담았습니다.";
+        return addedCount;
     }
 
     private VoteEntity newOpenVote(Long planId, TourPlaceCategory category) {
