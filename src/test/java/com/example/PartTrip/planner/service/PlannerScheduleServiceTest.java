@@ -146,6 +146,38 @@ class PlannerScheduleServiceTest {
                 .containsOnlyOnce(1L);
     }
 
+    @Test
+    void 같은_도시를_다시_방문하면_일반_장소는_중복하지_않고_숙소는_다시_배치한다() {
+        GroupTravelPlanEntity plan = plan();
+        PlannerCityEntity firstSegment = city("일본", "오사카",
+                LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 1));
+        PlannerCityEntity secondSegment = city("일본", "오사카",
+                LocalDate.of(2026, 10, 2), LocalDate.of(2026, 10, 2));
+        TourPlaceEntity attraction = place(
+                1L, "일본", "오사카", "오사카성", 4.8, 34.68, 135.52);
+        TourPlaceEntity accommodation = place(
+                2L, "일본", "오사카", "오사카 호텔", 4.7, 34.69, 135.53);
+        accommodation.setCategory(TourPlaceCategory.ACCOMMODATION);
+
+        given(plannerCityRepository.findByPlanIdOrderBySeqAsc(10L))
+                .willReturn(List.of(firstSegment, secondSegment));
+        given(tourPlaceRepository.findAllById(any()))
+                .willReturn(List.of(attraction, accommodation));
+        given(tourPlaceRepository.search("일본", "오사카", null))
+                .willReturn(List.of(attraction, accommodation));
+
+        List<PlannerScheduleService.ScheduledPlace> result = plannerScheduleService
+                .buildSchedule(plan, List.of(confirmed(1L), confirmed(2L)));
+
+        assertThat(result).filteredOn(item -> item.tourPlace().getTourPlaceId().equals(1L))
+                .hasSize(1);
+        assertThat(result).filteredOn(item -> item.tourPlace().getTourPlaceId().equals(2L))
+                .extracting(PlannerScheduleService.ScheduledPlace::date)
+                .containsExactly(
+                        LocalDate.of(2026, 10, 1),
+                        LocalDate.of(2026, 10, 2));
+    }
+
     private GroupTravelPlanEntity plan() {
         GroupTravelPlanEntity plan = new GroupTravelPlanEntity();
         plan.setPlanId(10L);

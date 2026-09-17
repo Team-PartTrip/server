@@ -58,7 +58,8 @@ public class PlannerScheduleService {
                     .map(place -> placesById.get(place.getTourPlaceId()))
                     .filter(place -> place != null
                             && sameCity(place, city)
-                            && !alreadyScheduled.contains(place.getTourPlaceId()))
+                            && (place.getCategory() == TourPlaceCategory.ACCOMMODATION
+                            || !alreadyScheduled.contains(place.getTourPlaceId())))
                     .toList();
             selected.forEach(place -> alreadyScheduled.add(place.getTourPlaceId()));
             result.addAll(scheduleCity(city, selected, alreadyScheduled));
