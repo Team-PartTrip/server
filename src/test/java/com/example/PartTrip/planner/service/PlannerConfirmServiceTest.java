@@ -1,6 +1,6 @@
 package com.example.PartTrip.planner.service;
 
-import com.example.PartTrip.main.repository.TourPlaceRepository;
+import com.example.PartTrip.main.entity.TourPlaceEntity;
 import com.example.PartTrip.planner.dto.request.PlannerConfirmRequestDto;
 import com.example.PartTrip.planner.dto.request.VoteConfirmRequestDto;
 import com.example.PartTrip.planner.dto.response.ConfirmedPlaceResponseDto;
@@ -66,7 +66,7 @@ class PlannerConfirmServiceTest {
     @Mock private PlannerFinalService plannerFinalService;
     @Mock private TripCardRepository tripCardRepository;
     @Mock private TripCardPlaceRepository tripCardPlaceRepository;
-    @Mock private TourPlaceRepository tourPlaceRepository;
+    @Mock private PlannerScheduleService plannerScheduleService;
     @Mock private ApplicationEventPublisher eventPublisher;
     @InjectMocks private PlannerConfirmService plannerConfirmService;
 
@@ -121,7 +121,7 @@ class PlannerConfirmServiceTest {
         given(tripCardRepository.saveAll(any()))
                 .willReturn(List.of(TripCardEntity.builder()
                         .tripCardId(7L).userId(OWNER_ID).planId(PLAN_ID).build()));
-        lenient().when(tourPlaceRepository.findAllById(any())).thenReturn(List.of());
+        lenient().when(plannerScheduleService.buildSchedule(any(), any())).thenReturn(List.of());
     }
 
     private GroupMemberEntity owner() {
@@ -256,6 +256,21 @@ class PlannerConfirmServiceTest {
                 confirmed("RESTAURANT", 4L));
         given(plannerFinalService.getConfirmedPlaces(PLANNER_ID, OWNER_ID))
                 .willReturn(PlannerFinalResponseDto.builder().places(places).build());
+        TourPlaceEntity accommodation = tourPlace(1L);
+        TourPlaceEntity restaurant2 = tourPlace(2L);
+        TourPlaceEntity restaurant3 = tourPlace(3L);
+        TourPlaceEntity restaurant4 = tourPlace(4L);
+        given(plannerScheduleService.buildSchedule(plan, places)).willReturn(List.of(
+                new PlannerScheduleService.ScheduledPlace(
+                        places.get(0), accommodation, LocalDate.of(2026, 9, 1), 1),
+                new PlannerScheduleService.ScheduledPlace(
+                        places.get(0), accommodation, LocalDate.of(2026, 9, 2), 1),
+                new PlannerScheduleService.ScheduledPlace(
+                        places.get(1), restaurant2, LocalDate.of(2026, 9, 1), 2),
+                new PlannerScheduleService.ScheduledPlace(
+                        places.get(2), restaurant3, LocalDate.of(2026, 9, 1), 3),
+                new PlannerScheduleService.ScheduledPlace(
+                        places.get(3), restaurant4, LocalDate.of(2026, 9, 2), 2)));
 
         plannerConfirmService.confirmPlanner(PLANNER_ID, null, OWNER_ID);
 
@@ -271,6 +286,12 @@ class PlannerConfirmServiceTest {
                         org.assertj.core.groups.Tuple.tuple(2L, LocalDate.of(2026, 9, 1)),
                         org.assertj.core.groups.Tuple.tuple(3L, LocalDate.of(2026, 9, 1)),
                         org.assertj.core.groups.Tuple.tuple(4L, LocalDate.of(2026, 9, 2)));
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<TripCardEntity>> cardCaptor = ArgumentCaptor.forClass(List.class);
+        verify(tripCardRepository).saveAll(cardCaptor.capture());
+        assertThat(cardCaptor.getValue()).singleElement()
+                .extracting(TripCardEntity::getPlaceCount)
+                .isEqualTo(4);
     }
 
     private ConfirmedPlaceResponseDto confirmed(String category, Long tourPlaceId) {
@@ -279,5 +300,11 @@ class PlannerConfirmServiceTest {
                 .tourPlaceId(tourPlaceId)
                 .placeName("장소 " + tourPlaceId)
                 .build();
+    }
+
+    private TourPlaceEntity tourPlace(Long id) {
+        TourPlaceEntity place = new TourPlaceEntity();
+        place.setTourPlaceId(id);
+        return place;
     }
 }
