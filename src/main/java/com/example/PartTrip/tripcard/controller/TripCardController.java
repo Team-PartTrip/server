@@ -73,4 +73,10 @@ public class TripCardController {
     public void deleteEntry(@PathVariable Long cardId, @PathVariable Long entryId) {
         tripCardEntryService.deleteEntry(cardId, entryId);
     }
+
+    // AI가 일정에 보충한 장소를 사용자가 직접 뺄 수 있다.
+    @DeleteMapping("/{cardId}/places/{placeId}")
+    public void deletePlace(@PathVariable Long cardId, @PathVariable Long placeId) {
+        tripCardEntryService.deletePlace(cardId, placeId);
+    }
 }

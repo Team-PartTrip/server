@@ -13,4 +13,7 @@ public interface TripCardEntryService {
 
     @Transactional
     void deleteEntry(Long cardId, Long entryId);
+
+    @Transactional
+    void deletePlace(Long cardId, Long placeId);
 }

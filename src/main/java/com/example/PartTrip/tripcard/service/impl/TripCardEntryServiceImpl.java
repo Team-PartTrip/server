@@ -5,7 +5,9 @@ import com.example.PartTrip.global.security.CurrentUserProvider;
 import com.example.PartTrip.tripcard.dto.response.TripCardEntryResponse;
 import com.example.PartTrip.tripcard.entity.TripCardEntity;
 import com.example.PartTrip.tripcard.entity.TripCardPhotoEntity;
+import com.example.PartTrip.tripcard.entity.TripCardPlaceEntity;
 import com.example.PartTrip.tripcard.repository.TripCardPhotoRepository;
+import com.example.PartTrip.tripcard.repository.TripCardPlaceRepository;
 import com.example.PartTrip.tripcard.repository.TripCardRepository;
 import com.example.PartTrip.tripcard.service.TripCardEntryService;
 import com.example.PartTrip.tripcard.util.ExifMetadataUtil;
@@ -30,6 +32,7 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
 
     private final TripCardRepository tripCardRepository;
     private final TripCardPhotoRepository tripCardPhotoRepository;
+    private final TripCardPlaceRepository tripCardPlaceRepository;
     private final CurrentUserProvider currentUserProvider;
     private final ImageStorageService imageStorageService;
 
@@ -91,6 +94,29 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
                                     Comparator.nullsLast(Comparator.naturalOrder())))
                     .map(TripCardPhotoEntity::getImageUrl)
                     .orElse(null));
+        }
+    }
+
+    @Transactional
+    @Override
+    public void deletePlace(Long cardId, Long placeId) {
+        TripCardEntity tripCard = getEditableCard(cardId);
+        TripCardPlaceEntity place = tripCardPlaceRepository.findById(placeId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 장소 항목이 존재하지 않습니다."));
+        if (!place.getTripCardId().equals(cardId)) {
+            throw new IllegalArgumentException("해당 카드에 속한 장소 항목이 아닙니다.");
+        }
+
+        Long tourPlaceId = place.getTourPlaceId();
+        tripCardPlaceRepository.delete(place);
+        tripCardPlaceRepository.flush();
+        boolean samePlaceRemains = tourPlaceId != null
+                && tripCardPlaceRepository
+                .findByTripCardIdOrderByVisitedDateAscSortOrderAsc(cardId).stream()
+                .anyMatch(remaining -> tourPlaceId.equals(remaining.getTourPlaceId()));
+        if (!samePlaceRemains) {
+            tripCard.setPlaceCount(Math.max(
+                    0, (tripCard.getPlaceCount() == null ? 0 : tripCard.getPlaceCount()) - 1));
         }
     }
 
@@ -156,7 +182,7 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
         TripCardEntity tripCard = tripCardRepository.findByTripCardIdAndUserId(cardId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 카드가 없거나 수정 권한이 없습니다."));
         if (tripCard.isDateOver()) {
-            throw new IllegalStateException("여행 종료 후에는 사진을 추가·수정·삭제할 수 없습니다.");
+            throw new IllegalStateException("여행 종료 후에는 여행 카드를 수정할 수 없습니다.");
         }
         return tripCard;
     }
