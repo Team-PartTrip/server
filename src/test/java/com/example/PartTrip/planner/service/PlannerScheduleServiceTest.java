@@ -90,11 +90,60 @@ class PlannerScheduleServiceTest {
                 .buildSchedule(plan, all.stream().map(p -> confirmed(p.getTourPlaceId())).toList());
 
         assertThat(result).filteredOn(item -> item.date().equals(LocalDate.of(2026, 10, 1)))
+                .extracting(item -> item.tourPlace().getTourPlaceId())
+                .containsExactlyInAnyOrder(1L, 2L, 6L);
+        assertThat(result).filteredOn(item -> item.date().equals(LocalDate.of(2026, 10, 2)))
+                .extracting(item -> item.tourPlace().getTourPlaceId())
+                .containsExactlyInAnyOrder(3L, 4L, 5L);
+        assertThat(result).filteredOn(item -> item.date().equals(LocalDate.of(2026, 10, 1)))
                 .extracting(item -> item.tourPlace().getRating())
                 .isSortedAccordingTo(java.util.Comparator.reverseOrder());
         assertThat(result).filteredOn(item -> item.date().equals(LocalDate.of(2026, 10, 2)))
                 .extracting(item -> item.tourPlace().getRating())
                 .isSortedAccordingTo(java.util.Comparator.reverseOrder());
+    }
+
+    @Test
+    void 숙소가_여러_곳이어도_평점이_가장_높은_한_곳을_매일_사용한다() {
+        GroupTravelPlanEntity plan = plan();
+        TourPlaceEntity first = place(1L, "일본", "오사카", "호텔 A", 4.9, 34.68, 135.52);
+        first.setCategory(TourPlaceCategory.ACCOMMODATION);
+        TourPlaceEntity second = place(2L, "일본", "오사카", "호텔 B", 4.5, 34.69, 135.53);
+        second.setCategory(TourPlaceCategory.ACCOMMODATION);
+
+        given(plannerCityRepository.findByPlanIdOrderBySeqAsc(10L)).willReturn(List.of());
+        given(tourPlaceRepository.findAllById(any())).willReturn(List.of(first, second));
+        given(tourPlaceRepository.search("일본", "오사카", null))
+                .willReturn(List.of(first, second));
+
+        List<PlannerScheduleService.ScheduledPlace> result = plannerScheduleService
+                .buildSchedule(plan, List.of(confirmed(1L), confirmed(2L)));
+
+        assertThat(result).filteredOn(item ->
+                        item.tourPlace().getCategory() == TourPlaceCategory.ACCOMMODATION)
+                .extracting(item -> item.tourPlace().getTourPlaceId())
+                .containsExactly(1L, 1L);
+    }
+
+    @Test
+    void 같은_도시_구간이_반복되어도_확정_장소를_중복_배치하지_않는다() {
+        GroupTravelPlanEntity plan = plan();
+        PlannerCityEntity firstSegment = city("일본", "오사카",
+                LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 1));
+        PlannerCityEntity secondSegment = city("일본", "오사카",
+                LocalDate.of(2026, 10, 2), LocalDate.of(2026, 10, 2));
+        TourPlaceEntity confirmed = place(1L, "일본", "오사카", "오사카성", 4.8, 34.68, 135.52);
+
+        given(plannerCityRepository.findByPlanIdOrderBySeqAsc(10L))
+                .willReturn(List.of(firstSegment, secondSegment));
+        given(tourPlaceRepository.findAllById(any())).willReturn(List.of(confirmed));
+        given(tourPlaceRepository.search("일본", "오사카", null)).willReturn(List.of(confirmed));
+
+        List<PlannerScheduleService.ScheduledPlace> result = plannerScheduleService
+                .buildSchedule(plan, List.of(confirmed(1L)));
+
+        assertThat(result).extracting(item -> item.tourPlace().getTourPlaceId())
+                .containsOnlyOnce(1L);
     }
 
     private GroupTravelPlanEntity plan() {

@@ -56,7 +56,9 @@ public class PlannerScheduleService {
         for (PlannerCityEntity city : cities) {
             List<TourPlaceEntity> selected = confirmedPlaces.stream()
                     .map(place -> placesById.get(place.getTourPlaceId()))
-                    .filter(place -> place != null && sameCity(place, city))
+                    .filter(place -> place != null
+                            && sameCity(place, city)
+                            && !alreadyScheduled.contains(place.getTourPlaceId()))
                     .toList();
             selected.forEach(place -> alreadyScheduled.add(place.getTourPlaceId()));
             result.addAll(scheduleCity(city, selected, alreadyScheduled));
@@ -103,7 +105,8 @@ public class PlannerScheduleService {
                 scheduled.add(new ScheduledPlace(toResponse(place), place, date, order++));
             }
             if (!accommodations.isEmpty()) {
-                TourPlaceEntity accommodation = accommodations.get(Math.min(day, accommodations.size() - 1));
+                // 숙소는 이동 동선의 기준점이므로 도시 체류 중 매일 같은 곳을 쓴다.
+                TourPlaceEntity accommodation = accommodations.get(0);
                 scheduled.add(new ScheduledPlace(
                         toResponse(accommodation), accommodation, date, order));
             }

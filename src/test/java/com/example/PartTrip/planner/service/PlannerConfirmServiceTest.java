@@ -286,6 +286,12 @@ class PlannerConfirmServiceTest {
                         org.assertj.core.groups.Tuple.tuple(2L, LocalDate.of(2026, 9, 1)),
                         org.assertj.core.groups.Tuple.tuple(3L, LocalDate.of(2026, 9, 1)),
                         org.assertj.core.groups.Tuple.tuple(4L, LocalDate.of(2026, 9, 2)));
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<TripCardEntity>> cardCaptor = ArgumentCaptor.forClass(List.class);
+        verify(tripCardRepository).saveAll(cardCaptor.capture());
+        assertThat(cardCaptor.getValue()).singleElement()
+                .extracting(TripCardEntity::getPlaceCount)
+                .isEqualTo(4);
     }
 
     private ConfirmedPlaceResponseDto confirmed(String category, Long tourPlaceId) {

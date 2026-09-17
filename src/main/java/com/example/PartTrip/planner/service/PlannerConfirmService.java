@@ -176,6 +176,11 @@ public class PlannerConfirmService {
     ) {
         List<PlannerScheduleService.ScheduledPlace> schedule =
                 plannerScheduleService.buildSchedule(plan, places);
+        int uniquePlaceCount = Math.toIntExact(schedule.stream()
+                .map(item -> item.place().getTourPlaceId())
+                .filter(id -> id != null)
+                .distinct()
+                .count());
         List<GroupMemberEntity> members = groupMemberRepository
                 .findByGroupIdOrderByJoinedAtAsc(group.getGroupId());
         List<String> memberUserIds = members.stream().map(GroupMemberEntity::getUserId).toList();
@@ -186,7 +191,7 @@ public class PlannerConfirmService {
         List<TripCardEntity> newCards = memberUserIds.stream()
                 .filter(memberUserId -> !cardsByUserId.containsKey(memberUserId))
                 .map(memberUserId -> newTripCard(
-                        group, plan, schedule.size(), memberUserId, members.size()))
+                        group, plan, uniquePlaceCount, memberUserId, members.size()))
                 .toList();
         List<TripCardEntity> savedCards = tripCardRepository.saveAll(newCards);
         savedCards.forEach(card -> cardsByUserId.put(card.getUserId(), card));
