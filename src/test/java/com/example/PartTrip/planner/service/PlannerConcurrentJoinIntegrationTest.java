@@ -38,7 +38,8 @@ import static org.assertj.core.api.Assertions.assertThat;
         PlannerTravelPlanService.class,
         PlannerScheduleLockService.class,
         PlannerInviteLinkFactory.class,
-        PlannerCityWriter.class
+        PlannerCityWriter.class,
+        PlannerCategoryCountService.class
 })
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class PlannerConcurrentJoinIntegrationTest {

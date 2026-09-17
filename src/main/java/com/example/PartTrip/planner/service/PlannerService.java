@@ -27,6 +27,7 @@ public class PlannerService {
     private final GroupMemberRepository groupMemberRepository;
     private final GroupTravelPlanRepository groupTravelPlanRepository;
     private final PlannerCityWriter plannerCityWriter;
+    private final PlannerCategoryCountService plannerCategoryCountService;
     private final PlannerInviteLinkFactory inviteLinkFactory;
     private final PlannerScheduleLockService plannerScheduleLockService;
 
@@ -139,6 +140,7 @@ public class PlannerService {
         GroupTravelPlanEntity saved = groupTravelPlanRepository.save(travelPlan);
 
         plannerCityWriter.replace(saved, cities);
+        plannerCategoryCountService.replace(saved, cities, dto.getPlaceCounts());
         return saved;
     }
 

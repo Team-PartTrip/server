@@ -21,7 +21,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -38,6 +37,7 @@ public class VoteConfirmService {
     private final VoteRepository voteRepository;
     private final VoteOptionRepository voteOptionRepository;
     private final VoteRecordRepository voteRecordRepository;
+    private final PlannerCategoryCountService plannerCategoryCountService;
 
     @Transactional
     public VoteCloseResponseDto closeVote(
@@ -200,18 +200,7 @@ public class VoteConfirmService {
     private int requiredOptionCount(VoteEntity vote) {
         GroupTravelPlanEntity plan = groupTravelPlanRepository.findById(vote.getPlanId())
                 .orElseThrow(() -> new IllegalArgumentException("여행 계획이 존재하지 않습니다."));
-        if (plan.getStartDate() == null || plan.getEndDate() == null) {
-            throw new IllegalArgumentException("여행 기간이 설정되지 않았습니다.");
-        }
-        long days = ChronoUnit.DAYS.between(plan.getStartDate(), plan.getEndDate()) + 1;
-        if (days <= 0 || days > Integer.MAX_VALUE / 2) {
-            throw new IllegalArgumentException("여행 기간이 올바르지 않습니다.");
-        }
-        return switch (vote.getCategory()) {
-            case ACCOMMODATION -> 1;
-            case RESTAURANT -> Math.toIntExact(days * 2);
-            default -> Math.toIntExact(days);
-        };
+        return plannerCategoryCountService.requiredCount(plan, vote.getCategory());
     }
 
     private List<VoteOptionEntity> selectOptions(Long requestedOptionId, VoteResult result) {
