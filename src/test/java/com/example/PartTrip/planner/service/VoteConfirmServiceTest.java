@@ -23,7 +23,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -48,6 +47,7 @@ class VoteConfirmServiceTest {
     @Mock private VoteRepository voteRepository;
     @Mock private VoteOptionRepository voteOptionRepository;
     @Mock private VoteRecordRepository voteRecordRepository;
+    @Mock private PlannerCategoryCountService plannerCategoryCountService;
     @InjectMocks private VoteConfirmService service;
 
     private TravelGroupEntity group;
@@ -69,8 +69,6 @@ class VoteConfirmServiceTest {
         plan = new GroupTravelPlanEntity();
         plan.setPlanId(PLAN_ID);
         plan.setGroupId(PLANNER_ID);
-        plan.setStartDate(LocalDate.of(2026, 9, 1));
-        plan.setEndDate(LocalDate.of(2026, 9, 3));
 
         vote = new VoteEntity();
         vote.setVoteId(VOTE_ID);
@@ -86,10 +84,11 @@ class VoteConfirmServiceTest {
                 .willReturn(Optional.of(plan));
         given(groupTravelPlanRepository.findById(PLAN_ID)).willReturn(Optional.of(plan));
         lenient().when(voteRepository.findByPlanId(PLAN_ID)).thenReturn(List.of(vote));
+        requiredCount(TourPlaceCategory.RESTAURANT, 6);
     }
 
     @Test
-    void 삼일_맛집은_득표순_여섯_곳을_확정한다() {
+    void 그룹장이_정한_맛집_여섯_곳을_득표순으로_확정한다() {
         List<VoteOptionEntity> options = options(7);
         given(voteOptionRepository.findByVoteIdOrderByCreatedAtAsc(VOTE_ID))
                 .willReturn(options);
@@ -106,8 +105,9 @@ class VoteConfirmServiceTest {
     }
 
     @Test
-    void 숙소는_여행_길이와_무관하게_한_곳만_확정한다() {
+    void 숙소는_항상_한_곳만_확정한다() {
         vote.setCategory(TourPlaceCategory.ACCOMMODATION);
+        requiredCount(TourPlaceCategory.ACCOMMODATION, 1);
         List<VoteOptionEntity> options = options(3);
         given(voteOptionRepository.findByVoteIdOrderByCreatedAtAsc(VOTE_ID))
                 .willReturn(options);
@@ -122,8 +122,9 @@ class VoteConfirmServiceTest {
     }
 
     @Test
-    void 삼일_명소는_득표순_세_곳을_확정한다() {
+    void 그룹장이_정한_명소_세_곳을_득표순으로_확정한다() {
         vote.setCategory(TourPlaceCategory.ATTRACTION);
+        requiredCount(TourPlaceCategory.ATTRACTION, 3);
         List<VoteOptionEntity> options = options(4);
         given(voteOptionRepository.findByVoteIdOrderByCreatedAtAsc(VOTE_ID))
                 .willReturn(options);
@@ -186,6 +187,11 @@ class VoteConfirmServiceTest {
         assertThat(options).filteredOn(option -> Boolean.TRUE.equals(option.getConfirmed()))
                 .extracting(VoteOptionEntity::getOptionId)
                 .containsExactly(3L);
+    }
+
+    private void requiredCount(TourPlaceCategory category, int count) {
+        lenient().when(plannerCategoryCountService.requiredCount(plan, category))
+                .thenReturn(count);
     }
 
     private List<VoteOptionEntity> options(int count) {
