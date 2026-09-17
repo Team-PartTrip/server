@@ -1,17 +1,14 @@
 package com.example.PartTrip.login.service;
 
-import com.example.PartTrip.login.dto.LoginRequestDto;
 import com.example.PartTrip.login.dto.LogoutRequestDto;
 import com.example.PartTrip.login.dto.RefreshRequestDto;
 import com.example.PartTrip.login.dto.TokenResponseDto;
 import com.example.PartTrip.login.entity.RefreshTokenEntity;
-import com.example.PartTrip.signup.entity.UserEntity;
 import com.example.PartTrip.global.exception.RefreshTokenReuseException;
 import com.example.PartTrip.global.security.JwtUtil;
 import com.example.PartTrip.login.repository.RefreshTokenRepository;
 import com.example.PartTrip.signup.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,53 +18,13 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Transactional
+// 로그인 자체는 OAuth(GoogleLoginService · KakaoLoginService)만 한다.
+// 여기는 로그인 뒤 세션을 이어가는 토큰 갱신과 로그아웃만 맡는다.
 public class LoginService {
 
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final RefreshTokenRepository refreshTokenRepository;
-
-    // 로그인 처리
-    public TokenResponseDto login(LoginRequestDto dto) {
-
-        // 1. 사용자가 입력한 아이디로 DB에서 회원 찾기
-        UserEntity user = userRepository.findByUserId(dto.getUserId())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 아이디입니다."));
-
-        if (!passwordEncoder.matches(dto.getUserPwd(), user.getUserPwd())) {
-            throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
-        }
-
-        // AccessToken 생성
-        String accessToken = jwtUtil.createAccessToken(
-                user.getUserId(),
-                user.getUserMail()
-        );
-
-        // RefreshToken 생성
-        String refreshToken = jwtUtil.createRefreshToken(
-                user.getUserId(),
-                user.getUserMail()
-        );
-
-        // 사용자의 Refrsh token이 DB에 있는지 확인
-        RefreshTokenEntity tokenEntity = refreshTokenRepository.findByUserId(user.getUserId())
-                .orElse(new RefreshTokenEntity());
-
-        // Refresh token 정보 저장
-        tokenEntity.setUserId(user.getUserId());
-        tokenEntity.setRefreshToken(refreshToken);
-        tokenEntity.setExpiredAt(LocalDateTime.now().plusDays(7));
-        tokenEntity.setCreateDate(LocalDateTime.now());
-        // 새 세션이다. 옛 세션의 유예 토큰이 남아 있으면 그걸로도 갱신이 되므로 지운다.
-        tokenEntity.setPreviousToken(null);
-        tokenEntity.setPreviousValidUntil(null);
-
-        refreshTokenRepository.save(tokenEntity);
-
-        return new TokenResponseDto(accessToken, refreshToken);
-    }
 
     // 갱신 응답이 유실됐을 때 앱이 옛 토큰으로 다시 물어봐도 받아주는 시간.
     // 이게 없으면 지하철에서 한 번 끊긴 것만으로 로그아웃된다.
