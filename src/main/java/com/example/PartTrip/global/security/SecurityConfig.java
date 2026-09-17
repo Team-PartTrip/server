@@ -50,13 +50,8 @@ public class SecurityConfig {
                                 "/v3/api-docs/**"
                         ).permitAll()
 
-                        // 회원가입 허용
-                        .requestMatchers("/api/auth/signup").permitAll()
-
-                        // 로그인 허용
-                        .requestMatchers("/api/auth/login").permitAll()
-
-                        // 이메일 인증 관련 API 허용
+                        // 구글 · 카카오 로그인, 토큰 갱신, 로그아웃. 토큰이 없거나
+                        // 만료된 상태에서 불러야 하는 것들이다
                         .requestMatchers("/api/auth/**").permitAll()
 
                         // 업로드된 이미지는 인증 없이 조회 가능해야 함
