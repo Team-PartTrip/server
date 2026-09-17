@@ -1,7 +1,6 @@
 package com.example.PartTrip.planner.service;
 
 import com.example.PartTrip.main.entity.TourPlaceEntity;
-import com.example.PartTrip.main.repository.TourPlaceRepository;
 import com.example.PartTrip.notification.event.TripCardCreatedEvent;
 import com.example.PartTrip.planner.dto.request.PlannerConfirmRequestDto;
 import com.example.PartTrip.planner.dto.request.VoteConfirmRequestDto;
@@ -30,7 +29,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,7 +48,7 @@ public class PlannerConfirmService {
     private final PlannerFinalService plannerFinalService;
     private final TripCardRepository tripCardRepository;
     private final TripCardPlaceRepository tripCardPlaceRepository;
-    private final TourPlaceRepository tourPlaceRepository;
+    private final PlannerScheduleService plannerScheduleService;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
@@ -176,6 +174,8 @@ public class PlannerConfirmService {
             GroupTravelPlanEntity plan,
             List<ConfirmedPlaceResponseDto> places
     ) {
+        List<PlannerScheduleService.ScheduledPlace> schedule =
+                plannerScheduleService.buildSchedule(plan, places);
         List<GroupMemberEntity> members = groupMemberRepository
                 .findByGroupIdOrderByJoinedAtAsc(group.getGroupId());
         List<String> memberUserIds = members.stream().map(GroupMemberEntity::getUserId).toList();
@@ -186,23 +186,16 @@ public class PlannerConfirmService {
         List<TripCardEntity> newCards = memberUserIds.stream()
                 .filter(memberUserId -> !cardsByUserId.containsKey(memberUserId))
                 .map(memberUserId -> newTripCard(
-                        group, plan, places, memberUserId, members.size()))
+                        group, plan, schedule.size(), memberUserId, members.size()))
                 .toList();
         List<TripCardEntity> savedCards = tripCardRepository.saveAll(newCards);
         savedCards.forEach(card -> cardsByUserId.put(card.getUserId(), card));
 
-        Set<Long> tourPlaceIds = places.stream()
-                .map(ConfirmedPlaceResponseDto::getTourPlaceId)
-                .filter(id -> id != null)
-                .collect(Collectors.toSet());
-        Map<Long, TourPlaceEntity> tourPlacesById = tourPlaceRepository.findAllById(tourPlaceIds).stream()
-                .collect(Collectors.toMap(TourPlaceEntity::getTourPlaceId, Function.identity()));
-        List<ScheduledPlace> schedule = scheduledPlaces(plan, places);
         List<TripCardPlaceEntity> cardPlaces = savedCards.stream()
                 .flatMap(card -> schedule.stream()
                         .map(scheduled -> newTripCardPlace(
                                 card.getTripCardId(), scheduled.place(),
-                                tourPlacesById.get(scheduled.place().getTourPlaceId()),
+                                scheduled.tourPlace(),
                                 scheduled.date(), scheduled.sortOrder())))
                 .toList();
         tripCardPlaceRepository.saveAll(cardPlaces);
@@ -217,7 +210,7 @@ public class PlannerConfirmService {
     private TripCardEntity newTripCard(
             TravelGroupEntity group,
             GroupTravelPlanEntity plan,
-            List<ConfirmedPlaceResponseDto> places,
+            int placeCount,
             String cardOwnerUserId,
             int companionCount
     ) {
@@ -230,7 +223,7 @@ public class PlannerConfirmService {
                 .startDate(plan.getStartDate())
                 .endDate(plan.getEndDate())
                 .companionCount(companionCount)
-                .placeCount(places.size())
+                .placeCount(placeCount)
                 .photoCount(0)
                 // 커버는 사용자가 찍은 사진 중에서 고른다. 아직 사진이 없으니 비워 두고,
                 // 사진이 붙을 때 채운다. 관광지 대표 이미지를 대신 넣지 않는다 (팀 결정).
@@ -258,44 +251,4 @@ public class PlannerConfirmService {
         return cardPlace;
     }
 
-    private List<ScheduledPlace> scheduledPlaces(
-            GroupTravelPlanEntity plan,
-            List<ConfirmedPlaceResponseDto> places
-    ) {
-        if (places.isEmpty()) {
-            return List.of();
-        }
-        int tripDays = Math.toIntExact(
-                ChronoUnit.DAYS.between(plan.getStartDate(), plan.getEndDate()) + 1);
-        if (tripDays <= 0) {
-            throw new IllegalArgumentException("여행 기간이 올바르지 않습니다.");
-        }
-
-        Map<String, Integer> categoryIndexes = new HashMap<>();
-        List<ScheduledPlace> scheduled = new java.util.ArrayList<>();
-        for (ConfirmedPlaceResponseDto place : places) {
-            if ("ACCOMMODATION".equals(place.getCategory())) {
-                for (int day = 0; day < tripDays; day++) {
-                    scheduled.add(new ScheduledPlace(
-                            place, plan.getStartDate().plusDays(day), scheduled.size() + 1));
-                }
-                continue;
-            }
-
-            int categoryIndex = categoryIndexes.merge(place.getCategory(), 1, Integer::sum) - 1;
-            int dayOffset = "RESTAURANT".equals(place.getCategory())
-                    ? categoryIndex / 2
-                    : categoryIndex;
-            dayOffset = Math.min(dayOffset, tripDays - 1);
-            scheduled.add(new ScheduledPlace(
-                    place, plan.getStartDate().plusDays(dayOffset), scheduled.size() + 1));
-        }
-        return scheduled;
-    }
-
-    private record ScheduledPlace(
-            ConfirmedPlaceResponseDto place,
-            LocalDate date,
-            int sortOrder
-    ) {}
 }
