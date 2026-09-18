@@ -24,6 +24,7 @@ public class ProfileController {
     private final ProfileService profileService;
     private final TravelPreferenceService travelPreferenceService;
 
+    /** 로그인 사용자의 프로필 정보를 조회한다. */
     @GetMapping("/myInfo")
     public ResponseEntity<ProfileResponseDto> getProfile(Authentication authentication) {
         String userId = (String) authentication.getPrincipal();
@@ -31,13 +32,14 @@ public class ProfileController {
         return ResponseEntity.ok(resDto);
     }
 
-    // 여행 통계 (Func-007-01) — 마이 탭 상단의 여행 · 국가 · 기록 3칸
+    /** Func-007-01 마이 탭의 여행, 국가, 기록 통계를 조회한다. */
     @GetMapping("/stats")
     public ResponseEntity<ProfileStatsResponseDto> getStats(Authentication authentication) {
         String userId = (String) authentication.getPrincipal();
         return ResponseEntity.ok(profileService.getStats(userId));
     }
 
+    /** 로그인 사용자의 프로필 정보를 수정한다. */
     @PutMapping
     public ResponseEntity<ProfileResponseDto> updateProfile(
             Authentication authentication,
@@ -68,8 +70,7 @@ public class ProfileController {
     }
 
 
-    // 프로필 사진 업로드 (Func-007-01)
-    // 업로드된 이미지의 공개 URL 을 문자열로 반환한다.
+    /** Func-007-01 프로필 사진을 업로드하고 공개 URL을 반환한다. */
     @PostMapping(value = "/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<String> uploadProfileImage(
             @RequestParam("file") MultipartFile file

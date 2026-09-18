@@ -73,6 +73,7 @@ public class PlannerScheduleService {
         return result;
     }
 
+    /** 한 도시의 확정 장소와 추천 장소를 날짜별 일정으로 구성한다. */
     private List<ScheduledPlace> scheduleCity(
             PlannerCityEntity city,
             List<TourPlaceEntity> confirmed,
@@ -122,6 +123,7 @@ public class PlannerScheduleService {
         return scheduled;
     }
 
+    /** 좌표가 있는 장소들을 가까운 순서로 이어 이동 경로를 만든다. */
     private List<TourPlaceEntity> nearestNeighbourRoute(List<TourPlaceEntity> places) {
         if (places.size() < 2) return new ArrayList<>(places);
         List<TourPlaceEntity> remaining = new ArrayList<>(places);
@@ -140,6 +142,7 @@ public class PlannerScheduleService {
         return route;
     }
 
+    /** 전체 이동 경로를 여행 일수에 맞춰 균등하게 나눈다. */
     private List<List<TourPlaceEntity>> splitEvenly(List<TourPlaceEntity> route, int days) {
         List<List<TourPlaceEntity>> result = new ArrayList<>();
         int cursor = 0;
@@ -154,6 +157,7 @@ public class PlannerScheduleService {
         return result;
     }
 
+    /** 두 장소의 좌표로 대권 거리를 계산한다. */
     private double distance(TourPlaceEntity first, TourPlaceEntity second) {
         if (first.getLatitude() == null || first.getLongitude() == null
                 || second.getLatitude() == null || second.getLongitude() == null) {
@@ -169,6 +173,7 @@ public class PlannerScheduleService {
         return 6_371.0 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
+    /** 평점 내림차순과 장소명 오름차순으로 정렬하는 비교기를 반환한다. */
     private Comparator<TourPlaceEntity> ratingOrder() {
         return Comparator.comparing(
                         TourPlaceEntity::getRating,
@@ -177,17 +182,20 @@ public class PlannerScheduleService {
                         Comparator.nullsLast(String::compareTo));
     }
 
+    /** 시작일과 종료일을 포함한 유효 여행 일수를 계산한다. */
     private int validDays(LocalDate start, LocalDate end) {
         int days = Math.toIntExact(ChronoUnit.DAYS.between(start, end) + 1);
         if (days <= 0) throw new IllegalArgumentException("여행 기간이 올바르지 않습니다.");
         return days;
     }
 
+    /** 장소가 일정에 지정된 국가와 도시에 속하는지 확인한다. */
     private boolean sameCity(TourPlaceEntity place, PlannerCityEntity city) {
         return city.getCountryName().equals(place.getCountryName())
                 && city.getCityName().equals(place.getCityName());
     }
 
+    /** 도시별 일정이 없을 때 기존 여행 계획을 단일 도시 일정으로 변환한다. */
     private PlannerCityEntity singleCity(GroupTravelPlanEntity plan) {
         PlannerCityEntity city = new PlannerCityEntity();
         city.setPlanId(plan.getPlanId());
@@ -199,6 +207,7 @@ public class PlannerScheduleService {
         return city;
     }
 
+    /** 장소 엔티티를 확정 장소 응답으로 변환한다. */
     private ConfirmedPlaceResponseDto toResponse(TourPlaceEntity place) {
         return ConfirmedPlaceResponseDto.builder()
                 .category(place.getCategory() == null ? null : place.getCategory().name())
@@ -209,6 +218,7 @@ public class PlannerScheduleService {
                 .build();
     }
 
+    /** 날짜와 노출 순서가 지정된 일정 장소이다. */
     public record ScheduledPlace(
             ConfirmedPlaceResponseDto place,
             TourPlaceEntity tourPlace,

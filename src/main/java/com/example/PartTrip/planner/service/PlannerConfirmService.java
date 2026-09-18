@@ -51,6 +51,7 @@ public class PlannerConfirmService {
     private final PlannerScheduleService plannerScheduleService;
     private final ApplicationEventPublisher eventPublisher;
 
+    /** 플래너 소유자의 투표 선택을 확정하고 멤버별 여행 카드를 생성한다. */
     @Transactional
     public PlannerConfirmResponseDto confirmPlanner(
             Long plannerId,
@@ -170,6 +171,7 @@ public class PlannerConfirmService {
         return chosen;
     }
 
+    /** 아직 여행 카드가 없는 그룹 멤버에게 확정 일정을 기반으로 카드를 생성한다. */
     private TripCardEntity createTripCardsIfAbsent(
             TravelGroupEntity group,
             GroupTravelPlanEntity plan,
@@ -214,6 +216,7 @@ public class PlannerConfirmService {
         return ownerCard;
     }
 
+    /** 그룹 여행 정보를 멤버 한 명의 여행 카드로 변환한다. */
     private TripCardEntity newTripCard(
             TravelGroupEntity group,
             GroupTravelPlanEntity plan,
@@ -239,6 +242,7 @@ public class PlannerConfirmService {
                 .build();
     }
 
+    /** 일정 장소를 여행 카드에 저장할 장소 엔티티로 변환한다. */
     private TripCardPlaceEntity newTripCardPlace(
             Long tripCardId,
             ConfirmedPlaceResponseDto confirmed,
