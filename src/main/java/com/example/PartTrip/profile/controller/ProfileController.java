@@ -48,7 +48,7 @@ public class ProfileController {
         return ResponseEntity.ok(resDto);
     }
 
-    // Func-007-02 여행 편의 설정 조회
+    /** Func-007-02 로그인 사용자의 여행 편의 설정을 조회한다. */
     @GetMapping("/travel-preferences")
     public ResponseEntity<TravelPreferenceResponseDto> getTravelPreferences(
             Authentication authentication
@@ -57,7 +57,7 @@ public class ProfileController {
         return ResponseEntity.ok(travelPreferenceService.getPreference(userId));
     }
 
-    // Func-007-02 여행 편의 설정 수정
+    /** Func-007-02 로그인 사용자의 여행 편의 설정을 수정한다. */
     @PutMapping("/travel-preferences")
     public ResponseEntity<TravelPreferenceResponseDto> updateTravelPreferences(
             Authentication authentication,

@@ -13,6 +13,7 @@ public class TravelPreferenceResponseDto {
     private Integer dailyScheduleCount;
     private Boolean canUseStairs;
 
+    /** 저장 엔티티를 외부 응답 형식으로 변환한다. */
     public static TravelPreferenceResponseDto from(TravelPreferenceEntity preference) {
         return new TravelPreferenceResponseDto(
                 preference.getPreferredTransport(),

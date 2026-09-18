@@ -121,7 +121,8 @@ class PlannerConfirmServiceTest {
         given(tripCardRepository.saveAll(any()))
                 .willReturn(List.of(TripCardEntity.builder()
                         .tripCardId(7L).userId(OWNER_ID).planId(PLAN_ID).build()));
-        lenient().when(plannerScheduleService.buildSchedule(any(), any())).thenReturn(List.of());
+        lenient().when(plannerScheduleService.buildSchedule(any(), any(), anyString()))
+                .thenReturn(List.of());
     }
 
     private GroupMemberEntity owner() {
@@ -260,7 +261,7 @@ class PlannerConfirmServiceTest {
         TourPlaceEntity restaurant2 = tourPlace(2L);
         TourPlaceEntity restaurant3 = tourPlace(3L);
         TourPlaceEntity restaurant4 = tourPlace(4L);
-        given(plannerScheduleService.buildSchedule(plan, places)).willReturn(List.of(
+        given(plannerScheduleService.buildSchedule(plan, places, OWNER_ID)).willReturn(List.of(
                 new PlannerScheduleService.ScheduledPlace(
                         places.get(0), accommodation, LocalDate.of(2026, 9, 1), 1),
                 new PlannerScheduleService.ScheduledPlace(

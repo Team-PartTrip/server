@@ -7,6 +7,7 @@ import com.example.PartTrip.planner.dto.response.ConfirmedPlaceResponseDto;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
 import com.example.PartTrip.planner.entity.PlannerCityEntity;
 import com.example.PartTrip.planner.repository.PlannerCityRepository;
+import com.example.PartTrip.profile.service.TravelPreferenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,16 +29,20 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class PlannerScheduleService {
 
-    static final int DEFAULT_PLACES_PER_DAY = 3;
-
     private final PlannerCityRepository plannerCityRepository;
     private final TourPlaceRepository tourPlaceRepository;
+    private final TravelPreferenceService travelPreferenceService;
 
+    /** 사용자의 하루 일정 개수를 적용해 확정 장소를 날짜별로 배치한다. */
     @Transactional(readOnly = true)
     public List<ScheduledPlace> buildSchedule(
             GroupTravelPlanEntity plan,
-            List<ConfirmedPlaceResponseDto> confirmedPlaces
+            List<ConfirmedPlaceResponseDto> confirmedPlaces,
+            String userId
     ) {
+        int dailyScheduleCount = travelPreferenceService
+                .getPreference(userId)
+                .getDailyScheduleCount();
         List<PlannerCityEntity> cities = plannerCityRepository
                 .findByPlanIdOrderBySeqAsc(plan.getPlanId());
         if (cities.isEmpty()) {
@@ -62,7 +67,8 @@ public class PlannerScheduleService {
                             || !alreadyScheduled.contains(place.getTourPlaceId())))
                     .toList();
             selected.forEach(place -> alreadyScheduled.add(place.getTourPlaceId()));
-            result.addAll(scheduleCity(city, selected, alreadyScheduled));
+            result.addAll(scheduleCity(
+                    city, selected, alreadyScheduled, dailyScheduleCount));
         }
         return result;
     }
@@ -70,7 +76,8 @@ public class PlannerScheduleService {
     private List<ScheduledPlace> scheduleCity(
             PlannerCityEntity city,
             List<TourPlaceEntity> confirmed,
-            Set<Long> alreadyScheduled
+            Set<Long> alreadyScheduled,
+            int dailyScheduleCount
     ) {
         int days = validDays(city.getStartDate(), city.getEndDate());
         List<TourPlaceEntity> accommodations = confirmed.stream()
@@ -81,7 +88,7 @@ public class PlannerScheduleService {
                 .filter(place -> place.getCategory() != TourPlaceCategory.ACCOMMODATION)
                 .toList());
 
-        int targetCount = days * DEFAULT_PLACES_PER_DAY;
+        int targetCount = days * dailyScheduleCount;
         if (dayPlaces.size() < targetCount) {
             List<TourPlaceEntity> recommendations = tourPlaceRepository
                     .search(city.getCountryName(), city.getCityName(), null);

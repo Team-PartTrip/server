@@ -115,7 +115,8 @@ public class PlannerConfirmService {
         TripCardEntity tripCard = createTripCardsIfAbsent(
                 group,
                 plan,
-                finalResult.getPlaces()
+                finalResult.getPlaces(),
+                userId
         );
 
         return PlannerConfirmResponseDto.builder()
@@ -172,10 +173,11 @@ public class PlannerConfirmService {
     private TripCardEntity createTripCardsIfAbsent(
             TravelGroupEntity group,
             GroupTravelPlanEntity plan,
-            List<ConfirmedPlaceResponseDto> places
+            List<ConfirmedPlaceResponseDto> places,
+            String userId
     ) {
         List<PlannerScheduleService.ScheduledPlace> schedule =
-                plannerScheduleService.buildSchedule(plan, places);
+                plannerScheduleService.buildSchedule(plan, places, userId);
         int uniquePlaceCount = Math.toIntExact(schedule.stream()
                 .map(item -> item.place().getTourPlaceId())
                 .filter(id -> id != null)

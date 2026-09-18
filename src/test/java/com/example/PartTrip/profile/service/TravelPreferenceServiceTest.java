@@ -18,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class TravelPreferenceServiceTest {
@@ -26,6 +27,7 @@ class TravelPreferenceServiceTest {
     @Mock private UserProfileRepository userProfileRepository;
     @InjectMocks private TravelPreferenceService travelPreferenceService;
 
+    /** 설정이 없는 기존 사용자에게 약속된 기본값을 제공한다. */
     @Test
     void 저장된_설정이_없으면_기본값을_조회한다() {
         given(userProfileRepository.existsById("user")).willReturn(true);
@@ -38,9 +40,11 @@ class TravelPreferenceServiceTest {
         assertThat(result.getCanUseStairs()).isTrue();
     }
 
+    /** 최초 수정 요청은 새 설정 행을 저장한다. */
     @Test
     void 이동수단_일정개수_계단여부를_저장한다() {
-        given(userProfileRepository.existsById("user")).willReturn(true);
+        given(userProfileRepository.findByUserIdForUpdate("user"))
+                .willReturn(Optional.of(new com.example.PartTrip.signup.entity.UserEntity()));
         given(travelPreferenceRepository.findById("user")).willReturn(Optional.empty());
         given(travelPreferenceRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
         TravelPreferenceRequestDto request = request(PreferredTransport.TAXI, 5, false);
@@ -51,8 +55,10 @@ class TravelPreferenceServiceTest {
         assertThat(result.getPreferredTransport()).isEqualTo(PreferredTransport.TAXI);
         assertThat(result.getDailyScheduleCount()).isEqualTo(5);
         assertThat(result.getCanUseStairs()).isFalse();
+        verify(userProfileRepository).findByUserIdForUpdate("user");
     }
 
+    /** 이미 저장된 설정은 같은 사용자 행에서 갱신한다. */
     @Test
     void 기존_설정을_수정한다() {
         TravelPreferenceEntity preference = new TravelPreferenceEntity();
@@ -60,7 +66,8 @@ class TravelPreferenceServiceTest {
         preference.setPreferredTransport(PreferredTransport.WALKING);
         preference.setDailyScheduleCount(2);
         preference.setCanUseStairs(true);
-        given(userProfileRepository.existsById("user")).willReturn(true);
+        given(userProfileRepository.findByUserIdForUpdate("user"))
+                .willReturn(Optional.of(new com.example.PartTrip.signup.entity.UserEntity()));
         given(travelPreferenceRepository.findById("user")).willReturn(Optional.of(preference));
         given(travelPreferenceRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
 
@@ -72,6 +79,7 @@ class TravelPreferenceServiceTest {
         assertThat(result.getCanUseStairs()).isFalse();
     }
 
+    /** 가입하지 않은 사용자는 설정을 조회할 수 없다. */
     @Test
     void 존재하지_않는_사용자의_설정은_조회하지_않는다() {
         given(userProfileRepository.existsById("missing")).willReturn(false);
@@ -81,6 +89,7 @@ class TravelPreferenceServiceTest {
                 .hasMessageContaining("사용자를 찾을 수 없습니다");
     }
 
+    /** 요청 DTO를 테스트 값으로 구성한다. */
     private TravelPreferenceRequestDto request(
             PreferredTransport transport,
             int dailyCount,
