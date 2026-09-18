@@ -7,6 +7,10 @@ import com.example.PartTrip.planner.dto.response.ConfirmedPlaceResponseDto;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
 import com.example.PartTrip.planner.entity.PlannerCityEntity;
 import com.example.PartTrip.planner.repository.PlannerCityRepository;
+import com.example.PartTrip.profile.dto.TravelPreferenceResponseDto;
+import com.example.PartTrip.profile.enums.PreferredTransport;
+import com.example.PartTrip.profile.service.TravelPreferenceService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -18,6 +22,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
@@ -25,7 +30,15 @@ class PlannerScheduleServiceTest {
 
     @Mock private PlannerCityRepository plannerCityRepository;
     @Mock private TourPlaceRepository tourPlaceRepository;
+    @Mock private TravelPreferenceService travelPreferenceService;
     @InjectMocks private PlannerScheduleService plannerScheduleService;
+
+    @BeforeEach
+    void setUpPreference() {
+        given(travelPreferenceService.getPreference(anyString()))
+                .willReturn(new TravelPreferenceResponseDto(
+                        PreferredTransport.PUBLIC_TRANSIT, 3, true));
+    }
 
     @Test
     void 다중_도시의_날짜_구간을_섞지_않는다() {
@@ -45,7 +58,7 @@ class PlannerScheduleServiceTest {
         given(tourPlaceRepository.search("일본", "교토", null)).willReturn(List.of(kyotoPlace));
 
         List<PlannerScheduleService.ScheduledPlace> result = plannerScheduleService
-                .buildSchedule(plan, List.of(confirmed(1L), confirmed(2L)));
+                .buildSchedule(plan, List.of(confirmed(1L), confirmed(2L)), "owner");
 
         assertThat(result).filteredOn(item -> item.tourPlace().getCityName().equals("오사카"))
                 .allMatch(item -> !item.date().isAfter(LocalDate.of(2026, 10, 2)));
@@ -66,7 +79,7 @@ class PlannerScheduleServiceTest {
                 .willReturn(List.of(first, second, confirmed));
 
         List<PlannerScheduleService.ScheduledPlace> result = plannerScheduleService
-                .buildSchedule(plan, List.of(confirmed(1L)));
+                .buildSchedule(plan, List.of(confirmed(1L)), "owner");
 
         assertThat(result).extracting(item -> item.tourPlace().getTourPlaceId())
                 .containsExactlyInAnyOrder(1L, 2L, 3L);
@@ -87,7 +100,7 @@ class PlannerScheduleServiceTest {
         given(tourPlaceRepository.findAllById(any())).willReturn(all);
 
         List<PlannerScheduleService.ScheduledPlace> result = plannerScheduleService
-                .buildSchedule(plan, all.stream().map(p -> confirmed(p.getTourPlaceId())).toList());
+                .buildSchedule(plan, all.stream().map(p -> confirmed(p.getTourPlaceId())).toList(), "owner");
 
         assertThat(result).filteredOn(item -> item.date().equals(LocalDate.of(2026, 10, 1)))
                 .extracting(item -> item.tourPlace().getTourPlaceId())
@@ -117,7 +130,7 @@ class PlannerScheduleServiceTest {
                 .willReturn(List.of(first, second));
 
         List<PlannerScheduleService.ScheduledPlace> result = plannerScheduleService
-                .buildSchedule(plan, List.of(confirmed(1L), confirmed(2L)));
+                .buildSchedule(plan, List.of(confirmed(1L), confirmed(2L)), "owner");
 
         assertThat(result).filteredOn(item ->
                         item.tourPlace().getCategory() == TourPlaceCategory.ACCOMMODATION)
@@ -140,7 +153,7 @@ class PlannerScheduleServiceTest {
         given(tourPlaceRepository.search("일본", "오사카", null)).willReturn(List.of(confirmed));
 
         List<PlannerScheduleService.ScheduledPlace> result = plannerScheduleService
-                .buildSchedule(plan, List.of(confirmed(1L)));
+                .buildSchedule(plan, List.of(confirmed(1L)), "owner");
 
         assertThat(result).extracting(item -> item.tourPlace().getTourPlaceId())
                 .containsOnlyOnce(1L);
@@ -167,7 +180,7 @@ class PlannerScheduleServiceTest {
                 .willReturn(List.of(attraction, accommodation));
 
         List<PlannerScheduleService.ScheduledPlace> result = plannerScheduleService
-                .buildSchedule(plan, List.of(confirmed(1L), confirmed(2L)));
+                .buildSchedule(plan, List.of(confirmed(1L), confirmed(2L)), "owner");
 
         assertThat(result).filteredOn(item -> item.tourPlace().getTourPlaceId().equals(1L))
                 .hasSize(1);
@@ -176,6 +189,32 @@ class PlannerScheduleServiceTest {
                 .containsExactly(
                         LocalDate.of(2026, 10, 1),
                         LocalDate.of(2026, 10, 2));
+    }
+
+    @Test
+    void 사용자가_정한_하루_일정_개수만큼_장소를_보충한다() {
+        GroupTravelPlanEntity plan = plan();
+        plan.setEndDate(plan.getStartDate());
+        TourPlaceEntity confirmed = place(
+                1L, "일본", "오사카", "오사카성", 4.8, 34.68, 135.52);
+        TourPlaceEntity second = place(
+                2L, "일본", "오사카", "도톤보리", 4.7, 34.67, 135.50);
+        TourPlaceEntity third = place(
+                3L, "일본", "오사카", "우메다", 4.6, 34.70, 135.49);
+        TourPlaceEntity fourth = place(
+                4L, "일본", "오사카", "해유관", 4.5, 34.65, 135.43);
+        given(travelPreferenceService.getPreference("owner"))
+                .willReturn(new TravelPreferenceResponseDto(
+                        PreferredTransport.WALKING, 4, true));
+        given(plannerCityRepository.findByPlanIdOrderBySeqAsc(10L)).willReturn(List.of());
+        given(tourPlaceRepository.findAllById(any())).willReturn(List.of(confirmed));
+        given(tourPlaceRepository.search("일본", "오사카", null))
+                .willReturn(List.of(confirmed, second, third, fourth));
+
+        List<PlannerScheduleService.ScheduledPlace> result = plannerScheduleService
+                .buildSchedule(plan, List.of(confirmed(1L)), "owner");
+
+        assertThat(result).hasSize(4);
     }
 
     private GroupTravelPlanEntity plan() {
