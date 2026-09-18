@@ -3,7 +3,10 @@ package com.example.PartTrip.profile.controller;
 import com.example.PartTrip.profile.dto.ProfileResponseDto;
 import com.example.PartTrip.profile.dto.ProfileStatsResponseDto;
 import com.example.PartTrip.profile.dto.ProfileUpdateRequestDto;
+import com.example.PartTrip.profile.dto.TravelPreferenceRequestDto;
+import com.example.PartTrip.profile.dto.TravelPreferenceResponseDto;
 import com.example.PartTrip.profile.service.ProfileService;
+import com.example.PartTrip.profile.service.TravelPreferenceService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class ProfileController {
 
     private final ProfileService profileService;
+    private final TravelPreferenceService travelPreferenceService;
 
     @GetMapping("/myInfo")
     public ResponseEntity<ProfileResponseDto> getProfile(Authentication authentication) {
@@ -42,6 +46,25 @@ public class ProfileController {
         String userId = (String) authentication.getPrincipal();
         ProfileResponseDto resDto = profileService.updateProfile(userId, requestDto);
         return ResponseEntity.ok(resDto);
+    }
+
+    // Func-007-02 여행 편의 설정 조회
+    @GetMapping("/travel-preferences")
+    public ResponseEntity<TravelPreferenceResponseDto> getTravelPreferences(
+            Authentication authentication
+    ) {
+        String userId = (String) authentication.getPrincipal();
+        return ResponseEntity.ok(travelPreferenceService.getPreference(userId));
+    }
+
+    // Func-007-02 여행 편의 설정 수정
+    @PutMapping("/travel-preferences")
+    public ResponseEntity<TravelPreferenceResponseDto> updateTravelPreferences(
+            Authentication authentication,
+            @Valid @RequestBody TravelPreferenceRequestDto request
+    ) {
+        String userId = (String) authentication.getPrincipal();
+        return ResponseEntity.ok(travelPreferenceService.updatePreference(userId, request));
     }
 
 
