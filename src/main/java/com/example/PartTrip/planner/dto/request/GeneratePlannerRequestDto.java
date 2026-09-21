@@ -42,6 +42,8 @@ public class GeneratePlannerRequestDto {
     @NotNull(message = "종료일을 골라주세요.")
     private LocalDate endDate;
 
+    // 빈 목록은 받는다. "blocks": null 은 막는다 — 서비스가 목록을 바로 돈다
+    @NotNull(message = "블록 목록이 비어 있습니다. 블록이 없으면 [] 로 보내주세요.")
     @Valid
     @Size(max = 100, message = "블록은 100개까지 넣을 수 있습니다.")
     private List<Block> blocks = new ArrayList<>();

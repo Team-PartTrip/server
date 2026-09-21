@@ -127,6 +127,29 @@ class PlannerDraftServiceTest {
     }
 
     @Test
+    void 날짜로_이미_맞춘_답을_다른_날에_또_쓰지_않는다() throws Exception {
+        // 첫 답은 날짜가 틀렸고 둘째 답이 첫날이다. 둘째 답을 둘째 날에 또 쓰면 2 가 엉뚱한 날로 간다
+        JsonNode answer = json("""
+                {"days":[{"date":"invalid","placeIds":[99]},{"date":"2026-10-10","placeIds":[1, 2]}]}""");
+
+        List<List<Long>> days = PlannerDraftService.toSlots(
+                answer, List.of(D1, D2), 1, Set.of(1L, 2L, 99L), List.of());
+
+        assertThat(days).containsExactly(List.of(1L), List.of(99L));
+    }
+
+    @Test
+    void 빈_칸보다_필수_장소가_많아도_앞의_필수_장소를_덮지_않는다() throws Exception {
+        JsonNode answer = json("""
+                {"days":[{"date":"2026-10-10","placeIds":[1]}]}""");
+
+        List<List<Long>> days = PlannerDraftService.toSlots(
+                answer, List.of(D1), 2, Set.of(1L, 7L, 8L), List.of(7L, 8L));
+
+        assertThat(days.get(0)).containsExactlyInAnyOrder(7L, 8L);
+    }
+
+    @Test
     void 숙소는_후보_안에서만_받는다() throws Exception {
         assertThat(PlannerDraftService.pickLodging(json("{\"lodgingId\":5}"), Set.of(5L))).isEqualTo(5L);
         assertThat(PlannerDraftService.pickLodging(json("{\"lodgingId\":6}"), Set.of(5L))).isNull();
@@ -247,5 +270,61 @@ class PlannerDraftServiceTest {
         assertThatThrownBy(() -> service.generate(dto, "user"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("14일");
+    }
+
+    @Test
+    void 필수_장소가_칸_수보다_많으면_AI를_부르지_않는다() {
+        GeneratePlannerRequestDto dto = request();
+        GeneratePlannerRequestDto.Block density = new GeneratePlannerRequestDto.Block();
+        density.setType(PlannerBlockType.DAILY_DENSITY);
+        density.setValue("하루 1곳");
+        GeneratePlannerRequestDto.Block must = new GeneratePlannerRequestDto.Block();
+        must.setType(PlannerBlockType.MUST_INCLUDE);
+        must.setValue("장소");
+        dto.setBlocks(List.of(density, must));
+        given(tourPlaceRepository.findByCountryNameAndCityName("대한민국", "강릉"))
+                .willReturn(List.of(place(1L), place(2L)));
+        given(travelPreferenceService.getPreference("user"))
+                .willReturn(new TravelPreferenceResponseDto(PreferredTransport.PUBLIC_TRANSIT, 3, true));
+
+        assertThatThrownBy(() -> service.generate(dto, "user"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("반드시 포함할 곳이 2곳");
+        verify(openAiClient, never()).completeJson(anyString(), anyString());
+    }
+
+    @Test
+    void 평점이_낮은_필수_장소와_숙소도_후보에서_빠지지_않는다() {
+        GeneratePlannerRequestDto dto = request();
+        dto.setEndDate(D2);
+        GeneratePlannerRequestDto.Block must = new GeneratePlannerRequestDto.Block();
+        must.setType(PlannerBlockType.MUST_INCLUDE);
+        must.setValue("할머니댁");
+        dto.setBlocks(List.of(must));
+        List<TourPlaceEntity> places = new java.util.ArrayList<>();
+        for (long id = 1; id <= PlannerDraftService.MAX_CANDIDATES + 10; id++) {
+            TourPlaceEntity p = place(id);
+            p.setRating(4.5);
+            places.add(p);
+        }
+        TourPlaceEntity grandma = place(900L);
+        grandma.setPlaceName("할머니댁");
+        grandma.setRating(1.0);
+        TourPlaceEntity lodging = place(901L);
+        lodging.setCategory(TourPlaceCategory.ACCOMMODATION);
+        lodging.setRating(1.0);
+        places.add(grandma);
+        places.add(lodging);
+        given(tourPlaceRepository.findByCountryNameAndCityName("대한민국", "강릉")).willReturn(places);
+        given(travelPreferenceService.getPreference("user"))
+                .willReturn(new TravelPreferenceResponseDto(PreferredTransport.PUBLIC_TRANSIT, 3, true));
+        given(openAiClient.completeJson(anyString(), anyString()))
+                .willThrow(new AiUnavailableException("실패"));
+
+        assertThatThrownBy(() -> service.generate(dto, "user"));
+
+        ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
+        verify(openAiClient).completeJson(anyString(), prompt.capture());
+        assertThat(prompt.getValue()).contains("900|할머니댁|").contains("901|장소901|");
     }
 }

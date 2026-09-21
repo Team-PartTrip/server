@@ -31,8 +31,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +45,7 @@ import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * 블록 지침으로 AI 일정 초안을 만든다 (#158).
@@ -90,23 +94,30 @@ public class PlannerDraftService {
         List<String> exclude = values(dto, PlannerBlockType.EXCLUDE);
 
         tourPlaceImportService.importCityIfEmpty(KOREA, city);
-        List<TourPlaceEntity> candidates = tourPlaceRepository
+        List<TourPlaceEntity> all = tourPlaceRepository
                 .findByCountryNameAndCityName(KOREA, city).stream()
                 .filter(place -> !matchesAny(place.getPlaceName(), exclude))
-                .sorted(Comparator.comparing(TourPlaceEntity::getRating,
-                        Comparator.nullsLast(Comparator.reverseOrder())))
-                .limit(MAX_CANDIDATES)
                 .toList();
-        List<TourPlaceEntity> daytime = candidates.stream()
+        // 반드시 포함할 곳은 평점과 상관없이 후보에 넣는다. 자르고 나서 찾으면 빠질 수 있다
+        List<TourPlaceEntity> must = all.stream()
                 .filter(place -> place.getCategory() != TourPlaceCategory.ACCOMMODATION)
+                .filter(place -> matchesAny(place.getPlaceName(), mustInclude))
+                .toList();
+        List<TourPlaceEntity> daytime = Stream.concat(must.stream(), all.stream()
+                        .filter(place -> place.getCategory() != TourPlaceCategory.ACCOMMODATION)
+                        .sorted(Comparator.comparing(TourPlaceEntity::getRating,
+                                Comparator.nullsLast(Comparator.reverseOrder()))))
+                .distinct()
+                .limit(Math.max(MAX_CANDIDATES, must.size()))
                 .toList();
         if (daytime.isEmpty()) {
             throw new IllegalArgumentException(city + "에서 일정에 넣을 장소를 찾지 못했어요.");
         }
         boolean needsLodging = dates.size() > 1
                 && !values(dto, PlannerBlockType.LODGING_TYPE).contains("숙박 없음");
+        // 숙소는 후보 자르기와 따로 모은다. 평점 순으로 자르면 숙소가 다 빠질 수 있다
         List<TourPlaceEntity> lodgings = needsLodging
-                ? candidates.stream()
+                ? all.stream()
                         .filter(place -> place.getCategory() == TourPlaceCategory.ACCOMMODATION)
                         .toList()
                 : List.of();
@@ -115,6 +126,11 @@ public class PlannerDraftService {
         int perDay = slotsPerDay(
                 last(values(dto, PlannerBlockType.DAILY_DENSITY)),
                 preference.getDailyScheduleCount());
+        // 못 넣을 걸 알면서 AI 를 부르지 않는다. 넣으면 다른 필수 장소를 덮게 된다
+        if (must.size() > dates.size() * perDay) {
+            throw new IllegalArgumentException("반드시 포함할 곳이 " + must.size()
+                    + "곳인데 일정에는 " + dates.size() * perDay + "칸뿐이에요. 일정 밀도를 늘리거나 줄여주세요.");
+        }
 
         JsonNode answer = parse(openAiClient.completeJson(
                 SYSTEM_PROMPT,
@@ -122,10 +138,7 @@ public class PlannerDraftService {
 
         Set<Long> daytimeIds = daytime.stream()
                 .map(TourPlaceEntity::getTourPlaceId).collect(Collectors.toSet());
-        List<Long> mustIds = daytime.stream()
-                .filter(place -> matchesAny(place.getPlaceName(), mustInclude))
-                .map(TourPlaceEntity::getTourPlaceId)
-                .toList();
+        List<Long> mustIds = must.stream().map(TourPlaceEntity::getTourPlaceId).toList();
         List<List<Long>> days = toSlots(answer, dates, perDay, daytimeIds, mustIds);
         Long lodgingId = pickLodging(answer, lodgings.stream()
                 .map(TourPlaceEntity::getTourPlaceId).collect(Collectors.toSet()));
@@ -184,21 +197,39 @@ public class PlannerDraftService {
             Set<Long> candidateIds,
             List<Long> mustInclude
     ) {
-        JsonNode dayNodes = answer.path("days");
-        Map<String, JsonNode> byDate = new LinkedHashMap<>();
-        dayNodes.forEach(day -> byDate.putIfAbsent(day.path("date").asText(""), day));
+        List<JsonNode> nodes = new ArrayList<>();
+        answer.path("days").forEach(nodes::add);
+        JsonNode[] assigned = new JsonNode[dates.size()];
+        Set<JsonNode> taken = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (int i = 0; i < dates.size(); i++) {
+            String date = dates.get(i).toString();
+            for (JsonNode node : nodes) {
+                if (!taken.contains(node) && date.equals(node.path("date").asText())) {
+                    assigned[i] = node;
+                    taken.add(node);
+                    break;
+                }
+            }
+        }
+        Iterator<JsonNode> rest = nodes.stream().filter(node -> !taken.contains(node)).iterator();
+        for (int i = 0; i < dates.size(); i++) {
+            if (assigned[i] == null && rest.hasNext()) {
+                assigned[i] = rest.next();
+            }
+        }
 
         Set<Long> used = new HashSet<>();
         List<List<Long>> result = new ArrayList<>();
-        for (int i = 0; i < dates.size(); i++) {
-            JsonNode day = byDate.getOrDefault(dates.get(i).toString(), dayNodes.path(i));
+        for (JsonNode day : assigned) {
             List<Long> slots = new ArrayList<>();
-            for (JsonNode id : day.path("placeIds")) {
-                if (slots.size() == perDay) {
-                    break;
-                }
-                if (id.canConvertToLong() && candidateIds.contains(id.asLong()) && used.add(id.asLong())) {
-                    slots.add(id.asLong());
+            if (day != null) {
+                for (JsonNode id : day.path("placeIds")) {
+                    if (slots.size() == perDay) {
+                        break;
+                    }
+                    if (id.canConvertToLong() && candidateIds.contains(id.asLong()) && used.add(id.asLong())) {
+                        slots.add(id.asLong());
+                    }
                 }
             }
             while (slots.size() < perDay) {
@@ -207,18 +238,40 @@ public class PlannerDraftService {
             result.add(slots);
         }
 
+        Set<Long> must = new HashSet<>(mustInclude);
         for (Long id : mustInclude) {
-            if (used.contains(id)) {
+            if (!used.add(id)) {
                 continue;
             }
-            // ponytail: 빈 칸이 없으면 마지막 칸을 덮는다. 동선은 리더가 고친다(#131)
-            List<Long> target = result.stream().filter(day -> day.contains(null)).findFirst()
-                    .orElse(result.get(result.size() - 1));
-            int at = target.indexOf(null);
-            target.set(at < 0 ? target.size() - 1 : at, id);
-            used.add(id);
+            if (!place(result, null, id)) {
+                // 빈 칸이 없다. 필수가 아닌 칸을 뒤에서부터 찾아 바꾼다
+                replaceLastNonMust(result, must, id);
+            }
         }
         return result;
+    }
+
+    private static boolean place(List<List<Long>> days, Long target, Long id) {
+        for (List<Long> day : days) {
+            int at = day.indexOf(target);
+            if (at >= 0) {
+                day.set(at, id);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void replaceLastNonMust(List<List<Long>> days, Set<Long> must, Long id) {
+        for (int d = days.size() - 1; d >= 0; d--) {
+            List<Long> day = days.get(d);
+            for (int i = day.size() - 1; i >= 0; i--) {
+                if (!must.contains(day.get(i))) {
+                    day.set(i, id);
+                    return;
+                }
+            }
+        }
     }
 
     static Long pickLodging(JsonNode answer, Set<Long> lodgingIds) {
