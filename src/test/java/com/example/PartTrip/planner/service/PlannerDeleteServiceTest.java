@@ -5,15 +5,11 @@ import com.example.PartTrip.global.exception.NotFoundException;
 import com.example.PartTrip.planner.entity.GroupMemberEntity;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
 import com.example.PartTrip.planner.entity.TravelGroupEntity;
-import com.example.PartTrip.planner.entity.VoteEntity;
 import com.example.PartTrip.planner.enums.GroupRole;
 import com.example.PartTrip.planner.repository.GroupInvitationRepository;
 import com.example.PartTrip.planner.repository.GroupMemberRepository;
 import com.example.PartTrip.planner.repository.GroupTravelPlanRepository;
 import com.example.PartTrip.planner.repository.TravelGroupRepository;
-import com.example.PartTrip.planner.repository.VoteOptionRepository;
-import com.example.PartTrip.planner.repository.VoteRecordRepository;
-import com.example.PartTrip.planner.repository.VoteRepository;
 import com.example.PartTrip.tripcard.entity.TripCardEntity;
 import com.example.PartTrip.tripcard.repository.TripCardRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,7 +37,6 @@ class PlannerDeleteServiceTest {
 
     private static final long PLANNER_ID = 1L;
     private static final long PLAN_ID = 10L;
-    private static final long VOTE_ID = 100L;
     private static final String OWNER_ID = "owner";
     private static final String MEMBER_ID = "member";
 
@@ -49,9 +44,6 @@ class PlannerDeleteServiceTest {
     @Mock private GroupMemberRepository groupMemberRepository;
     @Mock private GroupInvitationRepository groupInvitationRepository;
     @Mock private GroupTravelPlanRepository groupTravelPlanRepository;
-    @Mock private VoteRepository voteRepository;
-    @Mock private VoteOptionRepository voteOptionRepository;
-    @Mock private VoteRecordRepository voteRecordRepository;
     @Mock private TripCardRepository tripCardRepository;
     @InjectMocks private PlannerDeleteService plannerDeleteService;
 
@@ -68,30 +60,23 @@ class PlannerDeleteServiceTest {
                 .willReturn(Optional.of(member));
     }
 
-    private void givenOnePlanWithOneVote() {
+    private void givenOnePlan() {
         GroupTravelPlanEntity plan = new GroupTravelPlanEntity();
         plan.setPlanId(PLAN_ID);
         given(groupTravelPlanRepository.findByGroupIdOrderByStartDateDesc(PLANNER_ID))
                 .willReturn(List.of(plan));
-        VoteEntity vote = new VoteEntity();
-        vote.setVoteId(VOTE_ID);
-        given(voteRepository.findByPlanIdIn(List.of(PLAN_ID))).willReturn(List.of(vote));
     }
 
     @Test
     void 자식부터_순서대로_지운다() {
         givenRole(OWNER_ID, GroupRole.OWNER);
-        givenOnePlanWithOneVote();
+        givenOnePlan();
         given(tripCardRepository.findByPlanIdIn(List.of(PLAN_ID))).willReturn(List.of());
 
         plannerDeleteService.deletePlanner(PLANNER_ID, OWNER_ID);
 
-        InOrder order = inOrder(voteRecordRepository, voteOptionRepository,
-                voteRepository, groupTravelPlanRepository,
+        InOrder order = inOrder(groupTravelPlanRepository,
                 groupInvitationRepository, groupMemberRepository, travelGroupRepository);
-        order.verify(voteRecordRepository).deleteByVoteIdIn(List.of(VOTE_ID));
-        order.verify(voteOptionRepository).deleteByVoteIdIn(List.of(VOTE_ID));
-        order.verify(voteRepository).deleteByPlanIdIn(List.of(PLAN_ID));
         order.verify(groupTravelPlanRepository).deleteByGroupId(PLANNER_ID);
         order.verify(groupInvitationRepository).deleteByGroupId(PLANNER_ID);
         order.verify(groupMemberRepository).deleteByGroupId(PLANNER_ID);
@@ -101,7 +86,7 @@ class PlannerDeleteServiceTest {
     @Test
     void 여행카드는_지우지_않고_연결만_끊는다() {
         givenRole(OWNER_ID, GroupRole.OWNER);
-        givenOnePlanWithOneVote();
+        givenOnePlan();
         // 기본 생성자가 protected 라 빌더로 만든다
         TripCardEntity card = TripCardEntity.builder().planId(PLAN_ID).build();
         given(tripCardRepository.findByPlanIdIn(List.of(PLAN_ID))).willReturn(List.of(card));

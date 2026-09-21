@@ -1,6 +1,5 @@
 package com.example.PartTrip.planner.dto.request;
 
-import com.example.PartTrip.main.enums.TourPlaceCategory;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -12,7 +11,6 @@ import jakarta.validation.Valid;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 @Getter
 @Setter
@@ -48,12 +46,4 @@ public class CreatePlannerRequestDto {
      */
     @Valid
     private List<PlannerCityRequestDto> cities;
-
-    /**
-     * 카테고리마다 몇 곳을 확정할지. {"RESTAURANT": 6, "CAFE": 3}
-     *
-     * 도시를 나눈 여행은 도시마다 따로 정하므로 cities 안의 값을 쓰고
-     * 여기는 보지 않는다. 비워두면 여행 일수로 계산한 기본값을 쓴다.
-     */
-    private Map<TourPlaceCategory, Integer> placeCounts;
 }

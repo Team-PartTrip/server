@@ -25,7 +25,6 @@ public class PlannerTravelPlanService {
     private final GroupTravelPlanRepository groupTravelPlanRepository;
     private final PlannerScheduleLockService plannerScheduleLockService;
     private final PlannerCityWriter plannerCityWriter;
-    private final PlannerCategoryCountService plannerCategoryCountService;
 
     @Transactional
     public PlannerTravelPlanResponseDto saveTravelPlan(
@@ -87,7 +86,6 @@ public class PlannerTravelPlanService {
 
         GroupTravelPlanEntity savedPlan = groupTravelPlanRepository.save(plan);
         plannerCityWriter.replace(savedPlan, dto.getCities());
-        plannerCategoryCountService.replace(savedPlan, dto.getCities(), dto.getPlaceCounts());
 
         return PlannerTravelPlanResponseDto.builder()
                 .plannerId(group.getGroupId())
