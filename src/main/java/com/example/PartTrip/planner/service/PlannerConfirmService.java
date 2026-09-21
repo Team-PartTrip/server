@@ -11,6 +11,7 @@ import com.example.PartTrip.planner.enums.GroupRole;
 import com.example.PartTrip.planner.enums.GroupStatus;
 import com.example.PartTrip.planner.repository.GroupMemberRepository;
 import com.example.PartTrip.planner.repository.GroupTravelPlanRepository;
+import com.example.PartTrip.planner.repository.PlannerScheduleSlotRepository;
 import com.example.PartTrip.planner.repository.TravelGroupRepository;
 import com.example.PartTrip.tripcard.entity.TripCardEntity;
 import com.example.PartTrip.tripcard.entity.TripCardPlaceEntity;
@@ -39,14 +40,14 @@ public class PlannerConfirmService {
     private final TripCardRepository tripCardRepository;
     private final TripCardPlaceRepository tripCardPlaceRepository;
     private final PlannerScheduleService plannerScheduleService;
+    private final PlannerScheduleSlotRepository plannerScheduleSlotRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 일정을 확정하고 멤버마다 여행 카드를 만든다.
      *
-     * 투표를 없앤 뒤(#161)로는 확정할 장소가 따로 없다. 일정 생성기가 도시마다
-     * 추천 장소로 하루 일정 수만큼 채운다. AI 초안(#158)과 리더 수정(#131)이
-     * 들어오면 그 일정을 받도록 바뀐다.
+     * AI 초안(#158)이 있으면 그 카드 중 장소를 정한 칸을 그대로 쓴다. 초안 없이
+     * 만든 예전 플래너는 일정 생성기가 도시마다 추천 장소로 채운다.
      */
     @Transactional
     public PlannerConfirmResponseDto confirmPlanner(Long plannerId, String userId) {
@@ -80,8 +81,11 @@ public class PlannerConfirmService {
             GroupTravelPlanEntity plan,
             String userId
     ) {
-        List<PlannerScheduleService.ScheduledPlace> schedule =
-                plannerScheduleService.buildSchedule(plan, List.of(), userId);
+        var slots = plannerScheduleSlotRepository
+                .findByPlanIdOrderByVisitDateAscSortOrderAsc(plan.getPlanId());
+        List<PlannerScheduleService.ScheduledPlace> schedule = slots.isEmpty()
+                ? plannerScheduleService.buildSchedule(plan, List.of(), userId)
+                : plannerScheduleService.fromSlots(slots);
         int uniquePlaceCount = Math.toIntExact(schedule.stream()
                 .map(item -> item.place().getTourPlaceId())
                 .filter(id -> id != null)

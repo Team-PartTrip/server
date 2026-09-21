@@ -9,6 +9,7 @@ import com.example.PartTrip.planner.enums.GroupRole;
 import com.example.PartTrip.planner.repository.GroupInvitationRepository;
 import com.example.PartTrip.planner.repository.GroupMemberRepository;
 import com.example.PartTrip.planner.repository.GroupTravelPlanRepository;
+import com.example.PartTrip.planner.repository.PlannerScheduleSlotRepository;
 import com.example.PartTrip.planner.repository.TravelGroupRepository;
 import com.example.PartTrip.tripcard.entity.TripCardEntity;
 import com.example.PartTrip.tripcard.repository.TripCardRepository;
@@ -45,6 +46,7 @@ class PlannerDeleteServiceTest {
     @Mock private GroupInvitationRepository groupInvitationRepository;
     @Mock private GroupTravelPlanRepository groupTravelPlanRepository;
     @Mock private TripCardRepository tripCardRepository;
+    @Mock private PlannerScheduleSlotRepository plannerScheduleSlotRepository;
     @InjectMocks private PlannerDeleteService plannerDeleteService;
 
     @BeforeEach
@@ -75,8 +77,9 @@ class PlannerDeleteServiceTest {
 
         plannerDeleteService.deletePlanner(PLANNER_ID, OWNER_ID);
 
-        InOrder order = inOrder(groupTravelPlanRepository,
+        InOrder order = inOrder(plannerScheduleSlotRepository, groupTravelPlanRepository,
                 groupInvitationRepository, groupMemberRepository, travelGroupRepository);
+        order.verify(plannerScheduleSlotRepository).deleteByPlanIdIn(List.of(PLAN_ID));
         order.verify(groupTravelPlanRepository).deleteByGroupId(PLANNER_ID);
         order.verify(groupInvitationRepository).deleteByGroupId(PLANNER_ID);
         order.verify(groupMemberRepository).deleteByGroupId(PLANNER_ID);

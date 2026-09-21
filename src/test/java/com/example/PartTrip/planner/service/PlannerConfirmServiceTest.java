@@ -10,6 +10,8 @@ import com.example.PartTrip.planner.enums.GroupRole;
 import com.example.PartTrip.planner.enums.GroupStatus;
 import com.example.PartTrip.planner.repository.GroupMemberRepository;
 import com.example.PartTrip.planner.repository.GroupTravelPlanRepository;
+import com.example.PartTrip.planner.entity.PlannerScheduleSlotEntity;
+import com.example.PartTrip.planner.repository.PlannerScheduleSlotRepository;
 import com.example.PartTrip.planner.repository.TravelGroupRepository;
 import com.example.PartTrip.tripcard.entity.TripCardEntity;
 import com.example.PartTrip.tripcard.entity.TripCardPlaceEntity;
@@ -58,6 +60,7 @@ class PlannerConfirmServiceTest {
     @Mock private TripCardRepository tripCardRepository;
     @Mock private TripCardPlaceRepository tripCardPlaceRepository;
     @Mock private PlannerScheduleService plannerScheduleService;
+    @Mock private PlannerScheduleSlotRepository plannerScheduleSlotRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
     @InjectMocks private PlannerConfirmService plannerConfirmService;
 
@@ -176,5 +179,22 @@ class PlannerConfirmServiceTest {
 
         verify(tripCardPlaceRepository).saveAll(List.of());
         assertThat(result.getTripCardId()).isEqualTo(7L);
+    }
+
+    @Test
+    void AI_초안이_있으면_그_카드로_만든다() {
+        givenNoCardsYet();
+        List<PlannerScheduleSlotEntity> slots = List.of(
+                new PlannerScheduleSlotEntity(PLAN_ID, DAY1, 1, 5L),
+                new PlannerScheduleSlotEntity(PLAN_ID, DAY1, 2, null));
+        given(plannerScheduleSlotRepository.findByPlanIdOrderByVisitDateAscSortOrderAsc(PLAN_ID))
+                .willReturn(slots);
+        given(plannerScheduleService.fromSlots(slots)).willReturn(List.of(scheduled(5L, DAY1, 1)));
+
+        plannerConfirmService.confirmPlanner(PLANNER_ID, OWNER_ID);
+
+        // 리더가 정한 일정을 추천으로 덮지 않는다
+        verify(plannerScheduleService, never()).buildSchedule(any(), any(), any());
+        assertThat(group.getStatus()).isEqualTo(GroupStatus.CONFIRMED);
     }
 }
