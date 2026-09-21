@@ -6,8 +6,12 @@ import lombok.Getter;
 @Getter
 public enum NotificationType {
 
+    // 투표를 없앴다(#161). 이미 저장된 알림이 EnumType.STRING 으로 읽히도록 남긴다.
+    @Deprecated
     VOTE_PARTICIPATED("투표 참여", NotificationCategory.VOTE),
+    @Deprecated
     VOTE_DEADLINE("투표 마감 임박", NotificationCategory.VOTE),
+    @Deprecated
     VOTE_REMINDER("투표 참여 요청", NotificationCategory.VOTE),
     GROUP_INVITED("그룹 초대", NotificationCategory.VOTE),
     GROUP_INVITE_ACCEPTED("그룹 초대 수락", NotificationCategory.VOTE),

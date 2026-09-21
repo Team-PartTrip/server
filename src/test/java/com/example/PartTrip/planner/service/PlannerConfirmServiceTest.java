@@ -1,26 +1,21 @@
 package com.example.PartTrip.planner.service;
 
 import com.example.PartTrip.main.entity.TourPlaceEntity;
-import com.example.PartTrip.planner.dto.request.PlannerConfirmRequestDto;
-import com.example.PartTrip.planner.dto.request.VoteConfirmRequestDto;
 import com.example.PartTrip.planner.dto.response.ConfirmedPlaceResponseDto;
 import com.example.PartTrip.planner.dto.response.PlannerFinalResponseDto;
-import com.example.PartTrip.planner.dto.response.VoteCloseResponseDto;
 import com.example.PartTrip.planner.entity.GroupMemberEntity;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
 import com.example.PartTrip.planner.entity.TravelGroupEntity;
-import com.example.PartTrip.main.enums.TourPlaceCategory;
-import com.example.PartTrip.planner.entity.VoteEntity;
 import com.example.PartTrip.planner.enums.GroupRole;
-import com.example.PartTrip.planner.enums.VoteStatus;
+import com.example.PartTrip.planner.enums.GroupStatus;
 import com.example.PartTrip.planner.repository.GroupMemberRepository;
 import com.example.PartTrip.planner.repository.GroupTravelPlanRepository;
 import com.example.PartTrip.planner.repository.TravelGroupRepository;
-import com.example.PartTrip.planner.repository.VoteRepository;
 import com.example.PartTrip.tripcard.entity.TripCardEntity;
 import com.example.PartTrip.tripcard.entity.TripCardPlaceEntity;
 import com.example.PartTrip.tripcard.repository.TripCardPlaceRepository;
 import com.example.PartTrip.tripcard.repository.TripCardRepository;
+import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,32 +32,28 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
- * 장바구니(C6)는 아무도 투표하지 않아 모든 후보가 0표 동점이다.
- * 그래서 고른 것을 함께 받지 못하면 확정이 반드시 거부된다.
+ * 투표를 없앤 뒤(#161)의 확정: 일정 생성기가 채운 일정으로 멤버마다 여행 카드를
+ * 만들고 플래너를 확정 상태로 바꾼다.
  */
 @ExtendWith(MockitoExtension.class)
 class PlannerConfirmServiceTest {
 
     private static final long PLANNER_ID = 1L;
     private static final long PLAN_ID = 10L;
-    private static final long VOTE_ID = 100L;
-    private static final long OPTION_A = 1000L;
-    private static final long OPTION_B = 1001L;
     private static final String OWNER_ID = "owner";
+    private static final LocalDate DAY1 = LocalDate.of(2026, 9, 1);
+    private static final LocalDate DAY2 = LocalDate.of(2026, 9, 2);
 
     @Mock private TravelGroupRepository travelGroupRepository;
     @Mock private GroupMemberRepository groupMemberRepository;
     @Mock private GroupTravelPlanRepository groupTravelPlanRepository;
-    @Mock private VoteRepository voteRepository;
-    @Mock private VoteConfirmService voteConfirmService;
     @Mock private PlannerFinalService plannerFinalService;
     @Mock private TripCardRepository tripCardRepository;
     @Mock private TripCardPlaceRepository tripCardPlaceRepository;
@@ -70,242 +61,120 @@ class PlannerConfirmServiceTest {
     @Mock private ApplicationEventPublisher eventPublisher;
     @InjectMocks private PlannerConfirmService plannerConfirmService;
 
-    private VoteEntity vote;
+    private TravelGroupEntity group;
     private GroupTravelPlanEntity plan;
 
     @BeforeEach
     void setUp() {
-        TravelGroupEntity group = new TravelGroupEntity();
+        group = new TravelGroupEntity();
         group.setGroupId(PLANNER_ID);
-        group.setGroupName("오사카 여행팟");
+        group.setGroupName("강릉 여행");
         group.setOwnerUserId(OWNER_ID);
-
-        GroupMemberEntity owner = owner();
+        group.setStatus(GroupStatus.PLANNING);
 
         plan = new GroupTravelPlanEntity();
         plan.setPlanId(PLAN_ID);
         plan.setGroupId(PLANNER_ID);
-
-        vote = new VoteEntity();
-        vote.setVoteId(VOTE_ID);
-        vote.setPlanId(PLAN_ID);
-        vote.setStatus(VoteStatus.OPEN);
-        vote.setCategory(TourPlaceCategory.RESTAURANT);
+        plan.setStartDate(DAY1);
+        plan.setEndDate(DAY2);
 
         given(travelGroupRepository.findById(PLANNER_ID)).willReturn(Optional.of(group));
-        given(groupMemberRepository.findByGroupIdAndUserId(PLANNER_ID, OWNER_ID))
-                .willReturn(Optional.of(owner));
-        given(groupTravelPlanRepository.findFirstByGroupIdOrderByCreatedAtDesc(PLANNER_ID))
-                .willReturn(Optional.of(plan));
-        given(voteRepository.findByPlanId(PLAN_ID)).willReturn(List.of(vote));
+        lenient().when(groupMemberRepository.findByGroupIdAndUserId(PLANNER_ID, OWNER_ID))
+                .thenReturn(Optional.of(member(OWNER_ID, GroupRole.OWNER)));
+        lenient().when(groupTravelPlanRepository.findFirstByGroupIdOrderByCreatedAtDesc(PLANNER_ID))
+                .thenReturn(Optional.of(plan));
+        lenient().when(groupMemberRepository.findByGroupIdOrderByJoinedAtAsc(PLANNER_ID))
+                .thenReturn(List.of(member(OWNER_ID, GroupRole.OWNER)));
+        lenient().when(plannerFinalService.getConfirmedPlaces(PLANNER_ID, OWNER_ID))
+                .thenReturn(PlannerFinalResponseDto.builder().places(List.of()).build());
     }
 
-    /** 두 후보가 0표로 동점인 상황 */
-    private void givenTiedVote() {
-        given(voteConfirmService.closeVote(PLANNER_ID, VOTE_ID, OWNER_ID))
-                .willReturn(VoteCloseResponseDto.builder()
-                        .voteId(VOTE_ID)
-                        .topOptionIds(List.of(OPTION_A, OPTION_B))
-                        .tied(true)
-                        .build());
-    }
-
-    /** 확정 뒤 여행 카드까지 만들어지도록 나머지를 세운다 */
-    private void givenTripCardCreation() {
-        given(plannerFinalService.getConfirmedPlaces(PLANNER_ID, OWNER_ID))
-                .willReturn(PlannerFinalResponseDto.builder().places(List.of()).build());
-        given(groupMemberRepository.findByGroupIdOrderByJoinedAtAsc(PLANNER_ID))
-                .willReturn(List.of(owner()));
-        given(tripCardRepository.findByPlanIdAndUserIdIn(eq(PLAN_ID), any()))
-                .willReturn(List.of());
-        given(tripCardRepository.saveAll(any()))
-                .willReturn(List.of(TripCardEntity.builder()
-                        .tripCardId(7L).userId(OWNER_ID).planId(PLAN_ID).build()));
-        lenient().when(plannerScheduleService.buildSchedule(any(), any(), anyString()))
-                .thenReturn(List.of());
-    }
-
-    private GroupMemberEntity owner() {
+    private GroupMemberEntity member(String userId, GroupRole role) {
         GroupMemberEntity member = new GroupMemberEntity();
         member.setGroupId(PLANNER_ID);
-        member.setUserId(OWNER_ID);
-        member.setRole(GroupRole.OWNER);
+        member.setUserId(userId);
+        member.setRole(role);
         return member;
     }
 
-    private PlannerConfirmRequestDto requestOf(Long voteId, Long optionId) {
-        PlannerConfirmRequestDto.VoteSelection selection =
-                new PlannerConfirmRequestDto.VoteSelection();
-        selection.setVoteId(voteId);
-        selection.setOptionId(optionId);
-        PlannerConfirmRequestDto request = new PlannerConfirmRequestDto();
-        request.setSelections(List.of(selection));
-        return request;
+    private PlannerScheduleService.ScheduledPlace scheduled(long id, LocalDate date, int order) {
+        TourPlaceEntity place = new TourPlaceEntity();
+        place.setTourPlaceId(id);
+        ConfirmedPlaceResponseDto dto = ConfirmedPlaceResponseDto.builder()
+                .tourPlaceId(id)
+                .placeName("장소 " + id)
+                .build();
+        return new PlannerScheduleService.ScheduledPlace(dto, place, date, order);
+    }
+
+    private void givenNoCardsYet() {
+        given(tripCardRepository.findByPlanIdAndUserIdIn(eq(PLAN_ID), any())).willReturn(List.of());
+        given(tripCardRepository.saveAll(any())).willReturn(List.of(TripCardEntity.builder()
+                .tripCardId(7L).userId(OWNER_ID).planId(PLAN_ID).build()));
     }
 
     @Test
-    void 고른_후보를_그대로_확정한다() {
-        givenTiedVote();
-        givenTripCardCreation();
+    void 일정대로_여행카드에_날짜별로_저장하고_확정한다() {
+        givenNoCardsYet();
+        // 확정할 투표가 없으니 일정 생성기에는 빈 목록을 넘긴다. 생성기가 추천으로 채운다
+        given(plannerScheduleService.buildSchedule(plan, List.of(), OWNER_ID)).willReturn(List.of(
+                scheduled(1L, DAY1, 1),
+                scheduled(2L, DAY1, 2),
+                scheduled(3L, DAY2, 1)));
 
-        plannerConfirmService.confirmPlanner(
-                PLANNER_ID, requestOf(VOTE_ID, OPTION_B), OWNER_ID);
-
-        ArgumentCaptor<VoteConfirmRequestDto> captor =
-                ArgumentCaptor.forClass(VoteConfirmRequestDto.class);
-        verify(voteConfirmService)
-                .confirmVote(eq(PLANNER_ID), eq(VOTE_ID), captor.capture(), eq(OWNER_ID));
-        assertThat(captor.getValue().getOptionId()).isEqualTo(OPTION_B);
-    }
-
-    @Test
-    void 고른_것이_없고_동점이면_거부한다() {
-        givenTiedVote();
-
-        assertThatThrownBy(() ->
-                plannerConfirmService.confirmPlanner(PLANNER_ID, null, OWNER_ID))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("맛집")
-                .hasMessageContaining("동점")
-                // voteId 같은 내부 번호를 사용자에게 보여주지 않는다
-                .hasMessageNotContaining("voteId");
-    }
-
-    @Test
-    void 다른_플래너의_투표는_거부한다() {
-        assertThatThrownBy(() ->
-                plannerConfirmService.confirmPlanner(
-                        PLANNER_ID, requestOf(999L, OPTION_A), OWNER_ID))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("이 플래너의 투표가 아닙니다");
-    }
-
-    @Test
-    void 한_투표에_두_후보를_보내면_거부한다() {
-        PlannerConfirmRequestDto.VoteSelection first =
-                new PlannerConfirmRequestDto.VoteSelection();
-        first.setVoteId(VOTE_ID);
-        first.setOptionId(OPTION_A);
-        PlannerConfirmRequestDto.VoteSelection second =
-                new PlannerConfirmRequestDto.VoteSelection();
-        second.setVoteId(VOTE_ID);
-        second.setOptionId(OPTION_B);
-        PlannerConfirmRequestDto request = new PlannerConfirmRequestDto();
-        request.setSelections(List.of(first, second));
-
-        assertThatThrownBy(() ->
-                plannerConfirmService.confirmPlanner(PLANNER_ID, request, OWNER_ID))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("한 투표에는 하나만");
-    }
-
-    @Test
-    void 같은_후보를_두_번_보내도_거부한다() {
-        PlannerConfirmRequestDto.VoteSelection first =
-                new PlannerConfirmRequestDto.VoteSelection();
-        first.setVoteId(VOTE_ID);
-        first.setOptionId(OPTION_A);
-        PlannerConfirmRequestDto.VoteSelection second =
-                new PlannerConfirmRequestDto.VoteSelection();
-        second.setVoteId(VOTE_ID);
-        second.setOptionId(OPTION_A);
-        PlannerConfirmRequestDto request = new PlannerConfirmRequestDto();
-        request.setSelections(List.of(first, second));
-
-        assertThatThrownBy(() ->
-                plannerConfirmService.confirmPlanner(PLANNER_ID, request, OWNER_ID))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("한 투표에는 하나만");
-    }
-
-    @Test
-    void 선택_항목이_null_이면_거부한다() {
-        PlannerConfirmRequestDto request = new PlannerConfirmRequestDto();
-        // List.of 는 null 을 못 담는다. JSON 으로는 [null] 이 들어온다.
-        request.setSelections(java.util.Collections.singletonList(null));
-
-        assertThatThrownBy(() ->
-                plannerConfirmService.confirmPlanner(PLANNER_ID, request, OWNER_ID))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("선택 항목이 비어 있습니다");
-    }
-
-    @Test
-    void 이미_확정된_투표는_다시_확정하지_않는다() {
-        vote.setStatus(VoteStatus.CONFIRMED);
-        givenTripCardCreation();
-
-        plannerConfirmService.confirmPlanner(
-                PLANNER_ID, requestOf(VOTE_ID, OPTION_A), OWNER_ID);
-
-        verify(voteConfirmService, org.mockito.Mockito.never())
-                .closeVote(anyLong(), anyLong(), anyString());
-        verify(voteConfirmService, org.mockito.Mockito.never())
-                .confirmVote(anyLong(), anyLong(), any(), anyString());
-    }
-
-    @Test
-    void 숙소는_전_날짜에_맛집은_하루_두_곳씩_배치한다() {
-        plan.setStartDate(LocalDate.of(2026, 9, 1));
-        plan.setEndDate(LocalDate.of(2026, 9, 2));
-        vote.setStatus(VoteStatus.CONFIRMED);
-        givenTripCardCreation();
-        List<ConfirmedPlaceResponseDto> places = List.of(
-                confirmed("ACCOMMODATION", 1L),
-                confirmed("RESTAURANT", 2L),
-                confirmed("RESTAURANT", 3L),
-                confirmed("RESTAURANT", 4L));
-        given(plannerFinalService.getConfirmedPlaces(PLANNER_ID, OWNER_ID))
-                .willReturn(PlannerFinalResponseDto.builder().places(places).build());
-        TourPlaceEntity accommodation = tourPlace(1L);
-        TourPlaceEntity restaurant2 = tourPlace(2L);
-        TourPlaceEntity restaurant3 = tourPlace(3L);
-        TourPlaceEntity restaurant4 = tourPlace(4L);
-        given(plannerScheduleService.buildSchedule(plan, places, OWNER_ID)).willReturn(List.of(
-                new PlannerScheduleService.ScheduledPlace(
-                        places.get(0), accommodation, LocalDate.of(2026, 9, 1), 1),
-                new PlannerScheduleService.ScheduledPlace(
-                        places.get(0), accommodation, LocalDate.of(2026, 9, 2), 1),
-                new PlannerScheduleService.ScheduledPlace(
-                        places.get(1), restaurant2, LocalDate.of(2026, 9, 1), 2),
-                new PlannerScheduleService.ScheduledPlace(
-                        places.get(2), restaurant3, LocalDate.of(2026, 9, 1), 3),
-                new PlannerScheduleService.ScheduledPlace(
-                        places.get(3), restaurant4, LocalDate.of(2026, 9, 2), 2)));
-
-        plannerConfirmService.confirmPlanner(PLANNER_ID, null, OWNER_ID);
+        var result = plannerConfirmService.confirmPlanner(PLANNER_ID, OWNER_ID);
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<TripCardPlaceEntity>> captor = ArgumentCaptor.forClass(List.class);
         verify(tripCardPlaceRepository).saveAll(captor.capture());
         assertThat(captor.getValue())
                 .extracting(TripCardPlaceEntity::getTourPlaceId,
-                        TripCardPlaceEntity::getVisitedDate)
+                        TripCardPlaceEntity::getVisitedDate,
+                        TripCardPlaceEntity::getSortOrder)
                 .containsExactly(
-                        org.assertj.core.groups.Tuple.tuple(1L, LocalDate.of(2026, 9, 1)),
-                        org.assertj.core.groups.Tuple.tuple(1L, LocalDate.of(2026, 9, 2)),
-                        org.assertj.core.groups.Tuple.tuple(2L, LocalDate.of(2026, 9, 1)),
-                        org.assertj.core.groups.Tuple.tuple(3L, LocalDate.of(2026, 9, 1)),
-                        org.assertj.core.groups.Tuple.tuple(4L, LocalDate.of(2026, 9, 2)));
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<List<TripCardEntity>> cardCaptor = ArgumentCaptor.forClass(List.class);
-        verify(tripCardRepository).saveAll(cardCaptor.capture());
-        assertThat(cardCaptor.getValue()).singleElement()
-                .extracting(TripCardEntity::getPlaceCount)
-                .isEqualTo(4);
+                        Tuple.tuple(1L, DAY1, 1),
+                        Tuple.tuple(2L, DAY1, 2),
+                        Tuple.tuple(3L, DAY2, 1));
+        assertThat(group.getStatus()).isEqualTo(GroupStatus.CONFIRMED);
+        assertThat(result.getTripCardId()).isEqualTo(7L);
     }
 
-    private ConfirmedPlaceResponseDto confirmed(String category, Long tourPlaceId) {
-        return ConfirmedPlaceResponseDto.builder()
-                .category(category)
-                .tourPlaceId(tourPlaceId)
-                .placeName("장소 " + tourPlaceId)
-                .build();
+    @Test
+    void 그룹장이_아니면_거부한다() {
+        given(groupMemberRepository.findByGroupIdAndUserId(PLANNER_ID, "member"))
+                .willReturn(Optional.of(member("member", GroupRole.MEMBER)));
+
+        assertThatThrownBy(() -> plannerConfirmService.confirmPlanner(PLANNER_ID, "member"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("그룹장");
+        assertThat(group.getStatus()).isEqualTo(GroupStatus.PLANNING);
     }
 
-    private TourPlaceEntity tourPlace(Long id) {
-        TourPlaceEntity place = new TourPlaceEntity();
-        place.setTourPlaceId(id);
-        return place;
+    @Test
+    void 넣을_장소가_하나도_없으면_거부한다() {
+        given(tripCardRepository.findByPlanIdAndUserIdIn(eq(PLAN_ID), any())).willReturn(List.of());
+        given(plannerScheduleService.buildSchedule(plan, List.of(), OWNER_ID)).willReturn(List.of());
+
+        // 빈 여행 카드가 만들어지고 확정되면 되돌릴 방법이 없다
+        assertThatThrownBy(() -> plannerConfirmService.confirmPlanner(PLANNER_ID, OWNER_ID))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("장소가 없습니다");
+        verify(tripCardRepository, never()).saveAll(any());
+        assertThat(group.getStatus()).isEqualTo(GroupStatus.PLANNING);
+    }
+
+    @Test
+    void 이미_카드가_있으면_다시_만들지_않는다() {
+        given(tripCardRepository.findByPlanIdAndUserIdIn(eq(PLAN_ID), any()))
+                .willReturn(List.of(TripCardEntity.builder()
+                        .tripCardId(7L).userId(OWNER_ID).planId(PLAN_ID).build()));
+        given(plannerScheduleService.buildSchedule(plan, List.of(), OWNER_ID))
+                .willReturn(List.of(scheduled(1L, DAY1, 1)));
+        given(tripCardRepository.saveAll(List.of())).willReturn(List.of());
+
+        var result = plannerConfirmService.confirmPlanner(PLANNER_ID, OWNER_ID);
+
+        verify(tripCardPlaceRepository).saveAll(List.of());
+        assertThat(result.getTripCardId()).isEqualTo(7L);
     }
 }

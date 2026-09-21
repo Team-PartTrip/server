@@ -39,7 +39,7 @@ class PlannerMemberServiceTest {
         JoinPlannerRequestDto request = new JoinPlannerRequestDto();
         request.setInviteCode("invite");
         TravelGroupEntity group = new TravelGroupEntity();
-        group.setStatus(GroupStatus.VOTING);
+        group.setStatus(GroupStatus.CONFIRMED);
         when(travelGroupRepository.findByInviteCodeForUpdate("INVITE"))
                 .thenReturn(Optional.of(group));
 

@@ -43,8 +43,6 @@ class PlannerTravelPlanServiceTest {
     private PlannerScheduleLockService plannerScheduleLockService;
     @Mock
     private PlannerCityWriter plannerCityWriter;
-    @Mock
-    private PlannerCategoryCountService plannerCategoryCountService;
 
     @InjectMocks
     private PlannerTravelPlanService plannerTravelPlanService;

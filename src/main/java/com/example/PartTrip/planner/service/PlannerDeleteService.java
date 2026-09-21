@@ -9,9 +9,6 @@ import com.example.PartTrip.planner.repository.GroupInvitationRepository;
 import com.example.PartTrip.planner.repository.GroupMemberRepository;
 import com.example.PartTrip.planner.repository.GroupTravelPlanRepository;
 import com.example.PartTrip.planner.repository.TravelGroupRepository;
-import com.example.PartTrip.planner.repository.VoteOptionRepository;
-import com.example.PartTrip.planner.repository.VoteRecordRepository;
-import com.example.PartTrip.planner.repository.VoteRepository;
 import com.example.PartTrip.tripcard.entity.TripCardEntity;
 import com.example.PartTrip.tripcard.repository.TripCardRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +22,7 @@ import java.util.List;
  *
  * 이 DB 에는 travel_group 을 가리키는 외래키가 없다. 엔티티가 id 를 값으로만
  * 들고 있어서 연쇄 삭제가 걸리지 않는다. 그래서 자식부터 순서대로 지운다.
- * 그룹만 지우면 투표·멤버·초대가 전부 고아로 남는다.
+ * 그룹만 지우면 멤버·초대가 전부 고아로 남는다.
  */
 @Service
 @RequiredArgsConstructor
@@ -35,9 +32,6 @@ public class PlannerDeleteService {
     private final GroupMemberRepository groupMemberRepository;
     private final GroupInvitationRepository groupInvitationRepository;
     private final GroupTravelPlanRepository groupTravelPlanRepository;
-    private final VoteRepository voteRepository;
-    private final VoteOptionRepository voteOptionRepository;
-    private final VoteRecordRepository voteRecordRepository;
     private final TripCardRepository tripCardRepository;
 
     @Transactional
@@ -66,14 +60,6 @@ public class PlannerDeleteService {
             List<TripCardEntity> cards = tripCardRepository.findByPlanIdIn(planIds);
             cards.forEach(card -> card.setPlanId(null));
 
-            List<Long> voteIds = voteRepository.findByPlanIdIn(planIds).stream()
-                    .map(vote -> vote.getVoteId())
-                    .toList();
-            if (!voteIds.isEmpty()) {
-                voteRecordRepository.deleteByVoteIdIn(voteIds);
-                voteOptionRepository.deleteByVoteIdIn(voteIds);
-                voteRepository.deleteByPlanIdIn(planIds);
-            }
             groupTravelPlanRepository.deleteByGroupId(plannerId);
         }
 
