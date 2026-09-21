@@ -8,6 +8,7 @@ import com.example.PartTrip.planner.enums.GroupRole;
 import com.example.PartTrip.planner.repository.GroupInvitationRepository;
 import com.example.PartTrip.planner.repository.GroupMemberRepository;
 import com.example.PartTrip.planner.repository.GroupTravelPlanRepository;
+import com.example.PartTrip.planner.repository.PlannerScheduleSlotRepository;
 import com.example.PartTrip.planner.repository.TravelGroupRepository;
 import com.example.PartTrip.tripcard.entity.TripCardEntity;
 import com.example.PartTrip.tripcard.repository.TripCardRepository;
@@ -22,7 +23,7 @@ import java.util.List;
  *
  * 이 DB 에는 travel_group 을 가리키는 외래키가 없다. 엔티티가 id 를 값으로만
  * 들고 있어서 연쇄 삭제가 걸리지 않는다. 그래서 자식부터 순서대로 지운다.
- * 그룹만 지우면 멤버·초대가 전부 고아로 남는다.
+ * 그룹만 지우면 일정 카드·멤버·초대가 전부 고아로 남는다.
  */
 @Service
 @RequiredArgsConstructor
@@ -33,6 +34,7 @@ public class PlannerDeleteService {
     private final GroupInvitationRepository groupInvitationRepository;
     private final GroupTravelPlanRepository groupTravelPlanRepository;
     private final TripCardRepository tripCardRepository;
+    private final PlannerScheduleSlotRepository plannerScheduleSlotRepository;
 
     @Transactional
     public void deletePlanner(Long plannerId, String userId) {
@@ -60,6 +62,7 @@ public class PlannerDeleteService {
             List<TripCardEntity> cards = tripCardRepository.findByPlanIdIn(planIds);
             cards.forEach(card -> card.setPlanId(null));
 
+            plannerScheduleSlotRepository.deleteByPlanIdIn(planIds);
             groupTravelPlanRepository.deleteByGroupId(plannerId);
         }
 

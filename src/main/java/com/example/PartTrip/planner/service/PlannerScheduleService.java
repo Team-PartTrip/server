@@ -6,6 +6,7 @@ import com.example.PartTrip.main.repository.TourPlaceRepository;
 import com.example.PartTrip.planner.dto.response.ConfirmedPlaceResponseDto;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
 import com.example.PartTrip.planner.entity.PlannerCityEntity;
+import com.example.PartTrip.planner.entity.PlannerScheduleSlotEntity;
 import com.example.PartTrip.planner.repository.PlannerCityRepository;
 import com.example.PartTrip.profile.service.TravelPreferenceService;
 import lombok.RequiredArgsConstructor;
@@ -69,6 +70,24 @@ public class PlannerScheduleService {
             selected.forEach(place -> alreadyScheduled.add(place.getTourPlaceId()));
             result.addAll(scheduleCity(
                     city, selected, alreadyScheduled, dailyScheduleCount));
+        }
+        return result;
+    }
+
+    @Transactional(readOnly = true)
+    public List<ScheduledPlace> fromSlots(List<PlannerScheduleSlotEntity> slots) {
+        Map<Long, TourPlaceEntity> placesById = tourPlaceRepository.findAllById(slots.stream()
+                        .map(PlannerScheduleSlotEntity::getTourPlaceId)
+                        .filter(id -> id != null)
+                        .collect(Collectors.toSet()))
+                .stream().collect(Collectors.toMap(TourPlaceEntity::getTourPlaceId, Function.identity()));
+        List<ScheduledPlace> result = new ArrayList<>();
+        for (PlannerScheduleSlotEntity slot : slots) {
+            TourPlaceEntity place = placesById.get(slot.getTourPlaceId());
+            if (place != null) {
+                result.add(new ScheduledPlace(
+                        toResponse(place), place, slot.getVisitDate(), slot.getSortOrder()));
+            }
         }
         return result;
     }
