@@ -31,6 +31,10 @@ public class GroupTravelPlanEntity {
     @Column(name = "group_id", nullable = false)
     private Long groupId;
 
+    /** 모든 카드를 삭제한 수동 일정을 기존 미생성 일정과 구분한다. */
+    @Column(name = "schedule_edited")
+    private Boolean scheduleEdited;
+
     @Column(name = "travel_title", length = 100)
     private String travelTitle;
 
