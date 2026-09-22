@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.Clock;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -28,6 +29,7 @@ public class TravelPlanService {
     private final GroupTravelPlanRepository groupTravelPlanRepository;
     private final TravelGroupRepository travelGroupRepository;
     private final PlannerDraftService plannerDraftService;
+    private final Clock clock;
 
     // D-Day 조회
     //
@@ -47,7 +49,7 @@ public class TravelPlanService {
             return restingDto();
         }
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         Set<Long> groupsWithLatestPlan = new HashSet<>();
 
         // 이미 끝난 여행은 제외하고 시작일이 가장 이른 것을 고른다.
@@ -77,7 +79,8 @@ public class TravelPlanService {
                 nearest.getCityName(),
                 nearest.getStartDate(),
                 nearest.getEndDate(),
-                headcount
+                headcount,
+                today
         );
         if (response.getStatus() == TripPhase.DURING) {
             var schedule = plannerDraftService.getSchedule(nearest.getGroupId(), userId);
@@ -101,10 +104,10 @@ public class TravelPlanService {
             String cityName,
             LocalDate startDate,
             LocalDate endDate,
-            Integer headcount
+            Integer headcount,
+            LocalDate today
     ) {
 
-        LocalDate today = LocalDate.now();
 
         long days = ChronoUnit.DAYS.between(today, startDate);
 
