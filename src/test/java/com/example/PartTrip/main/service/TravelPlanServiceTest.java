@@ -9,6 +9,9 @@ import com.example.PartTrip.planner.repository.GroupMemberRepository;
 import com.example.PartTrip.planner.repository.GroupTravelPlanRepository;
 import com.example.PartTrip.planner.repository.TravelGroupRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import com.example.PartTrip.planner.service.PlannerDraftService;
+import com.example.PartTrip.planner.dto.response.PlannerScheduleResponseDto;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -28,7 +31,36 @@ class TravelPlanServiceTest {
     @Mock private GroupMemberRepository groupMemberRepository;
     @Mock private GroupTravelPlanRepository groupTravelPlanRepository;
     @Mock private TravelGroupRepository travelGroupRepository;
+    @Mock private PlannerDraftService plannerDraftService;
     @InjectMocks private TravelPlanService travelPlanService;
+
+    @BeforeEach
+    void emptySchedule() {
+        org.mockito.Mockito.lenient().when(plannerDraftService.getSchedule(1L, "user"))
+                .thenReturn(new PlannerScheduleResponseDto(1L, "여행", "강릉", LocalDate.now(),
+                        LocalDate.now(), List.of()));
+    }
+
+    /** 여행 첫날에도 오늘 카드만 저장 순서대로 반환한다. */
+    @Test
+    void firstDayIncludesOnlyTodayInSavedOrder() {
+        LocalDate today = LocalDate.now();
+        var first = new PlannerScheduleResponseDto.Slot(2L, 1, null);
+        var second = new PlannerScheduleResponseDto.Slot(1L, 2, null);
+        when(plannerDraftService.getSchedule(1L, "user")).thenReturn(
+                new PlannerScheduleResponseDto(1L, "여행", "강릉", today, today.plusDays(1), List.of(
+                        new PlannerScheduleResponseDto.Day(today, List.of(first, second)),
+                        new PlannerScheduleResponseDto.Day(today.plusDays(1), List.of(first)))));
+        var response = responseFor(0, 1);
+        assertThat(response.getStatus()).isEqualTo(TripPhase.DURING);
+        assertThat(response.getTodaySchedule()).containsExactly(first, second);
+    }
+
+    /** 일정이 없는 여행 중 날짜는 정상적인 빈 목록이다. */
+    @Test
+    void missingDayReturnsEmptySchedule() {
+        assertThat(responseFor(-1, 1).getTodaySchedule()).isEmpty();
+    }
 
     @Test
     void 그룹별_최신_계획만_Dday_후보로_사용한다() {

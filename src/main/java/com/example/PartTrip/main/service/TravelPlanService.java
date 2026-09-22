@@ -2,6 +2,7 @@ package com.example.PartTrip.main.service;
 
 import com.example.PartTrip.main.dto.DdayResponseDto;
 import com.example.PartTrip.main.dto.TripPhase;
+import com.example.PartTrip.planner.service.PlannerDraftService;
 import com.example.PartTrip.planner.entity.GroupMemberEntity;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
 import com.example.PartTrip.planner.entity.TravelGroupEntity;
@@ -26,6 +27,7 @@ public class TravelPlanService {
     private final GroupMemberRepository groupMemberRepository;
     private final GroupTravelPlanRepository groupTravelPlanRepository;
     private final TravelGroupRepository travelGroupRepository;
+    private final PlannerDraftService plannerDraftService;
 
     // D-Day 조회
     //
@@ -70,13 +72,21 @@ public class TravelPlanService {
                 .map(TravelGroupEntity::getHeadcount)
                 .orElse(null);
 
-        return toDdayResponseDto(
+        DdayResponseDto response = toDdayResponseDto(
                 nearest.getCountryName(),
                 nearest.getCityName(),
                 nearest.getStartDate(),
                 nearest.getEndDate(),
                 headcount
         );
+        if (response.getStatus() == TripPhase.DURING) {
+            var schedule = plannerDraftService.getSchedule(nearest.getGroupId(), userId);
+            response.setTodaySchedule(schedule.days().stream()
+                    .filter(day -> today.equals(day.date()))
+                    .flatMap(day -> day.slots().stream())
+                    .toList());
+        }
+        return response;
     }
 
     // 보여줄 여행이 없을 때. 문구는 클라이언트가 status 를 보고 정한다.
