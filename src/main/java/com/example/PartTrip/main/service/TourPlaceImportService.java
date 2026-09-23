@@ -146,6 +146,29 @@ public class TourPlaceImportService {
         return saved;
     }
 
+    public int fillMissingPhotos(String countryName, String cityName) {
+        List<TourPlaceEntity> saved = tourPlaceRepository
+                .findByCountryNameAndCityName(countryName, cityName).stream()
+                .filter(place -> place.getImageUrl() == null)
+                .toList();
+        if (saved.isEmpty()) {
+            return 0;
+        }
+        Map<String, String> photoNames = fetchCity(countryName, cityName).photoNames();
+        List<TourPlaceEntity> filled = new ArrayList<>();
+        for (TourPlaceEntity place : saved) {
+            String url = tourPlacePhotoService.resolve(photoNames.get(place.getPlaceName()));
+            if (url != null) {
+                place.setImageUrl(url);
+                filled.add(place);
+            }
+        }
+        tourPlaceRepository.saveAll(filled);
+        log.info("{} {} — 사진 없던 {}곳 중 {}곳 채움",
+                countryName, cityName, saved.size(), filled.size());
+        return filled.size();
+    }
+
     /**
      * 아직 한 번도 안 받아온 도시면 지금 받아온다.
      *
