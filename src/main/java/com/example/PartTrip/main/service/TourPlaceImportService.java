@@ -91,6 +91,7 @@ public class TourPlaceImportService {
 
     private final TourPlaceRepository tourPlaceRepository;
     private final TransactionTemplate transactionTemplate;
+    private final TourPlacePhotoService tourPlacePhotoService;
 
     @Value("${google.places.api-key}")
     private String apiKey;
@@ -122,7 +123,8 @@ public class TourPlaceImportService {
             String countryName = parts[0].trim();
             String cityName = parts[1].trim();
 
-            List<TourPlaceEntity> places = fetchCity(countryName, cityName, true);
+            FetchedCity fetched = fetchCity(countryName, cityName);
+            List<TourPlaceEntity> places = fetchedWithPhotos(fetched);
             if (places.isEmpty()) {
                 // 하나도 못 받았는데 지우면 그 도시가 통째로 비어버린다
                 log.warn("{} {} — 받아온 장소가 없어 건너뜁니다", countryName, cityName);
@@ -150,8 +152,8 @@ public class TourPlaceImportService {
      * 여행지 검색이 나라 전체로 넓어지면서, 관광지 데이터가 없는 도시도
      * 고를 수 있게 됐다. 그대로 두면 장소 목록이 비어 다음으로 못 넘어간다.
      *
-     * 이미 있는 도시는 건드리지 않는다. 사용자를 기다리게 하는 자리라
-     * 사진은 받지 않는다(사진 한 장에 요청이 한 번 더 든다).
+     * 이미 있는 도시는 건드리지 않는다. 사용자를 기다리게 하는 자리라 사진은
+     * 저장한 뒤 뒤따라 채운다(#170). 사진 한 장에 요청이 한 번 더 들어서다.
      *
      * @return 새로 채웠으면 true
      */
@@ -162,20 +164,31 @@ public class TourPlaceImportService {
         if (!tourPlaceRepository.findByCountryNameAndCityName(countryName, cityName).isEmpty()) {
             return false;
         }
-        List<TourPlaceEntity> places = fetchCity(countryName, cityName, false);
-        if (places.isEmpty()) {
+        FetchedCity fetched = fetchCity(countryName, cityName);
+        if (fetched.places().isEmpty()) {
             log.info("{} {} — 받아올 장소가 없다", countryName, cityName);
             return false;
         }
-        tourPlaceRepository.saveAll(places);
-        log.info("{} {} — 처음 열려서 {}개 받아옴", countryName, cityName, places.size());
+        List<TourPlaceEntity> saved = tourPlaceRepository.saveAll(fetched.places());
+        log.info("{} {} — 처음 열려서 {}개 받아옴", countryName, cityName, saved.size());
+        tourPlacePhotoService.fillAsync(saved, fetched.photoNames());
         return true;
     }
 
+    /** 사진까지 그 자리에서 채운다. importCities 는 사람이 돌리는 스크립트라 기다려도 된다 */
+    private List<TourPlaceEntity> fetchedWithPhotos(FetchedCity fetched) {
+        fetched.places().forEach(place -> place.setImageUrl(
+                tourPlacePhotoService.resolve(fetched.photoNames().get(place.getPlaceName()))));
+        return fetched.places();
+    }
+
+    /** 받아온 장소와 아직 주소로 바꾸지 않은 사진 이름 (장소 이름 → 사진 이름) */
+    record FetchedCity(List<TourPlaceEntity> places, Map<String, String> photoNames) {}
+
     /** 한 도시를 카테고리별로 받아 온다. 이름이 같으면 먼저 온 것만 남긴다 */
-    private List<TourPlaceEntity> fetchCity(
-            String countryName, String cityName, boolean withPhotos) {
+    private FetchedCity fetchCity(String countryName, String cityName) {
         Map<String, TourPlaceEntity> byName = new LinkedHashMap<>();
+        Map<String, String> photoNames = new LinkedHashMap<>();
 
         for (TourPlaceCategory category : TourPlaceCategory.values()) {
             String query = cityName + " " + KEYWORD.get(category);
@@ -193,11 +206,14 @@ public class TourPlaceImportService {
                 if (name == null || name.isBlank() || byName.containsKey(name)) {
                     continue;
                 }
-                byName.put(name,
-                        toEntity(place, countryName, cityName, category, withPhotos));
+                byName.put(name, toEntity(place, countryName, cityName, category));
+                String photoName = TourPlacePhotoService.photoNameOf(place);
+                if (photoName != null) {
+                    photoNames.put(name, photoName);
+                }
             }
         }
-        return new ArrayList<>(byName.values());
+        return new FetchedCity(new ArrayList<>(byName.values()), photoNames);
     }
 
     /** 더 받은 결과. cursor 가 null 이면 구글이 더 줄 게 없다 */
@@ -255,6 +271,7 @@ public class TourPlaceImportService {
                     .forEach(place -> known.add(place.getPlaceName()));
 
             List<TourPlaceEntity> fresh = new ArrayList<>();
+            Map<String, String> photoNames = new LinkedHashMap<>();
             int calls = 0;
             while (cursor != null && fresh.size() < ENOUGH && calls < MAX_CALLS_PER_REQUEST) {
                 String query = cityName + " " + keywords.get(cursor.keyword());
@@ -272,13 +289,18 @@ public class TourPlaceImportService {
                     if (name == null || name.isBlank() || !known.add(name)) {
                         continue;
                     }
-                    fresh.add(toEntity(place, countryName, cityName, category, false));
+                    fresh.add(toEntity(place, countryName, cityName, category));
+                    String photoName = TourPlacePhotoService.photoNameOf(place);
+                    if (photoName != null) {
+                        photoNames.put(name, photoName);
+                    }
                 }
                 cursor = next(cursor, body.path("nextPageToken").asText(null), keywords.size());
             }
 
             List<TourPlaceEntity> saved = fresh.isEmpty() ? List.of() : tourPlaceRepository.saveAll(fresh);
             log.info("{} {} {} — {}곳 더 받음 (구글 {}번)", countryName, cityName, category, saved.size(), calls);
+            tourPlacePhotoService.fillAsync(saved, photoNames);
             return new MoreResult(saved, cursor == null ? null : cursor.encode());
         }
     }
@@ -319,8 +341,7 @@ public class TourPlaceImportService {
             JsonNode place,
             String countryName,
             String cityName,
-            TourPlaceCategory category,
-            boolean withPhotos
+            TourPlaceCategory category
     ) {
         TourPlaceEntity entity = new TourPlaceEntity();
         entity.setCountryName(countryName);
@@ -341,40 +362,9 @@ public class TourPlaceImportService {
         entity.setLongitude(place.path("location").path("longitude").isNumber()
                 ? place.path("location").path("longitude").asDouble()
                 : null);
-        entity.setImageUrl(withPhotos ? photoUrl(place) : null);
         return entity;
     }
 
-    /**
-     * 사진 주소를 가져온다.
-     *
-     * media 주소에 키를 붙여 그대로 저장하면 API 키가 앱까지 나간다.
-     * skipHttpRedirect=true 로 부르면 키가 없는 최종 주소를 JSON 으로 준다.
-     */
-    private String photoUrl(JsonNode place) {
-        JsonNode photos = place.path("photos");
-        if (!photos.isArray() || photos.isEmpty()) {
-            return null;
-        }
-        String photoName = photos.get(0).path("name").asText(null);
-        if (photoName == null) {
-            return null;
-        }
-        try {
-            // URI 템플릿을 쓰면 photoName 안의 / 가 %2F 로 바뀌어 경로가 깨진다.
-            // 이미 안전한 문자만 들어 있으므로 그대로 이어 붙인다.
-            JsonNode body = restClient.get()
-                    .uri(URI.create("https://places.googleapis.com/v1/" + photoName
-                            + "/media?maxHeightPx=800&skipHttpRedirect=true&key=" + apiKey))
-                    .retrieve()
-                    .body(JsonNode.class);
-            return cut(body.path("photoUri").asText(null), 1000);
-        } catch (Exception e) {
-            // 사진이 없어도 목록은 그려진다. 앱이 imageUrl null 을 이미 처리한다
-            log.warn("사진 주소 실패 ({}): {}", photoName, e.getMessage());
-            return null;
-        }
-    }
 
 
     /**
