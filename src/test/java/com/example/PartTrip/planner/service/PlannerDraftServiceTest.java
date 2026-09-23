@@ -197,6 +197,7 @@ class PlannerDraftServiceTest {
         dto.setTitle("강릉 여행");
         dto.setMemberCount(2);
         dto.setIsSolo(false);
+        dto.setRegionCode("42");
         dto.setCityName("강릉");
         dto.setStartDate(D1);
         dto.setEndDate(D1);
@@ -259,6 +260,17 @@ class PlannerDraftServiceTest {
         assertThatThrownBy(() -> service.generate(request(), "user"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("강릉");
+        verify(openAiClient, never()).completeJson(anyString(), anyString());
+    }
+
+    @Test
+    void 없는_시도_코드면_AI를_부르지_않는다() {
+        GeneratePlannerRequestDto dto = request();
+        dto.setRegionCode("99");
+
+        assertThatThrownBy(() -> service.generate(dto, "user"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("시·도 코드");
         verify(openAiClient, never()).completeJson(anyString(), anyString());
     }
 

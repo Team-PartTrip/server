@@ -4,6 +4,11 @@
 -- region_code 는 알아서 생기지만 country_name 은 NOT NULL 로 남아서,
 -- 이 스크립트를 돌리기 전까지 플래너 · 여행카드 저장이 전부 실패한다.
 -- 머지하고 한 번 직접 실행한다.
+--
+-- 포스트그레스 기준이다. ADD COLUMN IF NOT EXISTS 는 MySQL 8.0 에 없다.
+-- db/kakao_login.sql 의 ALTER COLUMN ... DROP NOT NULL,
+-- db/vote_record_multi_vote.sql 의 DROP CONSTRAINT IF EXISTS 도 마찬가지라
+-- 이 레포의 db/*.sql 은 전부 포스트그레스로 돌린다.
 
 -- 먼저 컬럼을 만든다. 서버를 아직 안 올렸다면 ddl-auto 가 만들어 둔다
 ALTER TABLE trip_card          ADD COLUMN IF NOT EXISTS region_code CHAR(2);

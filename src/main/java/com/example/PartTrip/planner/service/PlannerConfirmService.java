@@ -64,6 +64,11 @@ public class PlannerConfirmService {
         GroupTravelPlanEntity plan = groupTravelPlanRepository
                 .findFirstByGroupIdOrderByCreatedAtDesc(plannerId)
                 .orElseThrow(() -> new IllegalArgumentException("플래너의 여행 계획이 없습니다."));
+        if (plan.getRegionCode() == null) {
+            // 지도로 바꾸기 전에 만든 플래너다. 그냥 확정하면 시·도가 빈 카드가 생겨
+            // 지도에 영영 안 올라간다. 도시 이름만으로는 시·도를 알 수 없다
+            throw new IllegalArgumentException("여행지를 다시 저장한 뒤 확정해주세요. 시·도가 없는 플래너입니다.");
+        }
 
         TripCardEntity tripCard = createTripCardsIfAbsent(group, plan, userId);
         group.setStatus(GroupStatus.CONFIRMED);
