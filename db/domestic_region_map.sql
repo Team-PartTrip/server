@@ -11,9 +11,16 @@
 -- 이 레포의 db/*.sql 은 전부 포스트그레스로 돌린다.
 
 -- 먼저 컬럼을 만든다. 서버를 아직 안 올렸다면 ddl-auto 가 만들어 둔다
-ALTER TABLE trip_card          ADD COLUMN IF NOT EXISTS region_code CHAR(2);
-ALTER TABLE planner_city       ADD COLUMN IF NOT EXISTS region_code CHAR(2);
-ALTER TABLE group_travel_plan  ADD COLUMN IF NOT EXISTS region_code CHAR(2);
+ALTER TABLE trip_card          ADD COLUMN IF NOT EXISTS region_code VARCHAR(2);
+ALTER TABLE planner_city       ADD COLUMN IF NOT EXISTS region_code VARCHAR(2);
+ALTER TABLE group_travel_plan  ADD COLUMN IF NOT EXISTS region_code VARCHAR(2);
+
+-- NOT NULL 은 걸지 않는다. 엔티티는 planner_city · group_travel_plan 을
+-- NOT NULL 로 선언하지만, 지도로 바꾸기 전에 만든 행은 시·도가 비어 있어서
+-- SET NOT NULL 이 그 행들에 걸려 실패한다. 예전 플래너를 다 정리한 뒤에
+-- 아래를 직접 실행하면 된다.
+--   ALTER TABLE planner_city      ALTER COLUMN region_code SET NOT NULL;
+--   ALTER TABLE group_travel_plan ALTER COLUMN region_code SET NOT NULL;
 
 -- 국내 기록만 지도에 올린다. 해외 기록은 region_code 가 비어서 지도에서 빠지고,
 -- 여행카드 자체는 그대로 남는다. 다녀온 기록을 서버가 지울 일은 아니다.
