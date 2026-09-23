@@ -8,15 +8,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
 import org.springframework.boot.http.client.ClientHttpRequestFactorySettings;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 import java.net.URI;
 import java.time.Duration;
-import java.util.ArrayList;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
@@ -25,9 +26,8 @@ public class TourPlacePhotoService {
 
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(3);
     private static final Duration READ_TIMEOUT = Duration.ofSeconds(5);
-    /** 한 번에 이만큼씩 저장한다. 다 받고 한 번에 저장하면 중간에 죽을 때 전부 날아간다 */
-    private static final int SAVE_EVERY = 10;
-    private static final int MAX_URL_LENGTH = 1000;
+    /** 구글 주소를 기억하는 시간. 구글이 유효 기간을 밝히지 않아서 짧게 잡는다 */
+    static final Duration REMEMBER = Duration.ofHours(1);
 
     private final TourPlaceRepository tourPlaceRepository;
 
@@ -41,6 +41,14 @@ public class TourPlacePhotoService {
                             .withReadTimeout(READ_TIMEOUT)))
             .build();
 
+    private record Remembered(String uri, Instant until) {}
+
+    private final Map<Long, Remembered> remembered = new ConcurrentHashMap<>();
+
+    public static String photoPath(Long tourPlaceId) {
+        return "/api/main/tour-place/" + tourPlaceId + "/photo";
+    }
+
     /** 검색 응답에서 첫 사진의 이름을 꺼낸다. 없으면 null */
     public static String photoNameOf(JsonNode place) {
         JsonNode photos = place.path("photos");
@@ -51,35 +59,32 @@ public class TourPlacePhotoService {
         return name == null || name.isBlank() ? null : name;
     }
 
-    @Async
-    public void fillAsync(List<TourPlaceEntity> places, Map<String, String> photoNames) {
-        if (photoNames.isEmpty()) {
-            return;
+    public List<TourPlaceEntity> attachPhotos(List<TourPlaceEntity> saved) {
+        List<TourPlaceEntity> changed = saved.stream()
+                .filter(place -> place.getPhotoName() != null && place.getTourPlaceId() != null)
+                .peek(place -> place.setImageUrl(photoPath(place.getTourPlaceId())))
+                .toList();
+        return changed.isEmpty() ? changed : tourPlaceRepository.saveAll(changed);
+    }
+
+    public Optional<String> currentUri(Long tourPlaceId) {
+        Instant now = Instant.now();
+        Remembered hit = remembered.get(tourPlaceId);
+        if (hit != null && hit.until().isAfter(now)) {
+            return Optional.of(hit.uri());
         }
-        List<TourPlaceEntity> filled = new ArrayList<>();
-        int done = 0;
-        for (TourPlaceEntity place : places) {
-            // 이미 사진이 있으면 다시 받지 않는다
-            if (place.getImageUrl() != null) {
-                continue;
-            }
-            String url = resolve(photoNames.get(place.getPlaceName()));
-            if (url == null) {
-                continue;
-            }
-            place.setImageUrl(url);
-            filled.add(place);
-            if (filled.size() >= SAVE_EVERY) {
-                tourPlaceRepository.saveAll(filled);
-                done += filled.size();
-                filled.clear();
-            }
+        String photoName = tourPlaceRepository.findById(tourPlaceId)
+                .map(TourPlaceEntity::getPhotoName)
+                .orElse(null);
+        if (photoName == null) {
+            return Optional.empty();
         }
-        if (!filled.isEmpty()) {
-            tourPlaceRepository.saveAll(filled);
-            done += filled.size();
+        String uri = resolve(photoName);
+        if (uri == null) {
+            return Optional.empty();
         }
-        log.info("사진 {}개 채움", done);
+        remembered.put(tourPlaceId, new Remembered(uri, now.plus(REMEMBER)));
+        return Optional.of(uri);
     }
 
     public String resolve(String photoName) {
@@ -94,14 +99,9 @@ public class TourPlacePhotoService {
                             + "/media?maxHeightPx=800&skipHttpRedirect=true&key=" + apiKey))
                     .retrieve()
                     .body(JsonNode.class);
-            String url = body == null ? null : body.path("photoUri").asText(null);
-            if (url != null && url.length() > MAX_URL_LENGTH) {
-                log.warn("사진 주소가 {}자라 저장하지 않음 ({})", url.length(), photoName);
-                return null;
-            }
-            return url;
+            return body == null ? null : body.path("photoUri").asText(null);
         } catch (Exception e) {
-            // 사진이 없어도 목록은 그려진다. 앱이 imageUrl null 을 이미 처리한다
+            // 사진이 없어도 목록은 그려진다
             log.warn("사진 주소 실패 ({}): {}", photoName, e.getMessage());
             return null;
         }

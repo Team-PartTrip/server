@@ -58,6 +58,9 @@ public class TourPlaceEntity {
     @Column(name = "image_url", length = 1000)
     private String imageUrl;
 
+    @Column(name = "photo_name", length = 500)
+    private String photoName;
+
     // 위도
     @Column(name = "latitude")
     private Double latitude;
