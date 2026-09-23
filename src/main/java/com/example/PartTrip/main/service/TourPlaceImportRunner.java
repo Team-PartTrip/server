@@ -76,8 +76,5 @@ public class TourPlaceImportRunner implements ApplicationRunner {
             log.info("도시 이름 한글화 끝: {}줄", countryCityNameService.translateCityNames());
         }
 
-        if (hasText(environment.getProperty("parttrip.places.translate-addresses"))) {
-            log.info("관광지 주소 한글화 시작");
-        }
     }
 }

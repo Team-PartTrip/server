@@ -436,7 +436,7 @@ public class PlannerDraftService {
         return rows;
     }
 
-    private static PlannerScheduleResponseDto.Place toPlace(TourPlaceEntity place) {
+    static PlannerScheduleResponseDto.Place toPlace(TourPlaceEntity place) {
         if (place == null) {
             return null;
         }
