@@ -28,8 +28,7 @@ import static org.springframework.util.StringUtils.hasText;
 // 둘 중 하나만 줘도 돈다. 번역만 하려고 관광지를 괜히 다시 받지 않게 한다.
 @ConditionalOnExpression(
         "'${parttrip.places.import:}' != ''"
-                + " or '${parttrip.places.translate-cities:}' != ''"
-                + " or '${parttrip.places.translate-addresses:}' != ''")
+                + " or '${parttrip.places.translate-cities:}' != ''")
 public class TourPlaceImportRunner implements ApplicationRunner {
 
     private final TourPlaceImportService tourPlaceImportService;
@@ -62,8 +61,5 @@ public class TourPlaceImportRunner implements ApplicationRunner {
             log.info("도시 이름 한글화 끝: {}줄", countryCityNameService.translateCityNames());
         }
 
-        if (hasText(environment.getProperty("parttrip.places.translate-addresses"))) {
-            log.info("관광지 주소 한글화 시작");
-        }
     }
 }
