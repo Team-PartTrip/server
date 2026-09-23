@@ -85,6 +85,7 @@ public class TourPlaceImportService {
             "places.formattedAddress",
             "places.rating",
             "places.location",
+            "places.photos",
             "nextPageToken");
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
     private static final Duration READ_TIMEOUT = Duration.ofSeconds(30);
@@ -155,6 +156,10 @@ public class TourPlaceImportService {
             return 0;
         }
         Map<String, String> photoNames = fetchCity(countryName, cityName).photoNames();
+        // 더 보기로 들어온 장소는 도시 기본 검색에 안 나온다. 그 검색어로 한 번 더 찾는다
+        if (saved.stream().anyMatch(place -> !photoNames.containsKey(place.getPlaceName()))) {
+            morePhotoNames(cityName).forEach(photoNames::putIfAbsent);
+        }
         List<TourPlaceEntity> filled = new ArrayList<>();
         for (TourPlaceEntity place : saved) {
             String url = tourPlacePhotoService.resolve(photoNames.get(place.getPlaceName()));
@@ -167,6 +172,26 @@ public class TourPlaceImportService {
         log.info("{} {} — 사진 없던 {}곳 중 {}곳 채움",
                 countryName, cityName, saved.size(), filled.size());
         return filled.size();
+    }
+
+    /** 더 보기에 쓰는 검색어로 장소 이름 → 사진 이름을 모은다. 저장하지는 않는다 */
+    private Map<String, String> morePhotoNames(String cityName) {
+        Map<String, String> names = new LinkedHashMap<>();
+        MORE_KEYWORDS.values().stream().flatMap(List::stream).distinct().forEach(keyword -> {
+            try {
+                JsonNode body = searchPage(cityName + " " + keyword, null);
+                for (JsonNode place : body.path("places")) {
+                    String name = place.path("displayName").path("text").asText(null);
+                    String photoName = TourPlacePhotoService.photoNameOf(place);
+                    if (name != null && photoName != null) {
+                        names.putIfAbsent(name, photoName);
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("{} {} 사진 이름 검색 실패: {}", cityName, keyword, e.getMessage());
+            }
+        });
+        return names;
     }
 
     /**
