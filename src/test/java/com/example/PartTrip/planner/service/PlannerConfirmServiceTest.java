@@ -82,7 +82,7 @@ class PlannerConfirmServiceTest {
         plan.setStartDate(DAY1);
         plan.setEndDate(DAY2);
 
-        given(travelGroupRepository.findById(PLANNER_ID)).willReturn(Optional.of(group));
+        given(travelGroupRepository.findByIdForUpdate(PLANNER_ID)).willReturn(Optional.of(group));
         lenient().when(groupMemberRepository.findByGroupIdAndUserId(PLANNER_ID, OWNER_ID))
                 .thenReturn(Optional.of(member(OWNER_ID, GroupRole.OWNER)));
         lenient().when(groupTravelPlanRepository.findFirstByGroupIdOrderByCreatedAtDesc(PLANNER_ID))

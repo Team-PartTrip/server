@@ -52,7 +52,7 @@ public class PlannerConfirmService {
      */
     @Transactional
     public PlannerConfirmResponseDto confirmPlanner(Long plannerId, String userId) {
-        TravelGroupEntity group = travelGroupRepository.findById(plannerId)
+        TravelGroupEntity group = travelGroupRepository.findByIdForUpdate(plannerId)
                 .orElseThrow(() -> new IllegalArgumentException("플래너가 존재하지 않습니다."));
         GroupMemberEntity member = groupMemberRepository
                 .findByGroupIdAndUserId(plannerId, userId)
@@ -89,7 +89,7 @@ public class PlannerConfirmService {
     ) {
         var slots = plannerScheduleSlotRepository
                 .findByPlanIdOrderByVisitDateAscSortOrderAsc(plan.getPlanId());
-        List<PlannerScheduleService.ScheduledPlace> schedule = slots.isEmpty()
+        List<PlannerScheduleService.ScheduledPlace> schedule = slots.isEmpty() && !Boolean.TRUE.equals(plan.getScheduleEdited())
                 ? plannerScheduleService.buildSchedule(plan, List.of(), userId)
                 : plannerScheduleService.fromSlots(slots);
         int uniquePlaceCount = Math.toIntExact(schedule.stream()
