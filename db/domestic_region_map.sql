@@ -22,6 +22,12 @@ ALTER TABLE group_travel_plan  ADD COLUMN IF NOT EXISTS region_code CHAR(2);
 -- 방문 지역은 따로 저장하지 않는다. 여행카드를 시·도로 묶어 센다
 DROP TABLE IF EXISTS visited_country;
 
+-- "새 지역 방문" 알림이 곧 그 지역을 알렸다는 기록이다. 같은 순간에 플래너 둘을
+-- 확정해도 지역당 한 번만 나가도록 DB 가 막는다 (RecordNotificationListener)
+CREATE UNIQUE INDEX IF NOT EXISTS uk_notification_region_visited
+    ON notification (user_id, link_id)
+ WHERE type = 'REGION_VISITED';
+
 ALTER TABLE trip_card          DROP COLUMN country_name;
 ALTER TABLE planner_city       DROP COLUMN country_name;
 ALTER TABLE group_travel_plan  DROP COLUMN country_name;

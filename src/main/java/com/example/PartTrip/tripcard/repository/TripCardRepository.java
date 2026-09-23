@@ -29,9 +29,6 @@ public interface TripCardRepository extends JpaRepository<TripCardEntity, Long> 
         long getTripCount();
     }
 
-    // 이 시·도가 처음인지 — 카드를 저장한 뒤 1이면 첫 방문이다
-    long countByUserIdAndRegionCode(String userId, String regionCode);
-
     @Query("""
             SELECT COUNT(DISTINCT c.regionCode) FROM TripCardEntity c
             WHERE c.userId = :userId AND c.regionCode IS NOT NULL

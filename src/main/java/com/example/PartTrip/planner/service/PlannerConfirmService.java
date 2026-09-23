@@ -127,13 +127,11 @@ public class PlannerConfirmService {
         savedCards.forEach(card -> {
             eventPublisher.publishEvent(
                     new TripCardCreatedEvent(card.getTripCardId(), card.getUserId()));
-            // 방금 저장한 카드까지 세서 1이면 이 시·도는 처음이다.
-            // 지도에 새 구역이 칠해지는 순간이라 알림을 준다 (#162).
-            if (tripCardRepository.countByUserIdAndRegionCode(
-                    card.getUserId(), card.getRegionCode()) == 1) {
-                eventPublisher.publishEvent(
-                        new RegionVisitedEvent(card.getRegionCode(), card.getUserId()));
-            }
+            // 처음 가는 시·도인지는 알림 쪽에서 가린다 (#162).
+            // 여기서 카드를 세면 같은 순간에 확정된 다른 카드가 아직 안 보여
+            // 둘 다 "처음" 으로 세어진다
+            eventPublisher.publishEvent(
+                    new RegionVisitedEvent(card.getRegionCode(), card.getUserId()));
         });
 
         TripCardEntity ownerCard = cardsByUserId.get(group.getOwnerUserId());
