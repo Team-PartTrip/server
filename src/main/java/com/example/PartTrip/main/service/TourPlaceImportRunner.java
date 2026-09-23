@@ -27,10 +27,9 @@ import static org.springframework.util.StringUtils.hasText;
 @RequiredArgsConstructor
 // 둘 중 하나만 줘도 돈다. 번역만 하려고 관광지를 괜히 다시 받지 않게 한다.
 @ConditionalOnExpression(
-        "'${parttrip.places.import:}' != ''"
-                + " or '${parttrip.places.translate-cities:}' != ''"
-                + " or '${parttrip.places.fill-photos:}' != ''"
-                + " or '${parttrip.places.translate-addresses:}' != ''")
+        "T(org.springframework.util.StringUtils).hasText(environment.getProperty('parttrip.places.import'))"
+                + " or T(org.springframework.util.StringUtils).hasText(environment.getProperty('parttrip.places.translate-cities'))"
+                + " or T(org.springframework.util.StringUtils).hasText(environment.getProperty('parttrip.places.fill-photos'))")
 public class TourPlaceImportRunner implements ApplicationRunner {
 
     private final TourPlaceImportService tourPlaceImportService;

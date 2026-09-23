@@ -27,6 +27,7 @@ public class TourPlacePhotoService {
     private static final Duration READ_TIMEOUT = Duration.ofSeconds(5);
     /** 한 번에 이만큼씩 저장한다. 다 받고 한 번에 저장하면 중간에 죽을 때 전부 날아간다 */
     private static final int SAVE_EVERY = 10;
+    private static final int MAX_URL_LENGTH = 1000;
 
     private final TourPlaceRepository tourPlaceRepository;
 
@@ -94,7 +95,11 @@ public class TourPlacePhotoService {
                     .retrieve()
                     .body(JsonNode.class);
             String url = body == null ? null : body.path("photoUri").asText(null);
-            return url == null || url.length() <= 1000 ? url : url.substring(0, 1000);
+            if (url != null && url.length() > MAX_URL_LENGTH) {
+                log.warn("사진 주소가 {}자라 저장하지 않음 ({})", url.length(), photoName);
+                return null;
+            }
+            return url;
         } catch (Exception e) {
             // 사진이 없어도 목록은 그려진다. 앱이 imageUrl null 을 이미 처리한다
             log.warn("사진 주소 실패 ({}): {}", photoName, e.getMessage());
