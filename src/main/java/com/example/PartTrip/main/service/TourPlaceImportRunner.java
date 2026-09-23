@@ -27,8 +27,9 @@ import static org.springframework.util.StringUtils.hasText;
 @RequiredArgsConstructor
 // 둘 중 하나만 줘도 돈다. 번역만 하려고 관광지를 괜히 다시 받지 않게 한다.
 @ConditionalOnExpression(
-        "'${parttrip.places.import:}' != ''"
-                + " or '${parttrip.places.translate-cities:}' != ''")
+        "T(org.springframework.util.StringUtils).hasText(environment.getProperty('parttrip.places.import'))"
+                + " or T(org.springframework.util.StringUtils).hasText(environment.getProperty('parttrip.places.translate-cities'))"
+                + " or T(org.springframework.util.StringUtils).hasText(environment.getProperty('parttrip.places.fill-photos'))")
 public class TourPlaceImportRunner implements ApplicationRunner {
 
     private final TourPlaceImportService tourPlaceImportService;
@@ -53,6 +54,20 @@ public class TourPlaceImportRunner implements ApplicationRunner {
             Map<String, Integer> saved = tourPlaceImportService.importCities(cities);
             saved.forEach((city, count) -> log.info("  {} → {}개", city, count));
             log.info("관광지 다시 채우기 끝");
+        }
+
+        String fillValue = environment.getProperty("parttrip.places.fill-photos");
+        if (hasText(fillValue)) {
+            log.info("빠진 사진 채우기 시작");
+            for (String entry : fillValue.split(",")) {
+                String[] parts = entry.trim().split("/", 2);
+                if (parts.length != 2) {
+                    throw new IllegalArgumentException(
+                            "도시는 \"나라/도시\" 형식이어야 합니다: " + entry);
+                }
+                tourPlaceImportService.fillMissingPhotos(parts[0].trim(), parts[1].trim());
+            }
+            log.info("빠진 사진 채우기 끝");
         }
 
         // 도시 이름 한글화도 같은 실행에서 함께 할 수 있게 둔다
