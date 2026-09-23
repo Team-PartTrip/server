@@ -1,5 +1,6 @@
 package com.example.PartTrip.planner.service;
 
+import com.example.PartTrip.region.enums.RegionCode;
 import com.example.PartTrip.main.entity.TourPlaceEntity;
 import com.example.PartTrip.main.repository.TourPlaceRepository;
 import com.example.PartTrip.planner.dto.response.ConfirmedPlaceResponseDto;
@@ -74,7 +75,8 @@ public class PlannerFinalService {
         return PlannerFinalResponseDto.builder()
                 .plannerId(group.getGroupId())
                 .title(group.getGroupName())
-                .countryName(plan.getCountryName())
+                .regionCode(plan.getRegionCode())
+                .regionName(RegionCode.nameOf(plan.getRegionCode()))
                 .cityName(plan.getCityName())
                 .startDate(plan.getStartDate())
                 .endDate(plan.getEndDate())

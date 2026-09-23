@@ -111,7 +111,7 @@ public class PlannerScheduleService {
         int targetCount = days * dailyScheduleCount;
         if (dayPlaces.size() < targetCount) {
             List<TourPlaceEntity> recommendations = tourPlaceRepository
-                    .search(city.getCountryName(), city.getCityName(), null);
+                    .search(PlannerDraftService.KOREA, city.getCityName(), null);
             for (TourPlaceEntity recommendation : recommendations) {
                 if (dayPlaces.size() >= targetCount) break;
                 if (recommendation.getCategory() == TourPlaceCategory.ACCOMMODATION) continue;
@@ -208,10 +208,9 @@ public class PlannerScheduleService {
         return days;
     }
 
-    /** 장소가 일정에 지정된 국가와 도시에 속하는지 확인한다. */
+    /** 장소가 일정에 지정된 도시에 속하는지 확인한다. 국내 여행만 다룬다 (#162). */
     private boolean sameCity(TourPlaceEntity place, PlannerCityEntity city) {
-        return city.getCountryName().equals(place.getCountryName())
-                && city.getCityName().equals(place.getCityName());
+        return city.getCityName().equals(place.getCityName());
     }
 
     /** 도시별 일정이 없을 때 기존 여행 계획을 단일 도시 일정으로 변환한다. */
@@ -219,7 +218,7 @@ public class PlannerScheduleService {
         PlannerCityEntity city = new PlannerCityEntity();
         city.setPlanId(plan.getPlanId());
         city.setSeq(0);
-        city.setCountryName(plan.getCountryName());
+        city.setRegionCode(plan.getRegionCode());
         city.setCityName(plan.getCityName());
         city.setStartDate(plan.getStartDate());
         city.setEndDate(plan.getEndDate());

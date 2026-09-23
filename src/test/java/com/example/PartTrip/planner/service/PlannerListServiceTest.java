@@ -57,7 +57,7 @@ class PlannerListServiceTest {
     private GroupTravelPlanEntity plan(String city, LocalDate start) {
         GroupTravelPlanEntity p = new GroupTravelPlanEntity();
         p.setCityName(city);
-        p.setCountryName("일본");
+        p.setRegionCode("42");
         p.setStartDate(start);
         p.setEndDate(start.plusDays(3));
         return p;

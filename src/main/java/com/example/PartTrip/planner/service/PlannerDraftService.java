@@ -413,7 +413,7 @@ public class PlannerDraftService {
         create.setTitle(dto.getTitle().trim());
         create.setMemberCount(dto.getMemberCount());
         create.setIsSolo(dto.getIsSolo());
-        create.setCountryName(KOREA);
+        create.setRegionCode(dto.getRegionCode());
         create.setCityName(city);
         create.setStartDate(dto.getStartDate());
         create.setEndDate(dto.getEndDate());

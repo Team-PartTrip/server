@@ -48,7 +48,6 @@ public interface TourPlaceRepository extends JpaRepository<TourPlaceEntity, Long
               from TourPlaceEntity t
               left join GroupTravelPlanEntity p
                      on p.cityName = t.cityName
-                    and p.countryName = t.countryName
              where t.cityName is not null and t.cityName <> ''
                and t.countryName is not null and t.countryName <> ''
              group by t.cityName, t.countryName

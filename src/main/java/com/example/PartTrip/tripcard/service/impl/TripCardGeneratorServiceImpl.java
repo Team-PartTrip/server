@@ -1,15 +1,12 @@
 package com.example.PartTrip.tripcard.service.impl;
 
-import com.example.PartTrip.tripcard.entity.TripCardEntity;
 import com.example.PartTrip.tripcard.service.TripCardCloseService;
-import com.example.PartTrip.worldmap.service.WorldMapService;
 import com.example.PartTrip.tripcard.service.TripCardGeneratorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.List;
 
 // 여행 카드 종료 처리.
 //
@@ -24,33 +21,15 @@ import java.util.List;
 public class TripCardGeneratorServiceImpl implements TripCardGeneratorService {
 
     private final TripCardCloseService tripCardCloseService;
-    private final WorldMapService worldMapService;
 
     /**
-     * 종료일이 지난 카드를 잠그고, 그 여행의 국가를 지도에 채운다.
+     * 종료일이 지난 카드를 잠근다. 이 시점부터 사진을 붙이거나 지울 수 없다.
      *
-     * 국가 획득은 종료된 여행만 된다(WorldMapService). 확정 시점에는 아직
-     * 다녀오기 전이라 부를 수 없어서, 여기가 유일하게 부를 수 있는 자리다.
-     *
-     * 잠그는 것과 획득을 한 트랜잭션에 두면, 한 사람의 획득이 실패했을 때
-     * 그날 잠긴 카드가 전부 되돌아간다. 카드는 먼저 잠그고 획득은 건별로
-     * 넘어간다.
+     * 예전에는 여기서 세계지도 국가 획득까지 했다. 지역은 카드가 생길 때
+     * 이미 기록되므로(#162) 여행이 끝난 뒤에 더 할 일이 없다.
      */
     @Override
     public int closeCardsBefore(LocalDate date) {
-        List<TripCardEntity> finished = tripCardCloseService.closeCardsBefore(date);
-
-        for (TripCardEntity card : finished) {
-            try {
-                worldMapService.acquireCountry(card.getUserId(), card.getTripCardId());
-            } catch (Exception e) {
-                // 국가 정보에 없는 나라 등은 지도만 못 채울 뿐이다.
-                // 여기서 멈추면 뒤 카드들이 통째로 밀린다.
-                log.warn("국가 획득 실패 (tripCardId={}): {}",
-                        card.getTripCardId(), e.getMessage());
-            }
-        }
-
-        return finished.size();
+        return tripCardCloseService.closeCardsBefore(date).size();
     }
 }

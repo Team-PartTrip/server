@@ -17,8 +17,8 @@ public class TripCardCloseService {
     private final TripCardRepository tripCardRepository;
 
     /**
-     * 종료 대상 카드를 먼저 별도 트랜잭션에서 확정한다.
-     * 이후 세계지도 획득이 실패해도 이미 커밋된 카드 종료 상태는 유지된다.
+     * 종료 대상 카드를 별도 트랜잭션에서 확정한다.
+     * 스케줄러가 뒤에서 무엇을 하든 잠긴 카드는 되돌아가지 않는다.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public List<TripCardEntity> closeCardsBefore(LocalDate date) {

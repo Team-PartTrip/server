@@ -14,7 +14,8 @@ public class PlannerTravelPlanResponseDto {
     private String title;
     private Integer memberCount;
     private Boolean isSolo;
-    private String countryName;
+    private String regionCode;
+    private String regionName;
     private String cityName;
     private LocalDate startDate;
     private LocalDate endDate;

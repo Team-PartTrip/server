@@ -13,6 +13,7 @@ import com.example.PartTrip.planner.repository.GroupMemberRepository;
 import com.example.PartTrip.planner.repository.GroupTravelPlanRepository;
 import com.example.PartTrip.planner.repository.PlannerScheduleSlotRepository;
 import com.example.PartTrip.planner.repository.TravelGroupRepository;
+import com.example.PartTrip.notification.event.RegionVisitedEvent;
 import com.example.PartTrip.tripcard.entity.TripCardEntity;
 import com.example.PartTrip.tripcard.entity.TripCardPlaceEntity;
 import com.example.PartTrip.tripcard.repository.TripCardPlaceRepository;
@@ -118,8 +119,17 @@ public class PlannerConfirmService {
                                 scheduled.date(), scheduled.sortOrder())))
                 .toList();
         tripCardPlaceRepository.saveAll(cardPlaces);
-        savedCards.forEach(card -> eventPublisher.publishEvent(
-                new TripCardCreatedEvent(card.getTripCardId(), card.getUserId())));
+        savedCards.forEach(card -> {
+            eventPublisher.publishEvent(
+                    new TripCardCreatedEvent(card.getTripCardId(), card.getUserId()));
+            // 방금 저장한 카드까지 세서 1이면 이 시·도는 처음이다.
+            // 지도에 새 구역이 칠해지는 순간이라 알림을 준다 (#162).
+            if (tripCardRepository.countByUserIdAndRegionCode(
+                    card.getUserId(), card.getRegionCode()) == 1) {
+                eventPublisher.publishEvent(
+                        new RegionVisitedEvent(card.getRegionCode(), card.getUserId()));
+            }
+        });
 
         TripCardEntity ownerCard = cardsByUserId.get(group.getOwnerUserId());
         if (ownerCard == null) throw new IllegalArgumentException("플래너 그룹장 정보를 찾을 수 없습니다.");
@@ -138,7 +148,7 @@ public class PlannerConfirmService {
                 .userId(cardOwnerUserId)
                 .planId(plan.getPlanId())
                 .title(group.getGroupName())
-                .countryName(plan.getCountryName())
+                .regionCode(plan.getRegionCode())
                 .cityName(plan.getCityName())
                 .startDate(plan.getStartDate())
                 .endDate(plan.getEndDate())

@@ -56,7 +56,7 @@ class GroupTravelPlanRepositoryTest {
         saveMember(group.getGroupId(), userId);
         GroupTravelPlanEntity plan = new GroupTravelPlanEntity();
         plan.setGroupId(group.getGroupId());
-        plan.setCountryName("일본");
+        plan.setRegionCode("42");
         plan.setCityName("오사카");
         plan.setStartDate(startDate);
         plan.setEndDate(endDate);

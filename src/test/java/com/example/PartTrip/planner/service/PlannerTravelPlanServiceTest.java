@@ -152,7 +152,7 @@ class PlannerTravelPlanServiceTest {
 
     private SavePlannerTravelPlanRequestDto request() {
         SavePlannerTravelPlanRequestDto request = new SavePlannerTravelPlanRequestDto();
-        request.setCountryName("일본");
+        request.setRegionCode("42");
         request.setCityName("도쿄");
         request.setStartDate(LocalDate.of(2026, 9, 1));
         request.setEndDate(LocalDate.of(2026, 9, 5));

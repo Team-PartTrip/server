@@ -9,7 +9,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class DdayResponseDto {
 
-    private String countryName;
+    private String regionName;
 
     private String cityName;
 

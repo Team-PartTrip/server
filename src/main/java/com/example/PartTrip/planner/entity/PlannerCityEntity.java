@@ -40,8 +40,8 @@ public class PlannerCityEntity {
     @Column(name = "seq", nullable = false)
     private int seq;
 
-    @Column(name = "country_name", nullable = false, length = 100)
-    private String countryName;
+    @Column(name = "region_code", nullable = false, length = 2)
+    private String regionCode;
 
     @Column(name = "city_name", nullable = false, length = 100)
     private String cityName;

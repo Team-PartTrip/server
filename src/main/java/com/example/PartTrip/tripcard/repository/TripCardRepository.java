@@ -2,6 +2,7 @@ package com.example.PartTrip.tripcard.repository;
 
 import com.example.PartTrip.tripcard.entity.TripCardEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 import java.util.Optional;
@@ -13,10 +14,29 @@ public interface TripCardRepository extends JpaRepository<TripCardEntity, Long> 
     // Func-003-01 "여행카드들을 시간순으로 조회"
     List<TripCardEntity> findByUserIdOrderByStartDateDesc(String userId);
 
-    List<TripCardEntity> findByUserIdAndCountryNameIgnoreCaseAndDateOverTrueOrderByStartDateDesc(
-            String userId,
-            String countryName
-    );
+    // 대한민국 지도 (#162). 방문 지역은 따로 저장하지 않고 카드를 시·도로 묶어 센다.
+    // 카드가 곧 방문 기록이라, 따로 두면 둘이 어긋날 자리만 생긴다.
+    @Query("""
+            SELECT c.regionCode AS regionCode, COUNT(c) AS tripCount
+            FROM TripCardEntity c
+            WHERE c.userId = :userId AND c.regionCode IS NOT NULL
+            GROUP BY c.regionCode
+            """)
+    List<RegionTripCount> countTripsByRegion(String userId);
+
+    interface RegionTripCount {
+        String getRegionCode();
+        long getTripCount();
+    }
+
+    // 이 시·도가 처음인지 — 카드를 저장한 뒤 1이면 첫 방문이다
+    long countByUserIdAndRegionCode(String userId, String regionCode);
+
+    @Query("""
+            SELECT COUNT(DISTINCT c.regionCode) FROM TripCardEntity c
+            WHERE c.userId = :userId AND c.regionCode IS NOT NULL
+            """)
+    long countDistinctRegionsByUserId(String userId);
 
     // 조회 · 수정 · 삭제 시 소유자까지 함께 확인한다
     Optional<TripCardEntity> findByTripCardIdAndUserId(Long tripCardId, String userId);

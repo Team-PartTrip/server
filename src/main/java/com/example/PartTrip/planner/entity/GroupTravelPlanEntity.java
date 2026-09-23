@@ -34,8 +34,8 @@ public class GroupTravelPlanEntity {
     @Column(name = "travel_title", length = 100)
     private String travelTitle;
 
-    @Column(name = "country_name", nullable = false, length = 100)
-    private String countryName;
+    @Column(name = "region_code", nullable = false, length = 2)
+    private String regionCode;
 
     @Column(name = "city_name", nullable = false, length = 100)
     private String cityName;

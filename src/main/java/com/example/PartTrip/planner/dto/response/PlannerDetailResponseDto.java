@@ -12,7 +12,8 @@ public class PlannerDetailResponseDto {
 
     private Long plannerId;
     private String title;
-    private String countryName;
+    private String regionCode;
+    private String regionName;
     private String cityName;
     private LocalDate startDate;
     private LocalDate endDate;
@@ -25,7 +26,7 @@ public class PlannerDetailResponseDto {
     /**
      * 도는 도시들. 도시를 하나만 고른 여행이면 한 줄이다.
      *
-     * countryName / cityName 은 첫 도시라 그대로 두었다. 도시 하나만 보던
+     * regionCode / cityName 은 첫 도시라 그대로 두었다. 도시 하나만 보던
      * 화면이 안 깨진다.
      */
     private List<PlannerCityResponseDto> cities;

@@ -31,6 +31,10 @@ public class GeneratePlannerRequestDto {
     @NotNull(message = "혼자 여행인지 선택해주세요.")
     private Boolean isSolo;
 
+    /** 시·도 코드. 지도 GeoJSON 이 쓰는 행정표준코드 2자리. 예) 42 (#162) */
+    @NotBlank(message = "여행할 시·도를 선택해주세요.")
+    private String regionCode;
+
     /** 국내 도시 · 지역 이름. 예) 강릉, 경주 */
     @NotBlank(message = "여행할 지역을 골라주세요.")
     @Size(max = 50, message = "지역 이름이 너무 깁니다.")

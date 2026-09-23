@@ -1,5 +1,6 @@
 package com.example.PartTrip.planner.service;
 
+import com.example.PartTrip.region.enums.RegionCode;
 import com.example.PartTrip.planner.dto.response.PlannerListResponseDto;
 import com.example.PartTrip.planner.entity.GroupMemberEntity;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
@@ -47,7 +48,8 @@ public class PlannerListService {
         return PlannerListResponseDto.builder()
                 .plannerId(group.getGroupId())
                 .title(group.getGroupName())
-                .countryName(plan == null ? null : plan.getCountryName())
+                .regionCode(plan == null ? null : plan.getRegionCode())
+                .regionName(plan == null ? null : RegionCode.nameOf(plan.getRegionCode()))
                 .cityName(plan == null ? null : plan.getCityName())
                 .startDate(plan == null ? null : plan.getStartDate())
                 .endDate(plan == null ? null : plan.getEndDate())
