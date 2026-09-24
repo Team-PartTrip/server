@@ -49,7 +49,8 @@ public class FestivalService {
                         festival.getStartDate(),
                         festival.getStartTime(),
                         festival.getLocation(),
-                        festival.getImageUrl()
+                        festival.getImageUrl(),
+                        festival.getEndDate()
                 ))
                 .toList();
     }

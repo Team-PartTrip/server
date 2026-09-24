@@ -15,4 +15,5 @@ public class FestivalResponseDto {
     private String startTime;
     private String location;
     private String imageUrl;
+    private String endDate;
 }
