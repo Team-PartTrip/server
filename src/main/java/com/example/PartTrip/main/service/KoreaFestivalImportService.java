@@ -19,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +35,7 @@ public class KoreaFestivalImportService {
     private static final String URL = "https://apis.data.go.kr/B551011/KorService2/searchFestival2";
     private static final int PAGE_SIZE = 100;
     private static final int MAX_PAGES = 20;
+    static final int MAX_DAYS = 60;
     private static final DateTimeFormatter TOUR_DATE = DateTimeFormatter.BASIC_ISO_DATE;
 
     private final FestivalRepository festivalRepository;
@@ -70,10 +72,10 @@ public class KoreaFestivalImportService {
                 log.warn("국내 축제 받기 실패 ({}쪽): {}", page, e.getMessage());
                 break;
             }
-            List<FestivalEntity> items = parse(body);
-            fetched.addAll(items);
+            fetched.addAll(parse(body));
             int total = body.path("response").path("body").path("totalCount").asInt(0);
-            if (items.size() < PAGE_SIZE || page * PAGE_SIZE >= total) {
+            // 걸러내기 전 개수로 본다. 긴 행사를 뺀 개수로 보면 첫 쪽에서 멈춘다 (#177)
+            if (itemsOf(body).size() < PAGE_SIZE || page * PAGE_SIZE >= total) {
                 break;
             }
         }
@@ -120,6 +122,13 @@ public class KoreaFestivalImportService {
     }
 
     static List<FestivalEntity> parse(JsonNode body) {
+        return itemsOf(body).stream()
+                .map(KoreaFestivalImportService::toEntity)
+                .filter(festival -> festival != null)
+                .toList();
+    }
+
+    static List<JsonNode> itemsOf(JsonNode body) {
         JsonNode item = body.path("response").path("body").path("items").path("item");
         List<JsonNode> nodes = new ArrayList<>();
         if (item.isArray()) {
@@ -127,10 +136,7 @@ public class KoreaFestivalImportService {
         } else if (item.isObject()) {
             nodes.add(item);
         }
-        return nodes.stream()
-                .map(KoreaFestivalImportService::toEntity)
-                .filter(festival -> festival != null)
-                .toList();
+        return nodes;
     }
 
     static FestivalEntity toEntity(JsonNode node) {
@@ -141,11 +147,14 @@ public class KoreaFestivalImportService {
             return null;
         }
         String end = date(text(node, "eventenddate"));
+        if (end != null && ChronoUnit.DAYS.between(LocalDate.parse(start), LocalDate.parse(end)) + 1 > MAX_DAYS) {
+            return null;
+        }
         FestivalEntity festival = new FestivalEntity();
         festival.setSourceId(sourceId);
         festival.setCountryName(KOREA);
         festival.setTitle(title);
-        festival.setCategory(categoryOf(text(node, "cat2")));
+        festival.setCategory(categoryOf(text(node, "lclsSystm2"), text(node, "cat2")));
         festival.setStartDate(start);
         festival.setEndDate(end);
         String address = text(node, "addr1");
@@ -156,12 +165,12 @@ public class KoreaFestivalImportService {
         return festival;
     }
 
-    static String categoryOf(String cat2) {
-        if ("A0207".equals(cat2)) {
+    static String categoryOf(String lclsSystm2, String cat2) {
+        if ("EV01".equals(lclsSystm2) || (lclsSystm2 == null && "A0207".equals(cat2))) {
             return "축제";
         }
-        if ("A0208".equals(cat2)) {
-            return "공연 · 행사";
+        if ("EV02".equals(lclsSystm2) || (lclsSystm2 == null && "A0208".equals(cat2))) {
+            return "공연";
         }
         return "행사";
     }
