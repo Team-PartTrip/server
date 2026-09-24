@@ -32,9 +32,11 @@ class KoreaFestivalImportServiceTest {
     private static final String PAGE = """
             {"response":{"header":{"resultCode":"0000"},"body":{"items":{"item":[
               {"contentid":"2786391","title":"강릉 커피축제","eventstartdate":"20261008","eventenddate":"20261011",
-               "addr1":"강원특별자치도 강릉시 창해로 17","firstimage":"http://tong.visitkorea.or.kr/cms/a.jpg","cat2":"A0207"},
+               "addr1":"강원특별자치도 강릉시 창해로 17","firstimage":"http://tong.visitkorea.or.kr/cms/a.jpg","cat2":"","lclsSystm2":"EV01"},
               {"contentid":"2786392","title":"하루 공연","eventstartdate":"20261020","eventenddate":"20261020",
-               "addr1":"","firstimage":"","cat2":"A0208"},
+               "addr1":"","firstimage":"","cat2":"","lclsSystm2":"EV02"},
+              {"contentid":"2786393","title":"1년 내내 하는 관람","eventstartdate":"20260101","eventenddate":"20261231",
+               "lclsSystm2":"EV03"},
               {"contentid":"","title":"아이디 없음","eventstartdate":"20261020"}
             ]},"numOfRows":100,"pageNo":1,"totalCount":3}}}
             """;
@@ -43,8 +45,8 @@ class KoreaFestivalImportServiceTest {
     void 행사정보를_축제로_바꾼다() throws Exception {
         List<FestivalEntity> festivals = KoreaFestivalImportService.parse(JSON.readTree(PAGE));
 
-        // 아이디가 없는 행사는 덮어쓸 기준이 없어서 버린다
-        assertThat(festivals).hasSize(2);
+        // 아이디가 없는 행사는 덮어쓸 기준이 없어서, 60일 넘는 상설 행사는 축제가 아니라서 버린다
+        assertThat(festivals).extracting(FestivalEntity::getTitle).containsExactly("강릉 커피축제", "하루 공연");
         FestivalEntity coffee = festivals.get(0);
         assertThat(coffee.getSourceId()).isEqualTo("2786391");
         assertThat(coffee.getCountryName()).isEqualTo("대한민국");
@@ -56,7 +58,7 @@ class KoreaFestivalImportServiceTest {
         assertThat(coffee.getImageUrl()).isEqualTo("https://tong.visitkorea.or.kr/cms/a.jpg");
 
         FestivalEntity show = festivals.get(1);
-        assertThat(show.getCategory()).isEqualTo("공연 · 행사");
+        assertThat(show.getCategory()).isEqualTo("공연");
         assertThat(show.getDescription()).isEqualTo("기간 2026.10.20");
         assertThat(show.getLocation()).isEqualTo("장소 정보 없음");
         assertThat(show.getImageUrl()).isNull();
@@ -103,5 +105,14 @@ class KoreaFestivalImportServiceTest {
         assertThat(KoreaFestivalImportService.date("2026-10-01")).isNull();
         assertThat(KoreaFestivalImportService.date(null)).isNull();
         assertThat(KoreaFestivalImportService.date("20261001")).isEqualTo("2026-10-01");
+    }
+
+    @Test
+    void 분류는_새_분류를_먼저_보고_없으면_옛_분류를_본다() {
+        assertThat(KoreaFestivalImportService.categoryOf("EV01", null)).isEqualTo("축제");
+        assertThat(KoreaFestivalImportService.categoryOf("EV02", "A0207")).isEqualTo("공연");
+        assertThat(KoreaFestivalImportService.categoryOf("EV03", null)).isEqualTo("행사");
+        assertThat(KoreaFestivalImportService.categoryOf(null, "A0207")).isEqualTo("축제");
+        assertThat(KoreaFestivalImportService.categoryOf(null, null)).isEqualTo("행사");
     }
 }
