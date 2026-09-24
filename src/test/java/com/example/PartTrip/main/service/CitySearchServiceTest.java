@@ -45,6 +45,26 @@ class CitySearchServiceTest {
     }
 
     @Test
+    @DisplayName("secondaryText 두 번째 조각이 시·도다. 없으면 null")
+    void parseRegionName() throws Exception {
+        JsonNode body = json("""
+                {"suggestions":[
+                  {"placePrediction":{"structuredFormat":{
+                    "mainText":{"text":"광주"},
+                    "secondaryText":{"text":"대한민국 광주광역시"}}}},
+                  {"placePrediction":{"structuredFormat":{
+                    "mainText":{"text":"광주시"},
+                    "secondaryText":{"text":"대한민국 경기도"}}}},
+                  {"placePrediction":{"structuredFormat":{"mainText":{"text":"서울"}}}}]}
+                """);
+
+        List<CitySearchResponseDto> cities = service.parse(body, "한국");
+
+        assertThat(cities).extracting(CitySearchResponseDto::getRegionName)
+                .containsExactly("광주광역시", "경기도", null);
+    }
+
+    @Test
     @DisplayName("같은 도시가 두 번 오면 하나만 남긴다")
     void parseDeduplicates() throws Exception {
         JsonNode body = json("""
