@@ -60,9 +60,16 @@ public enum RegionCode {
         return region;
     }
 
-    /** 지도에서 빠진 옛 여행 기록은 코드가 없다. 그때는 이름도 없다. */
+    /**
+      * 이름을 못 찾으면 null 이다. 던지지 않는다.
+      *
+      * 지도에서 빠진 옛 여행 기록은 코드가 없고, 코드표에 없는 값이 DB 에 남아
+      * 있을 수도 있다. 여기서 던지면 그 한 줄 때문에 D-day · 플래너 목록 ·
+      * 여행카드 응답이 통째로 실패한다. 값을 받을 때는 of() 가 막는다.
+      */
     public static String nameOf(String code) {
-        return code == null ? null : of(code).getRegionName();
+        RegionCode region = code == null ? null : BY_CODE.get(code);
+        return region == null ? null : region.getRegionName();
     }
 
     public static boolean exists(String code) {

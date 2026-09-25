@@ -35,9 +35,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS uk_notification_region_visited
     ON notification (user_id, link_id)
  WHERE type = 'REGION_VISITED';
 
-ALTER TABLE trip_card          DROP COLUMN country_name;
-ALTER TABLE planner_city       DROP COLUMN country_name;
-ALTER TABLE group_travel_plan  DROP COLUMN country_name;
+ALTER TABLE trip_card          DROP COLUMN IF EXISTS country_name;
+ALTER TABLE planner_city       DROP COLUMN IF EXISTS country_name;
+ALTER TABLE group_travel_plan  DROP COLUMN IF EXISTS country_name;
 
 -- 확인: 빈 결과가 나와야 한다
 -- SELECT table_name, column_name FROM information_schema.columns
