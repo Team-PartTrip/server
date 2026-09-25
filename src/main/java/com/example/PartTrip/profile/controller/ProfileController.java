@@ -82,8 +82,10 @@ public class ProfileController {
     /** Func-007-01 프로필 사진을 업로드하고 공개 URL을 반환한다. */
     @PostMapping(value = "/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<String> uploadProfileImage(
+            Authentication authentication,
             @RequestParam("file") MultipartFile file
     ) {
-        return ResponseEntity.ok(profileService.uploadProfileImage(file));
+        String userId = (String) authentication.getPrincipal();
+        return ResponseEntity.ok(profileService.uploadProfileImage(userId, file));
     }
 }
