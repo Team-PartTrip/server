@@ -1,6 +1,6 @@
 # DB 시드 · 백필 스크립트
 
-`country_info`, `tour_place`, `travel_theme` 처럼 **애플리케이션이 만들지 않고 미리 채워 넣어야 하는
+`country_info`, `tour_place` 처럼 **애플리케이션이 만들지 않고 미리 채워 넣어야 하는
 기준 데이터**를 생성하는 스크립트입니다.
 
 스키마 자체는 JPA(`ddl-auto=update`)가 만들므로 여기에 테이블 생성 SQL은 없습니다.
@@ -12,7 +12,6 @@
 | `seed_countries.py` → `seed_countries.sql` | `country_info` (국가명 · 수도 · 지역 · 국기) | [mledoze/countries](https://github.com/mledoze/countries), [flagcdn.com](https://flagcdn.com) |
 | `backfill_coordinates.py` → `backfill_coordinates.sql` | `country_info.latitude/longitude` | mledoze/countries |
 | `seed_tour_places.py` → `seed_tour_places.sql` | `tour_place` (오사카 · 방콕 · 다낭 205곳) | [Overpass API](https://overpass-api.de) (OpenStreetMap, ODbL) |
-| `seed_travel_themes.sql` | `travel_theme` | 직접 작성 |
 | `seed_festivals.sql` | `festival` (7개국 39건) | 직접 작성 |
 | `seed_festivals_public.py` → `seed_festivals_public.sql` | `festival` (51개국 281건) | [위키데이터](https://query.wikidata.org) (CC0), [Nager.Date](https://date.nager.at) |
 
@@ -29,7 +28,6 @@ cd db
 mysql -u <user> -p --default-character-set=utf8mb4 PartTrip < seed_countries.sql
 mysql -u <user> -p --default-character-set=utf8mb4 PartTrip < backfill_coordinates.sql
 mysql -u <user> -p --default-character-set=utf8mb4 PartTrip < seed_tour_places.sql
-mysql -u <user> -p --default-character-set=utf8mb4 PartTrip < seed_travel_themes.sql
 mysql -u <user> -p --default-character-set=utf8mb4 PartTrip < seed_festivals.sql
 mysql -u <user> -p --default-character-set=utf8mb4 PartTrip < seed_festivals_public.sql
 ```
