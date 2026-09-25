@@ -3,6 +3,7 @@ package com.example.PartTrip.tripcard.repository;
 import com.example.PartTrip.tripcard.entity.TripCardPlaceEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
 import java.util.List;
 
 public interface TripCardPlaceRepository extends JpaRepository<TripCardPlaceEntity, Long> {
@@ -11,4 +12,6 @@ public interface TripCardPlaceRepository extends JpaRepository<TripCardPlaceEnti
     List<TripCardPlaceEntity> findByTripCardIdOrderByVisitedDateAscSortOrderAsc(Long tripCardId);
 
     void deleteByTripCardId(Long tripCardId);
+
+    void deleteByTripCardIdIn(Collection<Long> tripCardIds);
 }
