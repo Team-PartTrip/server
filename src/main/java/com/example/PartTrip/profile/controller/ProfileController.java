@@ -5,6 +5,7 @@ import com.example.PartTrip.profile.dto.ProfileStatsResponseDto;
 import com.example.PartTrip.profile.dto.ProfileUpdateRequestDto;
 import com.example.PartTrip.profile.dto.TravelPreferenceRequestDto;
 import com.example.PartTrip.profile.dto.TravelPreferenceResponseDto;
+import com.example.PartTrip.profile.service.AccountDeleteService;
 import com.example.PartTrip.profile.service.ProfileService;
 import com.example.PartTrip.profile.service.TravelPreferenceService;
 import jakarta.validation.Valid;
@@ -23,6 +24,7 @@ public class ProfileController {
 
     private final ProfileService profileService;
     private final TravelPreferenceService travelPreferenceService;
+    private final AccountDeleteService accountDeleteService;
 
     /** 로그인 사용자의 프로필 정보를 조회한다. */
     @GetMapping("/myInfo")
@@ -48,6 +50,13 @@ public class ProfileController {
         String userId = (String) authentication.getPrincipal();
         ProfileResponseDto resDto = profileService.updateProfile(userId, requestDto);
         return ResponseEntity.ok(resDto);
+    }
+
+    /** 회원 탈퇴. 계정과 사용자가 남긴 데이터를 지운다. */
+    @DeleteMapping
+    public ResponseEntity<Void> deleteAccount(Authentication authentication) {
+        accountDeleteService.deleteAccount((String) authentication.getPrincipal());
+        return ResponseEntity.noContent().build();
     }
 
     /** Func-007-02 로그인 사용자의 여행 편의 설정을 조회한다. */
