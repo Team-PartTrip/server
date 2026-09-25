@@ -15,7 +15,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
 import org.springframework.boot.http.client.ClientHttpRequestFactorySettings;
 import org.springframework.http.MediaType;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
@@ -25,7 +24,6 @@ import org.springframework.web.client.RestClient;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Locale;
-import java.util.UUID;
 
 @Slf4j
 @Service
@@ -44,7 +42,6 @@ public class KakaoLoginService {
 
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
-    private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final NickNameGenerator nickNameGenerator;
 
@@ -128,13 +125,11 @@ public class KakaoLoginService {
                 ? email
                 : null);
         // 카카오 로그인은 비밀번호를 쓰지 않지만 컬럼이 NOT NULL 이라 임의값 저장
-        user.setUserPwd(passwordEncoder.encode(UUID.randomUUID().toString()));
         // 카카오 닉네임을 우선 쓰되, 이미 쓰이고 있으면 랜덤 접미사를 붙인다
         user.setNickName(nickname != null && !nickname.isBlank()
                 ? nickNameGenerator.generateFrom(nickname)
                 : nickNameGenerator.generate());
         user.setSignUpDivision("KAKAO");
-        user.setMyCountry("KR");
         user.setCreateDate(LocalDateTime.now());
         return userRepository.save(user);
     }

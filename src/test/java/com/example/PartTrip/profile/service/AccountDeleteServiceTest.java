@@ -41,7 +41,6 @@ class AccountDeleteServiceTest {
         UserEntity u = new UserEntity();
         u.setImgUrl(imgUrl);
         u.setUserId(id);
-        u.setUserPwd("");
         u.setNickName("nick-" + id);
         em.persist(u);
     }
