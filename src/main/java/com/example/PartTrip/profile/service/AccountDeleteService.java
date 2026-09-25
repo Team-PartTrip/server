@@ -15,8 +15,10 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -60,7 +62,17 @@ public class AccountDeleteService {
         delete("delete from UserEntity u where u.userId = :u", "u", userId);
 
         // 롤백되면 기록은 남는데 사진만 사라지지 않게, 커밋을 확인하고 지운다
-        List<String> toRemove = files.stream().filter(Objects::nonNull).toList();
+        List<String> mine = files.stream().filter(Objects::nonNull).distinct().toList();
+        Set<String> stillUsed = new HashSet<>();
+        if (!mine.isEmpty()) {
+            for (String jpql : List.of(
+                    "select u.imgUrl from UserEntity u where u.imgUrl in :f",
+                    "select p.imageUrl from TripCardPhotoEntity p where p.imageUrl in :f",
+                    "select c.coverImageUrl from TripCardEntity c where c.coverImageUrl in :f")) {
+                stillUsed.addAll(em.createQuery(jpql, String.class).setParameter("f", mine).getResultList());
+            }
+        }
+        List<String> toRemove = mine.stream().filter(url -> !stillUsed.contains(url)).toList();
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {

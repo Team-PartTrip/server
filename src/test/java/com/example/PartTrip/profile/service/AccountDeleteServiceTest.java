@@ -16,11 +16,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.transaction.TestTransaction;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @DataJpaTest
 @Import({AccountDeleteService.class, PlannerDeleteService.class})
@@ -32,8 +37,9 @@ class AccountDeleteServiceTest {
 
     private static final LocalDateTime T = LocalDateTime.of(2026, 9, 1, 9, 0);
 
-    private void user(String id) {
+    private void user(String id, String imgUrl) {
         UserEntity u = new UserEntity();
+        u.setImgUrl(imgUrl);
         u.setUserId(id);
         u.setUserPwd("");
         u.setNickName("nick-" + id);
@@ -77,8 +83,8 @@ class AccountDeleteServiceTest {
 
     @Test
     void 탈퇴하면_내_데이터는_지우고_함께_쓰던_플래너는_남은_사람에게_넘긴다() {
-        user("me");
-        user("friend");
+        user("me", "/uploads/trip-card/friend.jpg");
+        user("friend", "/uploads/profile/friend.jpg");
         Long shared = group("me");
         member(shared, "me", GroupRole.OWNER, 0);
         member(shared, "friend", GroupRole.MEMBER, 5);
@@ -92,10 +98,16 @@ class AccountDeleteServiceTest {
         em.persist(new GuardianLinkEntity("me", "friend", T));
         em.flush();
         em.clear();
+        TestTransaction.flagForCommit();
+        TestTransaction.end();
+        when(storage.delete(anyString())).thenReturn(true);
 
         service.deleteAccount("me");
-        em.flush();
-        em.clear();
+
+        verify(storage).delete("/uploads/trip-card/me.jpg");
+        verify(storage, never()).delete("/uploads/trip-card/friend.jpg");
+        verify(storage, never()).delete("/uploads/profile/friend.jpg");
+        TestTransaction.start();
 
         assertThat(em.find(UserEntity.class, "me")).isNull();
         assertThat(count("select count(c) from TripCardEntity c where c.userId = :u", "me")).isZero();
@@ -111,5 +123,10 @@ class AccountDeleteServiceTest {
         assertThat(em.find(TripCardEntity.class, friendCard)).isNotNull();
         assertThat(count("select count(p) from TripCardPhotoEntity p where p.imageUrl like concat('%', :u, '%')", "me")).isZero();
         assertThat(count("select count(p) from TripCardPhotoEntity p where p.imageUrl like concat('%', :u, '%')", "friend")).isOne();
+
+        // 커밋한 데이터가 다른 테스트에 남지 않게 지운다
+        service.deleteAccount("friend");
+        TestTransaction.flagForCommit();
+        TestTransaction.end();
     }
 }
