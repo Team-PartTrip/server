@@ -216,8 +216,6 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
     }
 
     // 사진 추가와 코멘트 수정이 같은 규칙을 쓰도록 여기 한 곳에 둔다.
-    // 공백만 남은 코멘트는 없는 것으로 본다. trim() 은 전각 공백(U+3000)을
-    // 남기기 때문에 유니코드를 아는 strip() 을 쓴다.
     private String normalizeComment(String comment) {
         return normalizeText(comment, COMMENT_MAX_LENGTH, "코멘트는");
     }
@@ -226,6 +224,8 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
         return normalizeText(placeName, PLACE_NAME_MAX_LENGTH, "장소 이름은");
     }
 
+    // 공백만 남은 값은 없는 것으로 본다. trim() 은 전각 공백(U+3000)을
+    // 남기기 때문에 유니코드를 아는 strip() 을 쓴다.
     private String normalizeText(String value, int maxLength, String label) {
         if (value == null) {
             return null;
@@ -255,9 +255,16 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
     // 직접 넣을 때도 받지 않는다. 촬영 시각을 모르는 사진은 여기서 가릴 수 없으니 통과시킨다
     // — 카카오톡으로 받은 사진이 이 경우라, 막으면 Func-003-07 이 통째로 의미가 없어진다.
     private void requireWithinTripDates(TripCardEntity tripCard, LocalDateTime takenAt) {
+        // 아직 오지 않은 날짜는 여행 기간 안이어도 받지 않는다. 앞으로 갈 여행의 카드에도
+        // 사진을 붙일 수 있어서, 기간만 보면 내일 찍은 사진이 오늘 들어온다.
+        // 날짜 단위로 본다. 시·분까지 보면 오늘 찍은 사진이 시계 차이로 거절될 수 있다.
+        // 시간대는 앱이 뜰 때 Asia/Seoul 로 고정한다 (PartTripApplication).
+        if (takenAt != null && takenAt.toLocalDate().isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException("아직 오지 않은 날짜로는 촬영 시각을 정할 수 없습니다.");
+        }
         if (!withinTripDates(tripCard.getStartDate(), tripCard.getEndDate(), takenAt)) {
             throw new IllegalArgumentException("여행 기간(" + tripCard.getStartDate()
-                    + " ~ " + tripCard.getEndDate() + ") 에 찍은 사진만 넣을 수 있습니다.");
+                    + " ~ " + tripCard.getEndDate() + ")에 찍은 사진만 넣을 수 있습니다.");
         }
     }
 

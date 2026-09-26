@@ -123,6 +123,24 @@ class TripCardEntryMetadataTest {
                 .hasMessageContaining("여행 기간");
     }
 
+    // 앞으로 갈 여행의 카드에도 사진을 붙일 수 있어서, 기간만 보면 아직 오지 않은
+    // 날짜가 통과한다. 2099년 여행 카드로 그 경우를 만든다.
+    @Test
+    void 아직_오지_않은_날짜는_여행_기간_안이어도_거부한다() {
+        given(currentUserProvider.getCurrentUserId()).willReturn("member");
+        given(tripCardRepository.findByTripCardIdAndUserId(1L, "member"))
+                .willReturn(Optional.of(TripCardEntity.builder()
+                        .tripCardId(1L).userId("member")
+                        .startDate(LocalDate.of(2099, 1, 1))
+                        .endDate(LocalDate.of(2099, 1, 3))
+                        .build()));
+
+        assertThatThrownBy(() -> service.updateMetadata(1L, 10L,
+                request(null, null, null, LocalDateTime.of(2099, 1, 2, 9, 0))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("아직 오지 않은");
+    }
+
     // 여행 카드는 그 여행의 기록이다. 올릴 때도, 직접 넣을 때도 같은 자를 쓴다.
     @Test
     void 여행_첫날과_마지막날은_기간_안이다() {
