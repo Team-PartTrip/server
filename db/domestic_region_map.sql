@@ -28,6 +28,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS uk_notification_region_visited
     ON notification (user_id, link_id)
  WHERE type = 'REGION_VISITED';
 
+-- 테이블을 처음 만들 때 Hibernate 가 그때 있던 알림 종류만 받는 CHECK 를 걸었다.
+-- ddl-auto=update 는 이걸 고치지 않아서 새로 생긴 REGION_VISITED 가 막힌다 (#195).
+-- 종류는 서버 enum 이 이미 검사하므로 DB 조건은 없앤다
+ALTER TABLE notification DROP CONSTRAINT IF EXISTS notification_type_check;
+
 
 -- ── 2부: 새 서버를 올린 뒤에 돌린다. 며칠 뒤여도 된다 ─────────────────
 -- 새 서버는 country_name 을 아예 읽지 않으므로 급할 것이 없다.

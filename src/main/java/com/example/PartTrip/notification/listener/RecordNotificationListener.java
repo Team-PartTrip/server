@@ -73,10 +73,16 @@ public class RecordNotificationListener {
                     "REGION_MAP",
                     regionId);
 
-        } catch (DataIntegrityViolationException alreadySent) {
-            // 위 검사를 둘이 동시에 통과했다. 유니크 인덱스가 늦은 쪽을 막은 것이라
-            // 알림은 이미 하나 나갔다 (db/domestic_region_map.sql)
-            log.debug("새 지역 방문 알림 중복 regionCode={}", event.regionCode());
+        } catch (DataIntegrityViolationException e) {
+            // 위 검사를 둘이 동시에 통과했으면 유니크 인덱스가 늦은 쪽을 막은 것이라
+            // 알림은 이미 하나 나갔다 (db/domestic_region_map.sql).
+            // 다른 제약(예: 예전 CHECK)에 막힌 것이면 알림이 없으니 경고를 남긴다
+            if (notificationRepository.existsByUserIdAndTypeAndLinkId(
+                    event.actorUserId(), NotificationType.REGION_VISITED, regionId)) {
+                log.debug("새 지역 방문 알림 중복 regionCode={}", event.regionCode());
+            } else {
+                log.warn("새 지역 방문 알림 실패 regionCode={}", event.regionCode(), e);
+            }
         } catch (Exception e) {
             log.warn("새 지역 방문 알림 실패 regionCode={}", event.regionCode(), e);
         }
