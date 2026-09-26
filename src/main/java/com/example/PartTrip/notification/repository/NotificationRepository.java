@@ -2,6 +2,7 @@ package com.example.PartTrip.notification.repository;
 
 import com.example.PartTrip.notification.entity.NotificationEntity;
 import com.example.PartTrip.notification.enums.NotificationCategory;
+import com.example.PartTrip.notification.enums.NotificationType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -35,6 +36,10 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
     Optional<NotificationEntity> findByNotificationIdAndUserId(Long notificationId, String userId);
 
     long countByUserIdAndIsReadFalse(String userId);
+
+    // "새 지역 방문" 을 이 지역에 대해 이미 보냈는지 (#162).
+    // 방문 기록을 따로 저장하지 않으므로 알림 자체가 그 기록이다.
+    boolean existsByUserIdAndTypeAndLinkId(String userId, NotificationType type, Long linkId);
 
     @Modifying(clearAutomatically = true)
     @Query("""

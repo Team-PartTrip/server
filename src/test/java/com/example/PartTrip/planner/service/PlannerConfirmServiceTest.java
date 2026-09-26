@@ -78,6 +78,7 @@ class PlannerConfirmServiceTest {
         plan = new GroupTravelPlanEntity();
         plan.setPlanId(PLAN_ID);
         plan.setGroupId(PLANNER_ID);
+        plan.setRegionCode("51");
         plan.setStartDate(DAY1);
         plan.setEndDate(DAY2);
 
@@ -108,6 +109,16 @@ class PlannerConfirmServiceTest {
                 .placeName("장소 " + id)
                 .build();
         return new PlannerScheduleService.ScheduledPlace(dto, place, date, order);
+    }
+
+    @Test
+    void 시도가_없는_예전_플래너는_확정을_거부한다() {
+        plan.setRegionCode(null);
+
+        assertThatThrownBy(() -> plannerConfirmService.confirmPlanner(PLANNER_ID, OWNER_ID))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("여행지를 다시 저장");
+        verify(tripCardRepository, never()).saveAll(any());
     }
 
     private void givenNoCardsYet() {

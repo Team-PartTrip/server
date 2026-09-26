@@ -1,5 +1,6 @@
 package com.example.PartTrip.planner.service;
 
+import com.example.PartTrip.region.enums.RegionCode;
 import com.example.PartTrip.planner.dto.response.PlannerCityResponseDto;
 import com.example.PartTrip.planner.dto.response.PlannerDetailResponseDto;
 import com.example.PartTrip.planner.entity.GroupMemberEntity;
@@ -49,7 +50,8 @@ public class PlannerDetailService {
         return PlannerDetailResponseDto.builder()
                 .plannerId(group.getGroupId())
                 .title(group.getGroupName())
-                .countryName(plan == null ? null : plan.getCountryName())
+                .regionCode(plan == null ? null : plan.getRegionCode())
+                .regionName(plan == null ? null : RegionCode.nameOf(plan.getRegionCode()))
                 .cityName(plan == null ? null : plan.getCityName())
                 .startDate(plan == null ? null : plan.getStartDate())
                 .endDate(plan == null ? null : plan.getEndDate())
@@ -76,13 +78,14 @@ public class PlannerDetailService {
                 .findByPlanIdOrderBySeqAsc(plan.getPlanId())
                 .stream()
                 .map(c -> new PlannerCityResponseDto(
-                        c.getCountryName(), c.getCityName(), c.getStartDate(), c.getEndDate()))
+                        c.getRegionCode(), RegionCode.nameOf(c.getRegionCode()),
+                        c.getCityName(), c.getStartDate(), c.getEndDate()))
                 .toList();
         if (!saved.isEmpty()) {
             return saved;
         }
         return List.of(new PlannerCityResponseDto(
-                plan.getCountryName(), plan.getCityName(),
-                plan.getStartDate(), plan.getEndDate()));
+                plan.getRegionCode(), RegionCode.nameOf(plan.getRegionCode()),
+                plan.getCityName(), plan.getStartDate(), plan.getEndDate()));
     }
 }

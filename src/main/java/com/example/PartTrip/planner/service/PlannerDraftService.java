@@ -8,6 +8,7 @@ import com.example.PartTrip.main.enums.TourPlaceCategory;
 import com.example.PartTrip.main.repository.TourPlaceRepository;
 import com.example.PartTrip.main.service.TourPlaceImportService;
 import com.example.PartTrip.planner.dto.request.CreatePlannerRequestDto;
+import com.example.PartTrip.region.enums.RegionCode;
 import com.example.PartTrip.planner.dto.request.GeneratePlannerRequestDto;
 import com.example.PartTrip.planner.dto.response.PlannerScheduleResponseDto;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
@@ -84,7 +85,9 @@ public class PlannerDraftService {
     public PlannerScheduleResponseDto generate(GeneratePlannerRequestDto dto, String userId) {
         String city = dto.getCityName().trim();
         List<LocalDate> dates = datesOf(dto.getStartDate(), dto.getEndDate());
-        // AI 를 부르기 전에 막는다. 저장할 때 걸리면 AI 비용만 나간다
+        // AI 를 부르기 전에 막는다. 저장할 때 걸리면 AI 비용만 나간다.
+        // @NotBlank 는 "99" 같은 없는 코드를 거르지 못한다
+        RegionCode.of(dto.getRegionCode());
         if (groupTravelPlanRepository.existsOverlappingPlanForUser(
                 userId, dto.getStartDate(), dto.getEndDate())) {
             throw new IllegalArgumentException("해당 기간에 이미 등록된 여행 계획이 있습니다.");
@@ -413,7 +416,7 @@ public class PlannerDraftService {
         create.setTitle(dto.getTitle().trim());
         create.setMemberCount(dto.getMemberCount());
         create.setIsSolo(dto.getIsSolo());
-        create.setCountryName(KOREA);
+        create.setRegionCode(dto.getRegionCode());
         create.setCityName(city);
         create.setStartDate(dto.getStartDate());
         create.setEndDate(dto.getEndDate());

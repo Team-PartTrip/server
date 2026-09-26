@@ -1,5 +1,6 @@
 package com.example.PartTrip.planner.service;
 
+import com.example.PartTrip.region.enums.RegionCode;
 import com.example.PartTrip.planner.dto.request.PlannerCityRequestDto;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
 import com.example.PartTrip.planner.entity.PlannerCityEntity;
@@ -58,7 +59,7 @@ public class PlannerCityWriter {
             PlannerCityEntity row = new PlannerCityEntity();
             row.setPlanId(plan.getPlanId());
             row.setSeq(i);
-            row.setCountryName(city.getCountryName().trim());
+            row.setRegionCode(RegionCode.of(city.getRegionCode()).getCode());
             row.setCityName(city.getCityName().trim());
             row.setStartDate(city.getStartDate());
             row.setEndDate(city.getEndDate());

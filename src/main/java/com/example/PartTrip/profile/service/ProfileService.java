@@ -8,7 +8,6 @@ import com.example.PartTrip.profile.dto.ProfileStatsResponseDto;
 import com.example.PartTrip.profile.repository.UserProfileRepository;
 import com.example.PartTrip.tripcard.repository.TripCardPhotoRepository;
 import com.example.PartTrip.tripcard.repository.TripCardRepository;
-import com.example.PartTrip.worldmap.repository.VisitedCountryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,7 +22,6 @@ public class ProfileService {
     private final ImageStorageService imageStorageService;
     private final TripCardRepository tripCardRepository;
     private final TripCardPhotoRepository tripCardPhotoRepository;
-    private final VisitedCountryRepository visitedCountryRepository;
 
     @Transactional(readOnly = true)
     public ProfileResponseDto getProfile(String userId) {
@@ -34,13 +32,13 @@ public class ProfileService {
     }
 
     // Func-007-01 프로필 통계.
-    // 여행 카드·세계지도 쓰기 API 가 아직 없어서 지금은 대부분 0 이 나온다.
+    // 여행 카드 쓰기 API 가 아직 없어서 지금은 대부분 0 이 나온다.
     // 값이 없다고 감추지 않고 0 을 그대로 내려준다 — 화면이 "0" 을 그리면 된다.
     @Transactional(readOnly = true)
     public ProfileStatsResponseDto getStats(String userId) {
         return new ProfileStatsResponseDto(
                 tripCardRepository.countByUserId(userId),
-                visitedCountryRepository.countByUserId(userId),
+                tripCardRepository.countDistinctRegionsByUserId(userId),
                 tripCardPhotoRepository.countByUserId(userId)
         );
     }

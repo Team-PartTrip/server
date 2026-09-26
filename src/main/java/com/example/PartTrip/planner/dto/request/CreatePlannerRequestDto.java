@@ -30,7 +30,7 @@ public class CreatePlannerRequestDto {
     @NotNull(message = "혼자 여행인지 선택해주세요.")
     private Boolean isSolo;
 
-    private String countryName;
+    private String regionCode;
 
     private String cityName;
 
@@ -41,7 +41,7 @@ public class CreatePlannerRequestDto {
     /**
      * 도는 도시들. 그룹장이 플래너를 만들 때 도시마다 며칠씩인지 정한다.
      *
-     * 비워두면 예전처럼 countryName / cityName 한 곳만 쓰는 여행이 된다.
+     * 비워두면 예전처럼 regionCode / cityName 한 곳만 쓰는 여행이 된다.
      * 채우면 첫 도시가 대표 도시로 group_travel_plan 에 들어간다.
      */
     @Valid
