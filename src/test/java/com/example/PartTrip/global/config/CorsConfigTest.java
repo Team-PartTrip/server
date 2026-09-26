@@ -9,7 +9,8 @@ class CorsConfigTest {
     @Test
     void 배포한_웹_주소를_허용한다() {
         assertThat(CorsConfig.allowedOrigins(""))
-                .contains("https://dandi-trip.vercel.app", "https://part-trip-web.vercel.app");
+                .contains("https://dandi-trip.vercel.app")
+                .doesNotContain("https://part-trip-web.vercel.app");
     }
 
     @Test

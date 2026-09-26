@@ -54,8 +54,7 @@ public class CorsConfig {
                 "http://localhost:3000",
                 "http://localhost:8080",
                 "http://localhost:5173",
-                "https://dandi-trip.vercel.app",
-                "https://part-trip-web.vercel.app"
+                "https://dandi-trip.vercel.app"
         ));
         if (frontendBaseUrl != null && !frontendBaseUrl.isBlank()) {
             origins.add(frontendBaseUrl.trim().replaceAll("/+$", ""));
