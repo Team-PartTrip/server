@@ -281,7 +281,6 @@ class PlannerConcurrentJoinIntegrationTest {
     private UserEntity user(String userId) {
         UserEntity user = new UserEntity();
         user.setUserId(userId);
-        user.setUserPwd("password");
         user.setUserMail(userId + "@example.com");
         user.setNickName(userId);
         return user;

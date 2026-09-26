@@ -21,6 +21,8 @@ public interface TripCardPhotoRepository extends JpaRepository<TripCardPhotoEnti
 
     void deleteByTripCardId(Long tripCardId);
 
+    void deleteByTripCardIdIn(Collection<Long> tripCardIds);
+
     // Func-007-01 프로필 통계의 "기록" 수.
     // trip_card_photo 에는 user_id 가 없어서 내 여행 카드를 거쳐 센다.
     @Query("""
