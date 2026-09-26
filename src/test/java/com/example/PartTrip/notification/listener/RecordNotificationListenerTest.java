@@ -10,12 +10,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -36,6 +39,20 @@ class RecordNotificationListenerTest {
         verify(notificationWriter).write(
                 eq("traveler"), eq(NotificationType.REGION_VISITED), anyString(),
                 eq("강원특별자치도 방문이 지도에 기록됐어요."), eq("REGION_MAP"), eq(51L));
+    }
+
+    @Test
+    void 저장이_막히면_중복인지_다시_확인한다() {
+        given(notificationRepository.existsByUserIdAndTypeAndLinkId(
+                "traveler", NotificationType.REGION_VISITED, 51L)).willReturn(false);
+        willThrow(new DataIntegrityViolationException("notification_type_check"))
+                .given(notificationWriter).write(
+                        anyString(), any(), anyString(), anyString(), anyString(), any());
+
+        listener.on(new RegionVisitedEvent("51", "traveler"));
+
+        verify(notificationRepository, times(2)).existsByUserIdAndTypeAndLinkId(
+                "traveler", NotificationType.REGION_VISITED, 51L);
     }
 
     @Test
