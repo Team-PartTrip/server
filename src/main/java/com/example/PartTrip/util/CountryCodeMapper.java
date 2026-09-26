@@ -261,14 +261,4 @@ public class CountryCodeMapper {
         return COUNTRY_CODE_MAP.get(countryName);
     }
 
-    public static String getCountryName(String countryCode) {
-        if (countryCode == null) {
-            return null;
-        }
-        return COUNTRY_CODE_MAP.entrySet().stream()
-                .filter(entry -> entry.getValue().equalsIgnoreCase(countryCode))
-                .map(Map.Entry::getKey)
-                .findFirst()
-                .orElse(null);
-    }
 }

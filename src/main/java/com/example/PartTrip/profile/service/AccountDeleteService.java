@@ -56,7 +56,6 @@ public class AccountDeleteService {
         delete("delete from GuardianInviteEntity i where i.seniorUserId = :u", "u", userId);
         delete("delete from UserLocationEntity l where l.userId = :u", "u", userId);
         delete("delete from NotificationEntity n where n.userId = :u", "u", userId);
-        delete("delete from VisitedCountryEntity v where v.userId = :u", "u", userId);
         delete("delete from RefreshTokenEntity t where t.userId = :u", "u", userId);
         delete("delete from TravelPreferenceEntity p where p.userId = :u", "u", userId);
         delete("delete from UserEntity u where u.userId = :u", "u", userId);

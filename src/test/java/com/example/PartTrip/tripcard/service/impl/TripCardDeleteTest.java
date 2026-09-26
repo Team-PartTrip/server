@@ -30,7 +30,7 @@ class TripCardDeleteTest {
 
     private Long card(String userId) {
         TripCardEntity c = TripCardEntity.builder().userId(userId).title("경주")
-                .countryName("대한민국").startDate(LocalDate.of(2026, 9, 1))
+                .regionCode("47").startDate(LocalDate.of(2026, 9, 1))
                 .endDate(LocalDate.of(2026, 9, 2)).createdAt(LocalDateTime.of(2026, 9, 1, 9, 0)).build();
         em.persist(c);
         TripCardPlaceEntity place = new TripCardPlaceEntity();
