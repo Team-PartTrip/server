@@ -197,7 +197,7 @@ class PlannerDraftServiceTest {
         dto.setTitle("강릉 여행");
         dto.setMemberCount(2);
         dto.setIsSolo(false);
-        dto.setRegionCode("42");
+        dto.setRegionCode("51");
         dto.setCityName("강릉");
         dto.setStartDate(D1);
         dto.setEndDate(D1);

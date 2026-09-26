@@ -71,7 +71,7 @@ class PlannerServiceTest {
         request.setTitle("싱가포르 여행");
         request.setMemberCount(2);
         request.setIsSolo(false);
-        request.setRegionCode("42");
+        request.setRegionCode("51");
         request.setCityName("싱가포르");
         request.setStartDate(LocalDate.of(2026, 9, 1));
         request.setEndDate(LocalDate.of(2026, 9, 30));

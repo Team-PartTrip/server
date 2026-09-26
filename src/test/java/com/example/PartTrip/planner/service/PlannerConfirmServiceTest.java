@@ -78,7 +78,7 @@ class PlannerConfirmServiceTest {
         plan = new GroupTravelPlanEntity();
         plan.setPlanId(PLAN_ID);
         plan.setGroupId(PLANNER_ID);
-        plan.setRegionCode("42");
+        plan.setRegionCode("51");
         plan.setStartDate(DAY1);
         plan.setEndDate(DAY2);
 

@@ -30,7 +30,7 @@ class TripCardSchedulerIntegrationTest {
         TripCardEntity card = tripCardRepository.save(TripCardEntity.builder()
                 .userId("traveler")
                 .title("종료된 여행")
-                .regionCode("42")
+                .regionCode("51")
                 .cityName("강릉시")
                 .startDate(today.minusDays(5))
                 .endDate(today.minusDays(1))

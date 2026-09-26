@@ -222,7 +222,7 @@ class PlannerConcurrentJoinIntegrationTest {
 
         GroupTravelPlanEntity plan = new GroupTravelPlanEntity();
         plan.setGroupId(group.getGroupId());
-        plan.setRegionCode("42");
+        plan.setRegionCode("51");
         plan.setCityName("도시");
         plan.setStartDate(startDate);
         plan.setEndDate(endDate);
@@ -258,7 +258,7 @@ class PlannerConcurrentJoinIntegrationTest {
         request.setTitle(city + " 여행");
         request.setMemberCount(1);
         request.setIsSolo(true);
-        request.setRegionCode("42");
+        request.setRegionCode("51");
         request.setCityName(city);
         request.setStartDate(startDate);
         request.setEndDate(endDate);
@@ -271,7 +271,7 @@ class PlannerConcurrentJoinIntegrationTest {
             LocalDate endDate
     ) {
         SavePlannerTravelPlanRequestDto request = new SavePlannerTravelPlanRequestDto();
-        request.setRegionCode("42");
+        request.setRegionCode("51");
         request.setCityName(city);
         request.setStartDate(startDate);
         request.setEndDate(endDate);

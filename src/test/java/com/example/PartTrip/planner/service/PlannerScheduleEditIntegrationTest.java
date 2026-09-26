@@ -49,7 +49,7 @@ class PlannerScheduleEditIntegrationTest {
         groupId = groups.saveAndFlush(group).getGroupId();
         var plan = new GroupTravelPlanEntity();
         plan.setGroupId(groupId);
-        plan.setRegionCode("42");
+        plan.setRegionCode("51");
         plan.setCityName("강릉시");
         plan.setStartDate(date);
         plan.setEndDate(date.plusDays(1));

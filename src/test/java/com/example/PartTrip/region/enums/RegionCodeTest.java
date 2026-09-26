@@ -11,7 +11,7 @@ class RegionCodeTest {
     void 이름은_모르는_코드에도_던지지_않는다() {
         // D-day · 플래너 목록 · 여행카드 응답이 이걸 그냥 부른다.
         // 던지면 코드표에 없는 값 한 줄 때문에 그 API 들이 통째로 실패한다
-        assertThat(RegionCode.nameOf("42")).isEqualTo("강원특별자치도");
+        assertThat(RegionCode.nameOf("51")).isEqualTo("강원특별자치도");
         assertThat(RegionCode.nameOf(null)).isNull();
         assertThat(RegionCode.nameOf("99")).isNull();
     }

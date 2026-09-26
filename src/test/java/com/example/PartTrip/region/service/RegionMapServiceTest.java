@@ -22,8 +22,8 @@ class RegionMapServiceTest {
 
     @Test
     void 같은_시도를_두_번_가면_한_줄에_두_번으로_센다() {
-        save("traveler", "42", "강릉시");
-        save("traveler", "42", "속초시");
+        save("traveler", "51", "강릉시");
+        save("traveler", "51", "속초시");
         save("traveler", "50", "서귀포시");
         // 남의 카드는 세지 않는다
         save("other", "11", "서울특별시");
@@ -37,8 +37,8 @@ class RegionMapServiceTest {
                         RegionMapResponseDto.VisitedRegionResponseDto::getRegionName,
                         RegionMapResponseDto.VisitedRegionResponseDto::getTripCount)
                 .containsExactly(
-                        org.assertj.core.groups.Tuple.tuple("42", "강원특별자치도", 2L),
-                        org.assertj.core.groups.Tuple.tuple("50", "제주특별자치도", 1L));
+                        org.assertj.core.groups.Tuple.tuple("50", "제주특별자치도", 1L),
+                        org.assertj.core.groups.Tuple.tuple("51", "강원특별자치도", 2L));
     }
 
     @Test

@@ -38,7 +38,7 @@ class PlannerScheduleEditServiceTest {
     private GroupTravelPlanEntity plan() {
         var plan = new GroupTravelPlanEntity();
         plan.setPlanId(10L);
-        plan.setRegionCode("42");
+        plan.setRegionCode("51");
         plan.setCityName("강릉시");
         plan.setStartDate(date);
         plan.setEndDate(date.plusDays(1));

@@ -38,7 +38,7 @@ class PlannerCityWriterTest {
 
     private static PlannerCityRequestDto city(String name, String from, String to) {
         PlannerCityRequestDto dto = new PlannerCityRequestDto();
-        dto.setRegionCode("42");
+        dto.setRegionCode("51");
         dto.setCityName(name);
         dto.setStartDate(LocalDate.parse(from));
         dto.setEndDate(LocalDate.parse(to));

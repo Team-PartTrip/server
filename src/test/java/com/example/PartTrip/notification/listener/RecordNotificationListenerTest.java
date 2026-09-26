@@ -29,21 +29,21 @@ class RecordNotificationListenerTest {
     @Test
     void 처음_가는_시도면_알린다() {
         given(notificationRepository.existsByUserIdAndTypeAndLinkId(
-                "traveler", NotificationType.REGION_VISITED, 42L)).willReturn(false);
+                "traveler", NotificationType.REGION_VISITED, 51L)).willReturn(false);
 
-        listener.on(new RegionVisitedEvent("42", "traveler"));
+        listener.on(new RegionVisitedEvent("51", "traveler"));
 
         verify(notificationWriter).write(
                 eq("traveler"), eq(NotificationType.REGION_VISITED), anyString(),
-                eq("강원특별자치도 방문이 지도에 기록됐어요."), eq("REGION_MAP"), eq(42L));
+                eq("강원특별자치도 방문이 지도에 기록됐어요."), eq("REGION_MAP"), eq(51L));
     }
 
     @Test
     void 이미_알린_시도면_다시_알리지_않는다() {
         given(notificationRepository.existsByUserIdAndTypeAndLinkId(
-                "traveler", NotificationType.REGION_VISITED, 42L)).willReturn(true);
+                "traveler", NotificationType.REGION_VISITED, 51L)).willReturn(true);
 
-        listener.on(new RegionVisitedEvent("42", "traveler"));
+        listener.on(new RegionVisitedEvent("51", "traveler"));
 
         verify(notificationWriter, never()).write(
                 anyString(), any(), anyString(), anyString(), anyString(), any());

@@ -220,7 +220,7 @@ class PlannerScheduleServiceTest {
     private GroupTravelPlanEntity plan() {
         GroupTravelPlanEntity plan = new GroupTravelPlanEntity();
         plan.setPlanId(10L);
-        plan.setRegionCode("42");
+        plan.setRegionCode("51");
         plan.setCityName("강릉");
         plan.setStartDate(LocalDate.of(2026, 10, 1));
         plan.setEndDate(LocalDate.of(2026, 10, 2));
@@ -229,7 +229,7 @@ class PlannerScheduleServiceTest {
 
     private PlannerCityEntity city(String country, String city, LocalDate start, LocalDate end) {
         PlannerCityEntity entity = new PlannerCityEntity();
-        entity.setRegionCode("42");
+        entity.setRegionCode("51");
         entity.setCityName(city);
         entity.setStartDate(start);
         entity.setEndDate(end);
