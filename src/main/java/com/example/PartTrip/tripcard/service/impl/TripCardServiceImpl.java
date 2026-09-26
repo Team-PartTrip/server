@@ -148,6 +148,11 @@ public class TripCardServiceImpl implements TripCardService {
                             .entryId(photo.getTripCardPhotoId())
                             .date(date).type(hasLocation ? TimelineItemType.PHOTO : TimelineItemType.NO_INFO_PHOTO)
                             .imageUrl(photo.getImageUrl()).comment(photo.getComment()).takenAt(photo.getTakenAt())
+                            // 지도에서 직접 고른 사진은 장소 이름이 있다. 없으면 앱·웹이
+                            // "사진 촬영 위치" 로만 보여준다.
+                            .placeName(photo.getPlaceName())
+                            .locationSource(photo.getLocationSource())
+                            .takenAtSource(photo.getTakenAtSource())
                             .latitude(photo.getLatitude()).longitude(photo.getLongitude()).build()));
         }
         return entries.stream()

@@ -2,7 +2,9 @@ package com.example.PartTrip.tripcard.service.impl;
 
 import com.example.PartTrip.global.storage.ImageStorageService;
 import com.example.PartTrip.global.security.CurrentUserProvider;
+import com.example.PartTrip.tripcard.dto.request.UpdateEntryMetadataRequest;
 import com.example.PartTrip.tripcard.dto.response.TripCardEntryResponse;
+import com.example.PartTrip.tripcard.entity.MetadataSource;
 import com.example.PartTrip.tripcard.entity.TripCardEntity;
 import com.example.PartTrip.tripcard.entity.TripCardPhotoEntity;
 import com.example.PartTrip.tripcard.entity.TripCardPlaceEntity;
@@ -29,6 +31,7 @@ import java.util.Objects;
 public class TripCardEntryServiceImpl implements TripCardEntryService {
 
     private static final int COMMENT_MAX_LENGTH = 100;
+    private static final int PLACE_NAME_MAX_LENGTH = 255;
 
     private final TripCardRepository tripCardRepository;
     private final TripCardPhotoRepository tripCardPhotoRepository;
@@ -54,6 +57,14 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
         photo.setTakenAt(takenAt);
         photo.setLatitude(exif == null ? null : exif.latitude());
         photo.setLongitude(exif == null ? null : exif.longitude());
+        // 여기가 EXIF 값을 넣는 유일한 경로다. 채워 넣은 자리에만 EXIF 표시를 남겨
+        // 나중에 사용자가 고를 수 있는 자리(비어 있는 쪽)와 구분한다.
+        if (photo.getLatitude() != null && photo.getLongitude() != null) {
+            photo.setLocationSource(MetadataSource.EXIF);
+        }
+        if (takenAt != null) {
+            photo.setTakenAtSource(MetadataSource.EXIF);
+        }
         photo.setSortOrder(nextSortOrder(cardId, takenAt == null ? null : takenAt.toLocalDate()));
         TripCardPhotoEntity savedPhoto = tripCardPhotoRepository.save(photo);
 
@@ -71,6 +82,58 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
         TripCardPhotoEntity photo = getCardPhoto(cardId, entryId);
 
         photo.setComment(normalizeComment(comment));
+
+        return TripCardEntryResponse.from(photo);
+    }
+
+    // Func-003-07 촬영 위치 직접 지정
+    //
+    // 여행이 끝난 뒤에도 쓸 수 있어야 한다. 카카오톡으로 받은 사진은 위치가 지워져 있고,
+    // 사진 정리는 여행에서 돌아온 뒤에 하는 사람이 많다. 그래서 종료 검사(getEditableCard)를
+    // 하지 않고 소유권만 본다. 대신 EXIF 가 들고 있던 값은 절대 건드리지 못하게 막는다.
+    // 기록을 바꾸는 게 아니라 비어 있던 자리를 채우는 것이라 기한을 두지 않는다.
+    @Transactional
+    @Override
+    public TripCardEntryResponse updateMetadata(Long cardId, Long entryId,
+                                                UpdateEntryMetadataRequest request) {
+        // 요청 자체가 성립하는지 먼저 본다. 카드·사진을 읽기 전에 걸러낸다.
+        boolean hasLatitude = request.getLatitude() != null;
+        boolean hasLongitude = request.getLongitude() != null;
+        if (hasLatitude != hasLongitude) {
+            throw new IllegalArgumentException("위도와 경도는 함께 보내야 합니다.");
+        }
+        boolean hasLocation = hasLatitude;
+        String placeName = normalizePlaceName(request.getPlaceName());
+        if (placeName != null && !hasLocation) {
+            throw new IllegalArgumentException("장소 이름은 좌표와 함께 보내야 합니다.");
+        }
+        LocalDateTime takenAt = request.getTakenAt();
+        if (!hasLocation && takenAt == null) {
+            throw new IllegalArgumentException("지정할 촬영 위치나 촬영 시각이 없습니다.");
+        }
+
+        getOwnedCard(cardId);
+        TripCardPhotoEntity photo = getCardPhoto(cardId, entryId);
+
+        if (hasLocation) {
+            requireEditable(photo.getLocationSource(), "촬영 위치");
+            photo.setLatitude(request.getLatitude());
+            photo.setLongitude(request.getLongitude());
+            // 이름 없이 좌표만 다시 고르면 이름도 지운다. 옮긴 좌표에 예전 장소 이름이
+            // 남아 있는 쪽이 더 나쁘다.
+            photo.setPlaceName(placeName);
+            photo.setLocationSource(MetadataSource.MANUAL);
+        }
+        if (takenAt != null) {
+            requireEditable(photo.getTakenAtSource(), "촬영 시각");
+            // 순번은 날짜 묶음별로 매긴다. 날짜가 바뀌면 옮겨간 묶음 기준으로 다시 받아야
+            // 그 날의 다른 사진과 순번이 겹치지 않는다.
+            if (!sameDate(photo.getTakenAt(), takenAt.toLocalDate())) {
+                photo.setSortOrder(nextSortOrder(cardId, takenAt.toLocalDate()));
+            }
+            photo.setTakenAt(takenAt);
+            photo.setTakenAtSource(MetadataSource.MANUAL);
+        }
 
         return TripCardEntryResponse.from(photo);
     }
@@ -153,16 +216,24 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
     // 공백만 남은 코멘트는 없는 것으로 본다. trim() 은 전각 공백(U+3000)을
     // 남기기 때문에 유니코드를 아는 strip() 을 쓴다.
     private String normalizeComment(String comment) {
-        if (comment == null) {
+        return normalizeText(comment, COMMENT_MAX_LENGTH, "코멘트는");
+    }
+
+    private String normalizePlaceName(String placeName) {
+        return normalizeText(placeName, PLACE_NAME_MAX_LENGTH, "장소 이름은");
+    }
+
+    private String normalizeText(String value, int maxLength, String label) {
+        if (value == null) {
             return null;
         }
-        String stripped = comment.strip();
+        String stripped = value.strip();
         if (stripped.isEmpty()) {
             return null;
         }
-        if (stripped.length() > COMMENT_MAX_LENGTH) {
+        if (stripped.length() > maxLength) {
             throw new IllegalArgumentException(
-                    "코멘트는 " + COMMENT_MAX_LENGTH + "자까지 쓸 수 있습니다.");
+                    label + " " + maxLength + "자까지 쓸 수 있습니다.");
         }
         return stripped;
     }
@@ -177,10 +248,22 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
         return photo;
     }
 
-    private TripCardEntity getEditableCard(Long cardId) {
+    /** 사진이 이미 들고 있던 EXIF 값은 고치지 못한다. 비어 있거나 직접 고른 값만 다시 고른다. */
+    private void requireEditable(MetadataSource source, String label) {
+        if (source == MetadataSource.EXIF) {
+            throw new IllegalArgumentException(
+                    "사진에 기록된 " + label + " 정보는 바꿀 수 없습니다.");
+        }
+    }
+
+    private TripCardEntity getOwnedCard(Long cardId) {
         String userId = currentUserProvider.getCurrentUserId();
-        TripCardEntity tripCard = tripCardRepository.findByTripCardIdAndUserId(cardId, userId)
+        return tripCardRepository.findByTripCardIdAndUserId(cardId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 카드가 없거나 수정 권한이 없습니다."));
+    }
+
+    private TripCardEntity getEditableCard(Long cardId) {
+        TripCardEntity tripCard = getOwnedCard(cardId);
         if (tripCard.isDateOver()) {
             throw new IllegalStateException("여행 종료 후에는 여행 카드를 수정할 수 없습니다.");
         }

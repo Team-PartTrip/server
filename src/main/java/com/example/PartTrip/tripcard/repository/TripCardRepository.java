@@ -10,7 +10,7 @@ import java.util.Collection;
 
 public interface TripCardRepository extends JpaRepository<TripCardEntity, Long> {
 
-    // Func-003-01 "여행카드들을 시간순으로 조회"
+    // Func-003-02 "여행카드들을 시간순으로 조회"
     List<TripCardEntity> findByUserIdOrderByStartDateDesc(String userId);
 
     List<TripCardEntity> findByUserIdAndCountryNameIgnoreCaseAndDateOverTrueOrderByStartDateDesc(
