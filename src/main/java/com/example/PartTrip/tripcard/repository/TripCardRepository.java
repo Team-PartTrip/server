@@ -29,6 +29,28 @@ public interface TripCardRepository extends JpaRepository<TripCardEntity, Long> 
         long getTripCount();
     }
 
+    List<TripCardEntity> findByUserIdAndRegionCodeIsNotNull(String userId);
+
+    @Query("""
+            SELECT p.tripCardId AS tripCardId, p.latitude AS latitude, p.longitude AS longitude
+            FROM TripCardPlaceEntity p
+            WHERE p.tripCardId IN :ids AND p.latitude IS NOT NULL AND p.longitude IS NOT NULL
+            """)
+    List<CardPoint> findPlacePoints(Collection<Long> ids);
+
+    @Query("""
+            SELECT p.tripCardId AS tripCardId, p.latitude AS latitude, p.longitude AS longitude
+            FROM TripCardPhotoEntity p
+            WHERE p.tripCardId IN :ids AND p.latitude IS NOT NULL AND p.longitude IS NOT NULL
+            """)
+    List<CardPoint> findPhotoPoints(Collection<Long> ids);
+
+    interface CardPoint {
+        Long getTripCardId();
+        Double getLatitude();
+        Double getLongitude();
+    }
+
     @Query("""
             SELECT COUNT(DISTINCT c.regionCode) FROM TripCardEntity c
             WHERE c.userId = :userId AND c.regionCode IS NOT NULL

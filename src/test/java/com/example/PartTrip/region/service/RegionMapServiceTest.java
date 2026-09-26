@@ -2,6 +2,9 @@ package com.example.PartTrip.region.service;
 
 import com.example.PartTrip.region.dto.response.RegionMapResponseDto;
 import com.example.PartTrip.tripcard.entity.TripCardEntity;
+import com.example.PartTrip.tripcard.entity.TripCardPhotoEntity;
+import com.example.PartTrip.tripcard.entity.TripCardPlaceEntity;
+import jakarta.persistence.EntityManager;
 import com.example.PartTrip.tripcard.repository.TripCardRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +22,7 @@ class RegionMapServiceTest {
 
     @Autowired private RegionMapService regionMapService;
     @Autowired private TripCardRepository tripCardRepository;
+    @Autowired private EntityManager em;
 
     @Test
     void 같은_시도를_두_번_가면_한_줄에_두_번으로_센다() {
@@ -53,8 +57,49 @@ class RegionMapServiceTest {
                 .containsExactly("11");
     }
 
-    private void save(String userId, String regionCode, String cityName) {
-        tripCardRepository.save(TripCardEntity.builder()
+    @Test
+    void 카드마다_장소와_사진_좌표를_중복_없이_준다() {
+        Long tongyeong = save("traveler", "48", "통영");
+        point(tongyeong, 34.85441, 128.43321, true);
+        point(tongyeong, 34.85442, 128.43322, false); // 같은 곳에서 찍은 사진
+        point(tongyeong, 34.8402, 128.4181, false);
+        Long seoul = save("traveler", "11", "서울특별시");
+        save("traveler", null, "오사카");
+        point(save("other", "22", "대구"), 35.88, 128.58, true);
+
+        RegionMapResponseDto map = regionMapService.getRegionMap("traveler");
+
+        assertThat(map.getTrips())
+                .extracting(RegionMapResponseDto.TripResponseDto::getTripCardId)
+                .containsExactlyInAnyOrder(tongyeong, seoul);
+        RegionMapResponseDto.TripResponseDto t = map.getTrips().stream()
+                .filter(x -> x.getTripCardId().equals(tongyeong)).findFirst().orElseThrow();
+        assertThat(t.getCityName()).isEqualTo("통영");
+        assertThat(t.getPoints()).containsExactlyInAnyOrder(
+                new double[]{34.8544, 128.4332}, new double[]{34.8402, 128.4181});
+    }
+
+    private void point(Long cardId, double lat, double lng, boolean place) {
+        if (place) {
+            TripCardPlaceEntity p = new TripCardPlaceEntity();
+            p.setTripCardId(cardId);
+            p.setPlaceName("장소");
+            p.setVisitedDate(LocalDate.now().minusDays(2));
+            p.setLatitude(lat);
+            p.setLongitude(lng);
+            em.persist(p);
+        } else {
+            TripCardPhotoEntity p = new TripCardPhotoEntity();
+            p.setTripCardId(cardId);
+            p.setImageUrl("/uploads/trip-card/" + lat + ".jpg");
+            p.setLatitude(lat);
+            p.setLongitude(lng);
+            em.persist(p);
+        }
+    }
+
+    private Long save(String userId, String regionCode, String cityName) {
+        return tripCardRepository.save(TripCardEntity.builder()
                 .userId(userId)
                 .title(cityName + " 여행")
                 .regionCode(regionCode)
@@ -63,6 +108,6 @@ class RegionMapServiceTest {
                 .endDate(LocalDate.now().minusDays(1))
                 .dateOver(true)
                 .createdAt(LocalDateTime.now())
-                .build());
+                .build()).getTripCardId();
     }
 }

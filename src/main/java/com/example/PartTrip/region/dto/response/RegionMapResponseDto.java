@@ -15,6 +15,17 @@ public class RegionMapResponseDto {
 
     private List<VisitedRegionResponseDto> visited;
 
+    private List<TripResponseDto> trips;
+
+    @Getter
+    @Builder
+    public static class TripResponseDto {
+        private Long tripCardId;
+        private String regionCode;
+        private String cityName;
+        private List<double[]> points;
+    }
+
     @Getter
     @Builder
     public static class VisitedRegionResponseDto {
