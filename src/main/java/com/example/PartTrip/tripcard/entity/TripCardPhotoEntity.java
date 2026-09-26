@@ -59,4 +59,19 @@ public class TripCardPhotoEntity {
 
     @Column(name = "sort_order")
     private Integer sortOrder;
+
+    // 지도에서 직접 고른 장소 이름. EXIF 좌표로 올라온 사진은 비어 있다.
+    // 좌표만 있으면 앱·웹이 "사진 촬영 위치" 로만 보여줘서 어디였는지 남지 않는다.
+    @Column(name = "place_name")
+    private String placeName;
+
+    // 좌표와 촬영 시각이 각각 어디서 왔는지. 비어 있으면 아직 값이 없다는 뜻이다.
+    // EXIF 면 잠그고, 비었거나 MANUAL 이면 기한 없이 다시 고를 수 있다 (Func-003-07).
+    @Enumerated(EnumType.STRING)
+    @Column(name = "location_source", length = 16)
+    private MetadataSource locationSource;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "taken_at_source", length = 16)
+    private MetadataSource takenAtSource;
 }

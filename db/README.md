@@ -12,6 +12,7 @@
 | `seed_countries.py` → `seed_countries.sql` | `country_info` (국가명 · 수도 · 지역 · 국기) | [mledoze/countries](https://github.com/mledoze/countries), [flagcdn.com](https://flagcdn.com) |
 | `backfill_coordinates.py` → `backfill_coordinates.sql` | `country_info.latitude/longitude` | mledoze/countries |
 | `seed_tour_places.py` → `seed_tour_places.sql` | `tour_place` (오사카 · 방콕 · 다낭 205곳) | [Overpass API](https://overpass-api.de) (OpenStreetMap, ODbL) |
+| `trip_card_photo_metadata_source.sql` | `trip_card_photo.location_source/taken_at_source/place_name` (#147) | 기존 값은 전부 EXIF 유래 |
 | `seed_festivals.sql` | `festival` (7개국 39건) | 직접 작성 |
 | `seed_festivals_public.py` → `seed_festivals_public.sql` | `festival` (51개국 281건) | [위키데이터](https://query.wikidata.org) (CC0), [Nager.Date](https://date.nager.at) |
 

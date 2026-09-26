@@ -2,6 +2,7 @@ package com.example.PartTrip.tripcard.controller;
 
 import com.example.PartTrip.tripcard.dto.request.DeleteTripCardsRequest;
 import com.example.PartTrip.tripcard.dto.request.UpdateEntryCommentRequest;
+import com.example.PartTrip.tripcard.dto.request.UpdateEntryMetadataRequest;
 import com.example.PartTrip.tripcard.dto.response.TripCardDetailResponse;
 import com.example.PartTrip.tripcard.dto.response.TripCardEntryResponse;
 import com.example.PartTrip.tripcard.dto.response.TripCardResponse;
@@ -15,9 +16,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
-// 여행 카드 (Func-003-02 ~ 05)
+// 여행 카드 (Func-003-02 ~ 05, 07)
 //
-// 경로는 명세서(API-003-02 · 03 · 04 · 05 · 07)를 따라 /api/travel-cards 다.
+// 경로는 명세서(API-003-02 · 03 · 04 · 05 · 07 · 08 · 09)를 따라 /api/travel-cards 다.
 // 테이블 이름(trip_card)과 다르지만, 앱이 명세서를 보고 붙기 때문에 명세서를 기준으로 둔다.
 @RestController
 @RequiredArgsConstructor
@@ -68,7 +69,22 @@ public class TripCardController {
         return tripCardEntryService.updateComment(cardId, entryId, request.getComment());
     }
 
-    // Func-003-07 사진 삭제
+    // Func-003-07 촬영 위치 직접 지정 (API-003-09)
+    //
+    // EXIF 가 지워진 사진은 타임라인에서 위치 없는 사진으로 남는다. 지도에서 고른
+    // 장소와 시각을 넣어 제자리로 보낸다. 코멘트 수정과 섞으면 위치만 고치려던
+    // 요청이 코멘트를 지우게 되어 경로를 따로 둔다.
+    @PatchMapping("/{cardId}/entries/{entryId}/metadata")
+    public TripCardEntryResponse updateEntryMetadata(
+            @PathVariable Long cardId,
+            @PathVariable Long entryId,
+            @Valid @RequestBody UpdateEntryMetadataRequest request
+    ) {
+        return tripCardEntryService.updateMetadata(cardId, entryId, request);
+    }
+
+    // Func-003-04 사진 삭제 — v4 에 사진 삭제만의 번호는 없다. 카드 작성에 딸린 동작이다.
+    // 예전 주석의 Func-003-07 은 촬영 위치 직접 지정(아래)과 번호가 겹쳤다.
     @DeleteMapping("/{cardId}/entries/{entryId}")
     public void deleteEntry(@PathVariable Long cardId, @PathVariable Long entryId) {
         tripCardEntryService.deleteEntry(cardId, entryId);

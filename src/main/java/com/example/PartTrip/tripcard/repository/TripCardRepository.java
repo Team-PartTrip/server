@@ -11,7 +11,7 @@ import java.util.Collection;
 
 public interface TripCardRepository extends JpaRepository<TripCardEntity, Long> {
 
-    // Func-003-01 "여행카드들을 시간순으로 조회"
+    // Func-003-02 "여행카드들을 시간순으로 조회"
     List<TripCardEntity> findByUserIdOrderByStartDateDesc(String userId);
 
     // 대한민국 지도 (#162). 방문 지역은 따로 저장하지 않고 카드를 시·도로 묶어 센다.
