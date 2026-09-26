@@ -88,7 +88,7 @@ public class KoreaFestivalImportService {
         String url = URL
                 // 인증키에 + / = 가 들어 있어 인코딩해 붙인다
                 + "?serviceKey=" + URLEncoder.encode(serviceKey, StandardCharsets.UTF_8)
-                + "&MobileOS=ETC&MobileApp=PartTrip&_type=json&arrange=A"
+                + "&MobileOS=ETC&MobileApp=Dandi&_type=json&arrange=A"
                 + "&numOfRows=" + PAGE_SIZE + "&pageNo=" + page
                 + "&eventStartDate=" + from.format(TOUR_DATE);
         return restClient.get().uri(URI.create(url)).retrieve().body(String.class);
