@@ -47,6 +47,8 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
         // 오늘 날짜로 타임라인에 꽂히고, 그 값이 진짜 촬영 시각인지 구분할 수 없게 된다.
         ExifMetadataUtil.ExifMetadata exif = ExifMetadataUtil.extract(imageFile).orElse(null);
         LocalDateTime takenAt = exif == null ? null : exif.takenAt();
+        // 파일을 올리기 전에 막는다. 저장한 뒤에 거절하면 쓰지도 않을 파일이 남는다.
+        requireWithinTripDates(tripCard, takenAt);
 
         TripCardPhotoEntity photo = new TripCardPhotoEntity();
         photo.setTripCardId(cardId);
@@ -112,7 +114,8 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
             throw new IllegalArgumentException("지정할 촬영 위치나 촬영 시각이 없습니다.");
         }
 
-        getOwnedCard(cardId);
+        TripCardEntity tripCard = getOwnedCard(cardId);
+        requireWithinTripDates(tripCard, takenAt);
         TripCardPhotoEntity photo = getCardPhoto(cardId, entryId);
 
         if (hasLocation) {
@@ -246,6 +249,24 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
             throw new IllegalArgumentException("해당 카드에 속한 사진 항목이 아닙니다.");
         }
         return photo;
+    }
+
+    // 여행 카드는 그 여행의 기록이다. 여행 기간 밖에 찍은 사진은 올릴 때도, 촬영 시각을
+    // 직접 넣을 때도 받지 않는다. 촬영 시각을 모르는 사진은 여기서 가릴 수 없으니 통과시킨다
+    // — 카카오톡으로 받은 사진이 이 경우라, 막으면 Func-003-07 이 통째로 의미가 없어진다.
+    private void requireWithinTripDates(TripCardEntity tripCard, LocalDateTime takenAt) {
+        if (!withinTripDates(tripCard.getStartDate(), tripCard.getEndDate(), takenAt)) {
+            throw new IllegalArgumentException("여행 기간(" + tripCard.getStartDate()
+                    + " ~ " + tripCard.getEndDate() + ") 에 찍은 사진만 넣을 수 있습니다.");
+        }
+    }
+
+    static boolean withinTripDates(LocalDate startDate, LocalDate endDate, LocalDateTime takenAt) {
+        if (takenAt == null) {
+            return true;
+        }
+        LocalDate date = takenAt.toLocalDate();
+        return !date.isBefore(startDate) && !date.isAfter(endDate);
     }
 
     /** 사진이 이미 들고 있던 EXIF 값은 고치지 못한다. 비어 있거나 직접 고른 값만 다시 고른다. */

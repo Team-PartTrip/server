@@ -15,6 +15,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -109,6 +110,42 @@ class TripCardEntryMetadataTest {
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
+    @Test
+    void 여행_기간_밖의_촬영_시각은_거부한다() {
+        // 사진을 읽기도 전에 걸러진다
+        given(currentUserProvider.getCurrentUserId()).willReturn("member");
+        given(tripCardRepository.findByTripCardIdAndUserId(1L, "member"))
+                .willReturn(Optional.of(closedCard()));
+
+        assertThatThrownBy(() -> service.updateMetadata(1L, 10L,
+                request(null, null, null, LocalDateTime.of(2019, 5, 1, 9, 0))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("여행 기간");
+    }
+
+    // 여행 카드는 그 여행의 기록이다. 올릴 때도, 직접 넣을 때도 같은 자를 쓴다.
+    @Test
+    void 여행_첫날과_마지막날은_기간_안이다() {
+        LocalDate start = LocalDate.of(2026, 8, 14);
+        LocalDate end = LocalDate.of(2026, 8, 17);
+
+        assertThat(TripCardEntryServiceImpl.withinTripDates(start, end,
+                LocalDateTime.of(2026, 8, 14, 0, 0))).isTrue();
+        assertThat(TripCardEntryServiceImpl.withinTripDates(start, end,
+                LocalDateTime.of(2026, 8, 17, 23, 59))).isTrue();
+        assertThat(TripCardEntryServiceImpl.withinTripDates(start, end,
+                LocalDateTime.of(2026, 8, 13, 23, 59))).isFalse();
+        assertThat(TripCardEntryServiceImpl.withinTripDates(start, end,
+                LocalDateTime.of(2026, 8, 18, 0, 0))).isFalse();
+    }
+
+    @Test
+    void 촬영_시각을_모르는_사진은_기간_검사를_통과한다() {
+        // 카카오톡으로 받은 사진이 이 경우다. 여기서 막으면 Func-003-07 자체가 쓸모없어진다.
+        assertThat(TripCardEntryServiceImpl.withinTripDates(
+                LocalDate.of(2026, 8, 14), LocalDate.of(2026, 8, 17), null)).isTrue();
+    }
+
     private UpdateEntryMetadataRequest request(Double latitude, Double longitude,
                                                String placeName, LocalDateTime takenAt) {
         UpdateEntryMetadataRequest request = new UpdateEntryMetadataRequest();
@@ -127,11 +164,13 @@ class TripCardEntryMetadataTest {
                 .willReturn(Optional.of(photo));
     }
 
-    /** 여행이 이미 끝난 카드. 다른 수정은 막히지만 촬영 정보 지정은 열려 있어야 한다. */
+    /** 2026-08-14 ~ 08-17 로 이미 끝난 카드. 다른 수정은 막히지만 촬영 정보 지정은 열려 있어야 한다. */
     private TripCardEntity closedCard() {
         return TripCardEntity.builder()
                 .tripCardId(1L)
                 .userId("member")
+                .startDate(LocalDate.of(2026, 8, 14))
+                .endDate(LocalDate.of(2026, 8, 17))
                 .dateOver(true)
                 .build();
     }
