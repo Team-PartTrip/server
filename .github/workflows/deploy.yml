@@ -1,0 +1,56 @@
+name: Deploy server
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-server
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      EC2_HOST: 3.35.125.108
+      EC2_USER: ubuntu
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Test
+        run: ./gradlew test
+
+      - name: Build jar
+        run: ./gradlew bootJar -x test
+
+      - name: Upload and restart
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          install -m 600 /dev/null key.pem
+          printf '%s\n' "$EC2_SSH_KEY" > key.pem
+          SSH="ssh -i key.pem -o StrictHostKeyChecking=accept-new"
+          scp -i key.pem -o StrictHostKeyChecking=accept-new build/libs/*SNAPSHOT.jar "$EC2_USER@$EC2_HOST:/opt/parttrip/app.jar"
+          $SSH "$EC2_USER@$EC2_HOST" 'sudo systemctl restart parttrip'
+          rm -f key.pem
+
+      - name: Check server is up
+        run: |
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' https://parttrip.duckdns.org/api/planners/blocks || true)
+            echo "try $i: $code"
+            if [ "$code" != "502" ] && [ "$code" != "000" ]; then exit 0; fi
+            sleep 5
+          done
+          echo "서버가 150초 안에 뜨지 않았다" && exit 1
