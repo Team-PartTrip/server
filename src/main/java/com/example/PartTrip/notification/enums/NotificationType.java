@@ -18,7 +18,10 @@ public enum NotificationType {
     /** @deprecated retained so existing EnumType.STRING rows remain readable. */
     @Deprecated
     PHOTO_ORGANIZED("사진 정리 완료", NotificationCategory.RECORD),
+    // 세계지도를 대한민국 지도로 바꿨다(#162). 이미 저장된 알림이 읽히도록 남긴다.
+    @Deprecated
     COUNTRY_ACQUIRED("국가 획득", NotificationCategory.RECORD),
+    REGION_VISITED("새 지역 방문", NotificationCategory.RECORD),
     TRIP_CARD_CREATED("여행카드 생성", NotificationCategory.RECORD);
 
     // 설정 화면 토글 이름. 서버가 내려주면 앱이 한글 문구를 따로 들고 있지 않아도 된다.

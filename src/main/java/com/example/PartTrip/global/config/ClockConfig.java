@@ -1,7 +1,7 @@
 package com.example.PartTrip.global.config;
 
+import com.example.PartTrip.PartTripApplication;
 import java.time.Clock;
-import java.time.ZoneId;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -10,6 +10,6 @@ import org.springframework.context.annotation.Configuration;
 public class ClockConfig {
     @Bean
     public Clock applicationClock() {
-        return Clock.system(ZoneId.of("Asia/Seoul"));
+        return Clock.system(PartTripApplication.ZONE);
     }
 }

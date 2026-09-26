@@ -1,5 +1,6 @@
 package com.example.PartTrip.planner.service;
 
+import com.example.PartTrip.region.enums.RegionCode;
 import com.example.PartTrip.planner.dto.response.PlannerTravelPlanResponseDto;
 import com.example.PartTrip.planner.dto.request.SavePlannerTravelPlanRequestDto;
 import com.example.PartTrip.planner.entity.GroupMemberEntity;
@@ -73,14 +74,14 @@ public class PlannerTravelPlanService {
             plan.setCreatedAt(LocalDateTime.now());
         }
 
-        plan.setCountryName(dto.getCountryName().trim());
+        plan.setRegionCode(RegionCode.of(dto.getRegionCode()).getCode());
         plan.setCityName(dto.getCityName().trim());
         plan.setStartDate(dto.getStartDate());
         plan.setEndDate(dto.getEndDate());
 
         if (dto.getCities() != null && !dto.getCities().isEmpty()) {
             // 첫 도시를 대표로 둔다. 도시 하나만 보던 기존 코드가 이걸 읽는다
-            plan.setCountryName(dto.getCities().get(0).getCountryName().trim());
+            plan.setRegionCode(RegionCode.of(dto.getCities().get(0).getRegionCode()).getCode());
             plan.setCityName(dto.getCities().get(0).getCityName().trim());
         }
 
@@ -93,7 +94,8 @@ public class PlannerTravelPlanService {
                 .title(savedPlan.getTravelTitle())
                 .memberCount(group.getHeadcount())
                 .isSolo(group.getHeadcount() == 1)
-                .countryName(savedPlan.getCountryName())
+                .regionCode(savedPlan.getRegionCode())
+                .regionName(RegionCode.nameOf(savedPlan.getRegionCode()))
                 .cityName(savedPlan.getCityName())
                 .startDate(savedPlan.getStartDate())
                 .endDate(savedPlan.getEndDate())

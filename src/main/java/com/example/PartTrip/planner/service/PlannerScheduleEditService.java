@@ -101,10 +101,10 @@ public class PlannerScheduleEditService {
                 .filter(Objects::nonNull).collect(Collectors.toSet());
         String q = query.strip().toLowerCase(Locale.ROOT);
         List<TourPlaceEntity> candidates = new ArrayList<>();
-        if (regions.isEmpty()) candidates.addAll(places.search(plan.getCountryName(), plan.getCityName(), null));
+        if (regions.isEmpty()) candidates.addAll(places.search(PlannerDraftService.KOREA, plan.getCityName(), null));
         else for (PlannerCityEntity region : regions) {
             if (!date.isBefore(region.getStartDate()) && !date.isAfter(region.getEndDate())) {
-                candidates.addAll(places.search(region.getCountryName(), region.getCityName(), null));
+                candidates.addAll(places.search(PlannerDraftService.KOREA, region.getCityName(), null));
             }
         }
         Set<Long> seen = new HashSet<>();
@@ -127,9 +127,9 @@ public class PlannerScheduleEditService {
 
     /** 여러 도시 일정에서는 해당 날짜에 체류하는 도시만 허용한다. */
     private boolean inRegion(TourPlaceEntity place, GroupTravelPlanEntity plan, List<PlannerCityEntity> regions, LocalDate date) {
-        if (regions.isEmpty()) return Objects.equals(place.getCountryName(), plan.getCountryName())
-                && Objects.equals(place.getCityName(), plan.getCityName());
+        // 국내 여행만 다루므로 나라는 늘 같다. 도시만 맞춘다 (#162)
+        if (regions.isEmpty()) return Objects.equals(place.getCityName(), plan.getCityName());
         return regions.stream().anyMatch(c -> !date.isBefore(c.getStartDate()) && !date.isAfter(c.getEndDate())
-                && Objects.equals(place.getCountryName(), c.getCountryName()) && Objects.equals(place.getCityName(), c.getCityName()));
+                && Objects.equals(place.getCityName(), c.getCityName()));
     }
 }

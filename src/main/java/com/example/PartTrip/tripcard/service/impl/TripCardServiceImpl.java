@@ -98,6 +98,9 @@ public class TripCardServiceImpl implements TripCardService {
                 .filter(Objects::nonNull)
                 .toList();
 
+        // 외래키 연쇄 삭제가 없어서 사진 · 장소 행을 먼저 지운다 (#187)
+        tripCardPhotoRepository.deleteByTripCardIdIn(cardIds);
+        tripCardPlaceRepository.deleteByTripCardIdIn(cardIds);
         tripCardRepository.deleteAllById(cardIds);
 
         // 파일 삭제는 커밋이 끝난 뒤에 한다.

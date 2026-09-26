@@ -182,7 +182,7 @@ class TravelPlanServiceTest {
     ) {
         GroupTravelPlanEntity plan = new GroupTravelPlanEntity();
         plan.setGroupId(groupId);
-        plan.setCountryName("나라");
+        plan.setRegionCode("51");
         plan.setCityName(cityName);
         plan.setStartDate(startDate);
         plan.setEndDate(endDate);

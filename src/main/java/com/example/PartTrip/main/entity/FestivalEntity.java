@@ -49,4 +49,12 @@ public class FestivalEntity {
     // 축제 이미지 URL. 확보한 이미지가 없으면 비워둔다
     @Column(length = 1000)
     private String imageUrl;
+
+    // 끝나는 날 'yyyy-MM-dd'. 해외 시드 데이터는 없다
+    @Column
+    private String endDate;
+
+    // 관광공사 TourAPI 의 contentid. 다시 받을 때 같은 축제를 덮어쓴다
+    @Column(unique = true, length = 20)
+    private String sourceId;
 }

@@ -43,39 +43,39 @@ class PlannerScheduleServiceTest {
     @Test
     void 다중_도시의_날짜_구간을_섞지_않는다() {
         GroupTravelPlanEntity plan = plan();
-        PlannerCityEntity osaka = city("일본", "오사카",
+        PlannerCityEntity gangneung = city("대한민국", "강릉",
                 LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 2));
-        PlannerCityEntity kyoto = city("일본", "교토",
+        PlannerCityEntity gyeongju = city("대한민국", "경주",
                 LocalDate.of(2026, 10, 3), LocalDate.of(2026, 10, 4));
-        TourPlaceEntity osakaPlace = place(1L, "일본", "오사카", "오사카성", 4.5, 34.6873, 135.5262);
-        TourPlaceEntity kyotoPlace = place(2L, "일본", "교토", "청수사", 4.7, 34.9949, 135.7850);
+        TourPlaceEntity gangneungPlace = place(1L, "대한민국", "강릉", "경포대", 4.5, 34.6873, 135.5262);
+        TourPlaceEntity gyeongjuPlace = place(2L, "대한민국", "경주", "불국사", 4.7, 34.9949, 135.7850);
 
         given(plannerCityRepository.findByPlanIdOrderBySeqAsc(10L))
-                .willReturn(List.of(osaka, kyoto));
+                .willReturn(List.of(gangneung, gyeongju));
         given(tourPlaceRepository.findAllById(any()))
-                .willReturn(List.of(osakaPlace, kyotoPlace));
-        given(tourPlaceRepository.search("일본", "오사카", null)).willReturn(List.of(osakaPlace));
-        given(tourPlaceRepository.search("일본", "교토", null)).willReturn(List.of(kyotoPlace));
+                .willReturn(List.of(gangneungPlace, gyeongjuPlace));
+        given(tourPlaceRepository.search("대한민국", "강릉", null)).willReturn(List.of(gangneungPlace));
+        given(tourPlaceRepository.search("대한민국", "경주", null)).willReturn(List.of(gyeongjuPlace));
 
         List<PlannerScheduleService.ScheduledPlace> result = plannerScheduleService
                 .buildSchedule(plan, List.of(confirmed(1L), confirmed(2L)), "owner");
 
-        assertThat(result).filteredOn(item -> item.tourPlace().getCityName().equals("오사카"))
+        assertThat(result).filteredOn(item -> item.tourPlace().getCityName().equals("강릉"))
                 .allMatch(item -> !item.date().isAfter(LocalDate.of(2026, 10, 2)));
-        assertThat(result).filteredOn(item -> item.tourPlace().getCityName().equals("교토"))
+        assertThat(result).filteredOn(item -> item.tourPlace().getCityName().equals("경주"))
                 .allMatch(item -> !item.date().isBefore(LocalDate.of(2026, 10, 3)));
     }
 
     @Test
     void 장소가_부족하면_같은_도시의_평점_높은_장소로_채운다() {
         GroupTravelPlanEntity plan = plan();
-        TourPlaceEntity confirmed = place(1L, "일본", "오사카", "오사카성", 4.3, 34.68, 135.52);
-        TourPlaceEntity first = place(2L, "일본", "오사카", "도톤보리", 4.9, 34.67, 135.50);
-        TourPlaceEntity second = place(3L, "일본", "오사카", "우메다", 4.8, 34.70, 135.49);
+        TourPlaceEntity confirmed = place(1L, "대한민국", "강릉", "경포대", 4.3, 34.68, 135.52);
+        TourPlaceEntity first = place(2L, "대한민국", "강릉", "안목해변", 4.9, 34.67, 135.50);
+        TourPlaceEntity second = place(3L, "대한민국", "강릉", "오죽헌", 4.8, 34.70, 135.49);
 
         given(plannerCityRepository.findByPlanIdOrderBySeqAsc(10L)).willReturn(List.of());
         given(tourPlaceRepository.findAllById(any())).willReturn(List.of(confirmed));
-        given(tourPlaceRepository.search("일본", "오사카", null))
+        given(tourPlaceRepository.search("대한민국", "강릉", null))
                 .willReturn(List.of(first, second, confirmed));
 
         List<PlannerScheduleService.ScheduledPlace> result = plannerScheduleService
@@ -88,12 +88,12 @@ class PlannerScheduleServiceTest {
     @Test
     void 가까운_장소끼리_같은_날에_묶고_하루_안에서는_평점순이다() {
         GroupTravelPlanEntity plan = plan();
-        TourPlaceEntity a = place(1L, "일본", "오사카", "A", 4.0, 34.00, 135.00);
-        TourPlaceEntity b = place(2L, "일본", "오사카", "B", 4.9, 34.01, 135.01);
-        TourPlaceEntity c = place(3L, "일본", "오사카", "C", 4.2, 35.00, 136.00);
-        TourPlaceEntity d = place(4L, "일본", "오사카", "D", 4.8, 35.01, 136.01);
-        TourPlaceEntity e = place(5L, "일본", "오사카", "E", 4.1, 35.02, 136.02);
-        TourPlaceEntity f = place(6L, "일본", "오사카", "F", 4.7, 34.02, 135.02);
+        TourPlaceEntity a = place(1L, "대한민국", "강릉", "A", 4.0, 34.00, 135.00);
+        TourPlaceEntity b = place(2L, "대한민국", "강릉", "B", 4.9, 34.01, 135.01);
+        TourPlaceEntity c = place(3L, "대한민국", "강릉", "C", 4.2, 35.00, 136.00);
+        TourPlaceEntity d = place(4L, "대한민국", "강릉", "D", 4.8, 35.01, 136.01);
+        TourPlaceEntity e = place(5L, "대한민국", "강릉", "E", 4.1, 35.02, 136.02);
+        TourPlaceEntity f = place(6L, "대한민국", "강릉", "F", 4.7, 34.02, 135.02);
         List<TourPlaceEntity> all = List.of(a, b, c, d, e, f);
 
         given(plannerCityRepository.findByPlanIdOrderBySeqAsc(10L)).willReturn(List.of());
@@ -119,14 +119,14 @@ class PlannerScheduleServiceTest {
     @Test
     void 숙소가_여러_곳이어도_평점이_가장_높은_한_곳을_매일_사용한다() {
         GroupTravelPlanEntity plan = plan();
-        TourPlaceEntity first = place(1L, "일본", "오사카", "호텔 A", 4.9, 34.68, 135.52);
+        TourPlaceEntity first = place(1L, "대한민국", "강릉", "호텔 A", 4.9, 34.68, 135.52);
         first.setCategory(TourPlaceCategory.ACCOMMODATION);
-        TourPlaceEntity second = place(2L, "일본", "오사카", "호텔 B", 4.5, 34.69, 135.53);
+        TourPlaceEntity second = place(2L, "대한민국", "강릉", "호텔 B", 4.5, 34.69, 135.53);
         second.setCategory(TourPlaceCategory.ACCOMMODATION);
 
         given(plannerCityRepository.findByPlanIdOrderBySeqAsc(10L)).willReturn(List.of());
         given(tourPlaceRepository.findAllById(any())).willReturn(List.of(first, second));
-        given(tourPlaceRepository.search("일본", "오사카", null))
+        given(tourPlaceRepository.search("대한민국", "강릉", null))
                 .willReturn(List.of(first, second));
 
         List<PlannerScheduleService.ScheduledPlace> result = plannerScheduleService
@@ -141,16 +141,16 @@ class PlannerScheduleServiceTest {
     @Test
     void 같은_도시_구간이_반복되어도_확정_장소를_중복_배치하지_않는다() {
         GroupTravelPlanEntity plan = plan();
-        PlannerCityEntity firstSegment = city("일본", "오사카",
+        PlannerCityEntity firstSegment = city("대한민국", "강릉",
                 LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 1));
-        PlannerCityEntity secondSegment = city("일본", "오사카",
+        PlannerCityEntity secondSegment = city("대한민국", "강릉",
                 LocalDate.of(2026, 10, 2), LocalDate.of(2026, 10, 2));
-        TourPlaceEntity confirmed = place(1L, "일본", "오사카", "오사카성", 4.8, 34.68, 135.52);
+        TourPlaceEntity confirmed = place(1L, "대한민국", "강릉", "경포대", 4.8, 34.68, 135.52);
 
         given(plannerCityRepository.findByPlanIdOrderBySeqAsc(10L))
                 .willReturn(List.of(firstSegment, secondSegment));
         given(tourPlaceRepository.findAllById(any())).willReturn(List.of(confirmed));
-        given(tourPlaceRepository.search("일본", "오사카", null)).willReturn(List.of(confirmed));
+        given(tourPlaceRepository.search("대한민국", "강릉", null)).willReturn(List.of(confirmed));
 
         List<PlannerScheduleService.ScheduledPlace> result = plannerScheduleService
                 .buildSchedule(plan, List.of(confirmed(1L)), "owner");
@@ -162,21 +162,21 @@ class PlannerScheduleServiceTest {
     @Test
     void 같은_도시를_다시_방문하면_일반_장소는_중복하지_않고_숙소는_다시_배치한다() {
         GroupTravelPlanEntity plan = plan();
-        PlannerCityEntity firstSegment = city("일본", "오사카",
+        PlannerCityEntity firstSegment = city("대한민국", "강릉",
                 LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 1));
-        PlannerCityEntity secondSegment = city("일본", "오사카",
+        PlannerCityEntity secondSegment = city("대한민국", "강릉",
                 LocalDate.of(2026, 10, 2), LocalDate.of(2026, 10, 2));
         TourPlaceEntity attraction = place(
-                1L, "일본", "오사카", "오사카성", 4.8, 34.68, 135.52);
+                1L, "대한민국", "강릉", "경포대", 4.8, 34.68, 135.52);
         TourPlaceEntity accommodation = place(
-                2L, "일본", "오사카", "오사카 호텔", 4.7, 34.69, 135.53);
+                2L, "대한민국", "강릉", "오사카 호텔", 4.7, 34.69, 135.53);
         accommodation.setCategory(TourPlaceCategory.ACCOMMODATION);
 
         given(plannerCityRepository.findByPlanIdOrderBySeqAsc(10L))
                 .willReturn(List.of(firstSegment, secondSegment));
         given(tourPlaceRepository.findAllById(any()))
                 .willReturn(List.of(attraction, accommodation));
-        given(tourPlaceRepository.search("일본", "오사카", null))
+        given(tourPlaceRepository.search("대한민국", "강릉", null))
                 .willReturn(List.of(attraction, accommodation));
 
         List<PlannerScheduleService.ScheduledPlace> result = plannerScheduleService
@@ -196,19 +196,19 @@ class PlannerScheduleServiceTest {
         GroupTravelPlanEntity plan = plan();
         plan.setEndDate(plan.getStartDate());
         TourPlaceEntity confirmed = place(
-                1L, "일본", "오사카", "오사카성", 4.8, 34.68, 135.52);
+                1L, "대한민국", "강릉", "경포대", 4.8, 34.68, 135.52);
         TourPlaceEntity second = place(
-                2L, "일본", "오사카", "도톤보리", 4.7, 34.67, 135.50);
+                2L, "대한민국", "강릉", "안목해변", 4.7, 34.67, 135.50);
         TourPlaceEntity third = place(
-                3L, "일본", "오사카", "우메다", 4.6, 34.70, 135.49);
+                3L, "대한민국", "강릉", "오죽헌", 4.6, 34.70, 135.49);
         TourPlaceEntity fourth = place(
-                4L, "일본", "오사카", "해유관", 4.5, 34.65, 135.43);
+                4L, "대한민국", "강릉", "해유관", 4.5, 34.65, 135.43);
         given(travelPreferenceService.getPreference("owner"))
                 .willReturn(new TravelPreferenceResponseDto(
                         PreferredTransport.WALKING, 4, true));
         given(plannerCityRepository.findByPlanIdOrderBySeqAsc(10L)).willReturn(List.of());
         given(tourPlaceRepository.findAllById(any())).willReturn(List.of(confirmed));
-        given(tourPlaceRepository.search("일본", "오사카", null))
+        given(tourPlaceRepository.search("대한민국", "강릉", null))
                 .willReturn(List.of(confirmed, second, third, fourth));
 
         List<PlannerScheduleService.ScheduledPlace> result = plannerScheduleService
@@ -220,8 +220,8 @@ class PlannerScheduleServiceTest {
     private GroupTravelPlanEntity plan() {
         GroupTravelPlanEntity plan = new GroupTravelPlanEntity();
         plan.setPlanId(10L);
-        plan.setCountryName("일본");
-        plan.setCityName("오사카");
+        plan.setRegionCode("51");
+        plan.setCityName("강릉");
         plan.setStartDate(LocalDate.of(2026, 10, 1));
         plan.setEndDate(LocalDate.of(2026, 10, 2));
         return plan;
@@ -229,7 +229,7 @@ class PlannerScheduleServiceTest {
 
     private PlannerCityEntity city(String country, String city, LocalDate start, LocalDate end) {
         PlannerCityEntity entity = new PlannerCityEntity();
-        entity.setCountryName(country);
+        entity.setRegionCode("51");
         entity.setCityName(city);
         entity.setStartDate(start);
         entity.setEndDate(end);

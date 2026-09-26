@@ -22,9 +22,8 @@ public class SavePlannerTravelPlanRequestDto {
 
     private Boolean isSolo;
 
-    @NotBlank(message = "여행 국가를 입력해주세요.")
-    @Size(max = 100, message = "국가 이름은 100자를 넘을 수 없습니다.")
-    private String countryName;
+    @NotBlank(message = "여행할 시·도를 선택해주세요.")
+    private String regionCode;
 
     @NotBlank(message = "여행 도시를 입력해주세요.")
     @Size(max = 100, message = "도시 이름은 100자를 넘을 수 없습니다.")
@@ -39,7 +38,7 @@ public class SavePlannerTravelPlanRequestDto {
     /**
      * 도는 도시들. 도시마다 며칠씩인지 그룹장이 정한다.
      *
-     * 비워두면 countryName / cityName 한 곳만 쓰는 여행이 된다.
+     * 비워두면 regionCode / cityName 한 곳만 쓰는 여행이 된다.
      * 채우면 첫 도시가 대표 도시로 들어간다.
      */
     @Valid

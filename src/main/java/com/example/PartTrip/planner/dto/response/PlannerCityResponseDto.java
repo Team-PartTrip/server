@@ -10,7 +10,8 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class PlannerCityResponseDto {
 
-    private String countryName;
+    private String regionCode;
+    private String regionName;
     private String cityName;
     private LocalDate startDate;
     private LocalDate endDate;

@@ -12,8 +12,8 @@ import java.time.LocalDate;
 @Setter
 public class PlannerCityRequestDto {
 
-    @NotBlank(message = "나라를 입력해주세요.")
-    private String countryName;
+    @NotBlank(message = "시·도를 선택해주세요.")
+    private String regionCode;
 
     @NotBlank(message = "도시를 입력해주세요.")
     private String cityName;

@@ -110,7 +110,7 @@ public class CitySearchService {
             String matched = knownName(city.getCityName(), known);
             fixed.add(matched == null
                     ? city
-                    : new CitySearchResponseDto(matched, city.getCountryName()));
+                    : new CitySearchResponseDto(matched, city.getCountryName(), city.getRegionName()));
         }
         return fixed;
     }
@@ -146,13 +146,19 @@ public class CitySearchService {
             // 한국어로 받으면 secondaryText 가 "일본 오사카부" 처럼 나라부터 온다.
             // 콤마도 없다. 요청한 나라를 먼저 쓰고, 없을 때만 첫 조각을 쓴다.
             String secondary = format.path("secondaryText").path("text").asText("");
-            cities.add(new CitySearchResponseDto(city, country(secondary, countryName)));
+            cities.add(new CitySearchResponseDto(
+                    city, country(secondary, countryName), region(secondary)));
 
             if (cities.size() == MAX_RESULTS) {
                 break;
             }
         }
         return cities;
+    }
+
+    private String region(String secondary) {
+        String[] parts = secondary.trim().split("[\\s,]+");
+        return parts.length > 1 ? parts[1] : null;
     }
 
     private String country(String secondary, String fallback) {

@@ -4,6 +4,7 @@ import com.example.PartTrip.main.dto.DdayResponseDto;
 import com.example.PartTrip.main.dto.TripPhase;
 import com.example.PartTrip.planner.service.PlannerDraftService;
 import com.example.PartTrip.planner.entity.GroupMemberEntity;
+import com.example.PartTrip.region.enums.RegionCode;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
 import com.example.PartTrip.planner.entity.TravelGroupEntity;
 import com.example.PartTrip.planner.repository.GroupMemberRepository;
@@ -75,7 +76,7 @@ public class TravelPlanService {
                 .orElse(null);
 
         DdayResponseDto response = toDdayResponseDto(
-                nearest.getCountryName(),
+                RegionCode.nameOf(nearest.getRegionCode()),
                 nearest.getCityName(),
                 nearest.getStartDate(),
                 nearest.getEndDate(),
@@ -100,7 +101,7 @@ public class TravelPlanService {
 
     // 여행 정보 -> DdayResponseDto 변환
     private DdayResponseDto toDdayResponseDto(
-            String countryName,
+            String regionName,
             String cityName,
             LocalDate startDate,
             LocalDate endDate,
@@ -129,7 +130,7 @@ public class TravelPlanService {
         }
 
         return new DdayResponseDto(
-                countryName,
+                regionName,
                 cityName,
                 startDate,
                 endDate,

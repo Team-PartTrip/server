@@ -9,7 +9,7 @@ import com.example.PartTrip.planner.dto.response.PlannerScheduleResponseDto;
 @Getter
 public class DdayResponseDto {
 
-    private String countryName;
+    private String regionName;
 
     private String cityName;
 
@@ -26,9 +26,9 @@ public class DdayResponseDto {
     /** 여행 중인 날의 카드. 일정이 없거나 여행 중이 아니면 빈 목록이다. */
     private List<PlannerScheduleResponseDto.Slot> todaySchedule = List.of();
 
-    public DdayResponseDto(String countryName, String cityName, LocalDate startDate,
+    public DdayResponseDto(String regionName, String cityName, LocalDate startDate,
             LocalDate endDate, Integer headcount, String dday, TripPhase status) {
-        this.countryName = countryName;
+        this.regionName = regionName;
         this.cityName = cityName;
         this.startDate = startDate;
         this.endDate = endDate;
