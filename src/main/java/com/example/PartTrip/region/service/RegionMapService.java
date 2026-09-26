@@ -2,13 +2,19 @@ package com.example.PartTrip.region.service;
 
 import com.example.PartTrip.region.dto.response.RegionMapResponseDto;
 import com.example.PartTrip.region.enums.RegionCode;
+import com.example.PartTrip.tripcard.entity.TripCardEntity;
 import com.example.PartTrip.tripcard.repository.TripCardRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Stream;
 
 /**
  * 대한민국 지도 — 내가 다녀온 시·도 (#162)
@@ -41,6 +47,39 @@ public class RegionMapService {
         return RegionMapResponseDto.builder()
                 .totalRegions(RegionCode.values().length)
                 .visited(visited)
+                .trips(trips(userId))
                 .build();
+    }
+
+    private List<RegionMapResponseDto.TripResponseDto> trips(String userId) {
+        List<TripCardEntity> cards = tripCardRepository.findByUserIdAndRegionCodeIsNotNull(userId).stream()
+                .filter(c -> RegionCode.exists(c.getRegionCode()))
+                .toList();
+        if (cards.isEmpty()) {
+            return List.of();
+        }
+        List<Long> ids = cards.stream().map(TripCardEntity::getTripCardId).toList();
+
+        // 소수 넷째 자리(약 10m)에서 같은 곳이면 한 점으로 본다
+        Map<Long, Set<List<Double>>> points = new LinkedHashMap<>();
+        Stream.concat(tripCardRepository.findPlacePoints(ids).stream(),
+                        tripCardRepository.findPhotoPoints(ids).stream())
+                .forEach(p -> points.computeIfAbsent(p.getTripCardId(), k -> new LinkedHashSet<>())
+                        .add(List.of(round(p.getLatitude()), round(p.getLongitude()))));
+
+        return cards.stream()
+                .map(c -> RegionMapResponseDto.TripResponseDto.builder()
+                        .tripCardId(c.getTripCardId())
+                        .regionCode(c.getRegionCode())
+                        .cityName(c.getCityName())
+                        .points(points.getOrDefault(c.getTripCardId(), Set.of()).stream()
+                                .map(xy -> new double[]{xy.get(0), xy.get(1)})
+                                .toList())
+                        .build())
+                .toList();
+    }
+
+    private static double round(double v) {
+        return Math.round(v * 10_000) / 10_000.0;
     }
 }
