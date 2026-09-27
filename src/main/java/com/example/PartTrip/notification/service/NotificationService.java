@@ -4,7 +4,6 @@ import com.example.PartTrip.notification.dto.NotificationPageResponseDto;
 import com.example.PartTrip.notification.dto.NotificationResponseDto;
 import com.example.PartTrip.notification.entity.NotificationEntity;
 import com.example.PartTrip.notification.enums.NotificationCategory;
-import com.example.PartTrip.notification.enums.NotificationType;
 import com.example.PartTrip.notification.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -14,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor

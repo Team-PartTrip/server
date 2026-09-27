@@ -41,6 +41,11 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
     // 방문 기록을 따로 저장하지 않으므로 알림 자체가 그 기록이다.
     boolean existsByUserIdAndTypeAndLinkId(String userId, NotificationType type, Long linkId);
 
+    // "오늘 일정" 은 같은 플래너로 매일 나가므로 linkId 만으로는 중복을 가릴 수 없다.
+    // 오늘 이미 보냈는지를 본다 (배포로 스케줄러가 두 번 도는 경우)
+    boolean existsByUserIdAndTypeAndLinkIdAndCreatedAtAfter(
+            String userId, NotificationType type, Long linkId, LocalDateTime createdAt);
+
     @Modifying(clearAutomatically = true)
     @Query("""
             UPDATE NotificationEntity n
