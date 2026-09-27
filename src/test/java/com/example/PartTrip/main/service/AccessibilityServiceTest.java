@@ -49,4 +49,10 @@ class AccessibilityServiceTest {
                 .extracting(i -> i.key() + ":" + i.text())
                 .containsExactly("RESTROOM:장애인 화장실 있음(1층)", "PARKING:장애인 주차구역 있음");
     }
+
+    @Test
+    void 이름으로_찾은_장소의_거리를_직접_잰다() {
+        double m = AccessibilityService.meters(35.2303279, 128.6615089, 35.2302537352, 128.6617775588);
+        assertThat(m).isBetween(20.0, 30.0);
+    }
 }
