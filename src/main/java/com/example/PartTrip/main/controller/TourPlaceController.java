@@ -1,7 +1,9 @@
 package com.example.PartTrip.main.controller;
 
+import com.example.PartTrip.main.dto.AccessibilityResponseDto;
 import com.example.PartTrip.main.dto.MoreTourPlacesResponseDto;
 import com.example.PartTrip.main.dto.TourPlaceResponseDto;
+import com.example.PartTrip.main.service.AccessibilityService;
 import com.example.PartTrip.main.service.TourPlacePhotoService;
 import com.example.PartTrip.main.service.TourPlaceService;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ public class TourPlaceController {
 
     private final TourPlaceService tourPlaceService;
     private final TourPlacePhotoService tourPlacePhotoService;
+    private final AccessibilityService accessibilityService;
 
     // 관광지 조회
     // 예) /api/main/tour-place?countryName=일본&cityName=오사카&category=맛집
@@ -42,6 +45,12 @@ public class TourPlaceController {
             @RequestParam(required = false) String cursor
     ) {
         return tourPlaceService.getMoreTourPlace(countryName, cityName, category, cursor);
+    }
+
+    // 장소 무장애 정보. 공공데이터에 없는 장소는 matched=false 로 온다
+    @GetMapping("/tour-place/{tourPlaceId}/accessibility")
+    public AccessibilityResponseDto getAccessibility(@PathVariable Long tourPlaceId) {
+        return accessibilityService.get(tourPlaceId);
     }
 
     @GetMapping("/tour-place/{tourPlaceId}/photo")
