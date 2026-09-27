@@ -46,8 +46,8 @@ class NotificationSchedulerTest {
         given(planRepository.findConfirmedStartingOn(any())).willReturn(List.of(plan()));
         given(groupMemberRepository.findByGroupIdOrderByJoinedAtAsc(7L))
                 .willReturn(List.of(member("할머니"), member("손주")));
-        given(notificationRepository.existsByUserIdAndTypeAndLinkId(
-                anyString(), eq(NotificationType.TRIP_DAY_BEFORE), eq(7L))).willReturn(false);
+        given(notificationRepository.existsByUserIdAndTypeAndLinkIdAndCreatedAtAfter(
+                anyString(), eq(NotificationType.TRIP_DAY_BEFORE), eq(7L), any())).willReturn(false);
 
         scheduler.notifyTripDayBefore();
 
@@ -66,10 +66,10 @@ class NotificationSchedulerTest {
         given(planRepository.findConfirmedStartingOn(any())).willReturn(List.of(plan()));
         given(groupMemberRepository.findByGroupIdOrderByJoinedAtAsc(7L))
                 .willReturn(List.of(member("할머니"), member("손주")));
-        given(notificationRepository.existsByUserIdAndTypeAndLinkId(
-                "할머니", NotificationType.TRIP_DAY_BEFORE, 7L)).willReturn(true);
-        given(notificationRepository.existsByUserIdAndTypeAndLinkId(
-                "손주", NotificationType.TRIP_DAY_BEFORE, 7L)).willReturn(false);
+        given(notificationRepository.existsByUserIdAndTypeAndLinkIdAndCreatedAtAfter(
+                eq("할머니"), eq(NotificationType.TRIP_DAY_BEFORE), eq(7L), any())).willReturn(true);
+        given(notificationRepository.existsByUserIdAndTypeAndLinkIdAndCreatedAtAfter(
+                eq("손주"), eq(NotificationType.TRIP_DAY_BEFORE), eq(7L), any())).willReturn(false);
 
         scheduler.notifyTripDayBefore();
 
@@ -83,8 +83,8 @@ class NotificationSchedulerTest {
         given(planRepository.findConfirmedStartingOn(any())).willReturn(List.of(plan()));
         given(groupMemberRepository.findByGroupIdOrderByJoinedAtAsc(7L))
                 .willReturn(List.of(member("할머니")));
-        given(notificationRepository.existsByUserIdAndTypeAndLinkId(
-                anyString(), any(), any())).willReturn(true);
+        given(notificationRepository.existsByUserIdAndTypeAndLinkIdAndCreatedAtAfter(
+                anyString(), any(), any(), any())).willReturn(true);
 
         scheduler.notifyTripDayBefore();
 
@@ -134,6 +134,25 @@ class NotificationSchedulerTest {
         verify(notificationWriter, never()).writeAll(any(), any(), any(), any(), any(), any());
     }
 
+    // linkId 가 groupId 라, 한 번이라도 받았는지로 가리면 같은 그룹의 다음 여행을
+    // 영영 못 받는다. 그래서 "오늘 받았는지" 로 본다
+    @Test
+    void 같은_그룹이_예전에_받았어도_오늘_안_받았으면_보낸다() {
+
+        given(planRepository.findConfirmedStartingOn(any())).willReturn(List.of(plan()));
+        given(groupMemberRepository.findByGroupIdOrderByJoinedAtAsc(7L))
+                .willReturn(List.of(member("할머니")));
+        // 지난 여행 때 받은 알림은 오늘 것이 아니므로 막지 않는다
+        given(notificationRepository.existsByUserIdAndTypeAndLinkIdAndCreatedAtAfter(
+                eq("할머니"), eq(NotificationType.TRIP_DAY_BEFORE), eq(7L), any()))
+                .willReturn(false);
+
+        scheduler.notifyTripDayBefore();
+
+        verify(notificationWriter).writeAll(
+                eq(List.of("할머니")), any(), anyString(), anyString(), anyString(), eq(7L));
+    }
+
     // 일정을 아직 안 짠 플래너에 빈 알림을 보내면 열어 보고 허탕만 친다
     @Test
     void 오늘_갈_곳이_없으면_오늘_일정을_보내지_않는다() {
@@ -160,8 +179,8 @@ class NotificationSchedulerTest {
                 .willThrow(new RuntimeException("조회 실패"));
         given(groupMemberRepository.findByGroupIdOrderByJoinedAtAsc(7L))
                 .willReturn(List.of(member("손주")));
-        given(notificationRepository.existsByUserIdAndTypeAndLinkId(
-                anyString(), any(), any())).willReturn(false);
+        given(notificationRepository.existsByUserIdAndTypeAndLinkIdAndCreatedAtAfter(
+                anyString(), any(), any(), any())).willReturn(false);
 
         scheduler.notifyTripDayBefore();
 

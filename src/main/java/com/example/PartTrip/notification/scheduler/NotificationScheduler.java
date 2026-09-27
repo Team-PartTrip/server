@@ -17,6 +17,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -27,6 +28,14 @@ import java.util.stream.Collectors;
 // 다른 알림은 누가 무엇을 해서 생기므로 이벤트 → 리스너로 만든다. 이 둘은
 // 아무도 아무것도 하지 않아도 날짜가 되면 생겨야 해서 해 줄 사람이 없다.
 // 그래서 TripCardScheduler 처럼 스케줄러가 맡는다.
+//
+// 한 번이 아니라 매시 돈다. develop 에 머지하면 바로 자동 배포되어(#203) 서버가
+// 20초쯤 재시작하는데, 그 순간이 발송 시각이면 그날 알림이 통째로 빠지기 때문이다.
+// recipientsOf 가 "오늘 이미 받았는지" 로 가려서 여러 번 돌아도 하루 한 번만 나간다.
+// 덤으로, 발송 시각이 지난 뒤에 확정한 플래너도 다음 시각에 받는다.
+//
+// 뜰 때 한 번 따라잡는(ApplicationReadyEvent) 방법은 쓰지 않았다. src/test/resources
+// 가 없어 테스트가 운영 DB 로 붙으므로, 그러면 ./gradlew test 가 진짜 알림을 보낸다.
 //
 // 보내는 시각을 프로퍼티로 뺀 것은 시연에서 짧게 돌리기 위해서다.
 @Slf4j
@@ -45,16 +54,14 @@ public class NotificationScheduler {
     private static final int PLACES_IN_BODY = 3;
 
     /** 내일 떠나는 사람에게 (Func-004-01 "여행 하루 전") */
-    @Scheduled(cron = "${part-trip.notification.trip-day-before-cron:0 0 9 * * *}")
+    @Scheduled(cron = "${part-trip.notification.trip-day-before-cron:0 0 9-21 * * *}")
     public void notifyTripDayBefore() {
 
         LocalDate tomorrow = LocalDate.now().plusDays(1);
 
         for (GroupTravelPlanEntity plan : planRepository.findConfirmedStartingOn(tomorrow)) {
             try {
-                // 플래너 하나당 한 번이라 linkId 만으로 중복이 가려진다
-                List<String> recipients = recipientsOf(
-                        plan, NotificationType.TRIP_DAY_BEFORE, null);
+                List<String> recipients = recipientsOf(plan, NotificationType.TRIP_DAY_BEFORE);
                 if (recipients.isEmpty()) {
                     continue;
                 }
@@ -77,7 +84,7 @@ public class NotificationScheduler {
     }
 
     /** 오늘 무엇을 하는지 (Func-004-01 "오늘 일정") */
-    @Scheduled(cron = "${part-trip.notification.today-schedule-cron:0 0 8 * * *}")
+    @Scheduled(cron = "${part-trip.notification.today-schedule-cron:0 0 8-20 * * *}")
     public void notifyTodaySchedule() {
 
         LocalDate today = LocalDate.now();
@@ -91,9 +98,7 @@ public class NotificationScheduler {
                     continue;
                 }
 
-                // 같은 플래너로 매일 나가므로 "오늘 이미 보냈는지" 로 가린다
-                List<String> recipients = recipientsOf(
-                        plan, NotificationType.TODAY_SCHEDULE, today);
+                List<String> recipients = recipientsOf(plan, NotificationType.TODAY_SCHEDULE);
                 if (recipients.isEmpty()) {
                     continue;
                 }
@@ -115,22 +120,25 @@ public class NotificationScheduler {
     /**
      * 이 플래너에서 아직 알림을 못 받은 멤버.
      *
-     * <p>{@code sentAfter} 가 있으면 그 시각 이후에 받았는지로 본다(매일 나가는 알림),
-     * 없으면 한 번이라도 받았는지로 본다(플래너당 한 번인 알림).
+     * <p>두 알림 모두 "오늘 이미 받았는지" 로 가린다. 한 번이라도 받았는지로 보면
+     * {@code linkId} 가 {@code groupId} 라서 같은 그룹이 다음 여행을 갈 때
+     * 알림을 영영 못 받는다. {@code planId} 를 쓰면 될 것 같지만 앱은
+     * {@code plannerId}(={@code groupId})로 화면을 찾으므로 링크가 깨진다.
+     *
+     * <p>매시 돌아도 하루 한 번만 나가는 근거도 여기다.
      *
      * <p>한 명씩 확인하는 것은 플래너 수도 인원도 작기 때문이다. 같은 날 떠나는
      * 플래너가 수천 개가 되면 그때 한 번에 읽는 쿼리로 바꾼다
      */
-    private List<String> recipientsOf(
-            GroupTravelPlanEntity plan, NotificationType type, LocalDate sentAfter) {
+    private List<String> recipientsOf(GroupTravelPlanEntity plan, NotificationType type) {
+
+        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
 
         return groupMemberRepository.findByGroupIdOrderByJoinedAtAsc(plan.getGroupId()).stream()
                 .map(GroupMemberEntity::getUserId)
-                .filter(userId -> sentAfter == null
-                        ? !notificationRepository.existsByUserIdAndTypeAndLinkId(
-                                userId, type, plan.getGroupId())
-                        : !notificationRepository.existsByUserIdAndTypeAndLinkIdAndCreatedAtAfter(
-                                userId, type, plan.getGroupId(), sentAfter.atStartOfDay()))
+                .filter(userId -> !notificationRepository
+                        .existsByUserIdAndTypeAndLinkIdAndCreatedAtAfter(
+                                userId, type, plan.getGroupId(), todayStart))
                 .toList();
     }
 
