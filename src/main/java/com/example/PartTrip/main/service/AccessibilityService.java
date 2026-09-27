@@ -8,6 +8,7 @@ import com.example.PartTrip.main.repository.TourPlaceRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -89,9 +90,20 @@ public class AccessibilityService {
         row.setTourPlaceId(place.getTourPlaceId());
         row.setFetchedAt(LocalDateTime.now());
 
-        JsonNode near = call("locationBasedList2", "&mapX=" + place.getLongitude()
-                + "&mapY=" + place.getLatitude() + "&radius=" + RADIUS_METERS + "&arrange=E&numOfRows=20");
-        Optional<JsonNode> match = pick(place.getPlaceName(), itemsOf(near));
+        List<JsonNode> candidates = new ArrayList<>();
+        String keyword = place.getPlaceName() == null ? "" : place.getPlaceName().replaceAll("\\(.*?\\)", "").strip();
+        if (!keyword.isEmpty()) {
+            for (JsonNode item : itemsOf(call("searchKeyword2", "&numOfRows=20&keyword="
+                    + URLEncoder.encode(keyword, StandardCharsets.UTF_8)))) {
+                double meters = meters(place.getLatitude(), place.getLongitude(),
+                        item.path("mapy").asDouble(), item.path("mapx").asDouble());
+                candidates.add(((ObjectNode) item.deepCopy())
+                        .put("dist", String.valueOf(meters)));
+            }
+        }
+        candidates.addAll(itemsOf(call("locationBasedList2", "&mapX=" + place.getLongitude()
+                + "&mapY=" + place.getLatitude() + "&radius=" + RADIUS_METERS + "&arrange=E&numOfRows=20")));
+        Optional<JsonNode> match = pick(place.getPlaceName(), candidates);
         if (match.isEmpty()) {
             row.setItemsJson("[]");
             return row;
@@ -148,6 +160,16 @@ public class AccessibilityService {
         return name.replaceAll("\\(.*?\\)|\\[.*?]", "")
                 .replaceAll("[^\\p{L}\\p{N}]", "")
                 .toLowerCase();
+    }
+
+    static double meters(double lat1, double lng1, double lat2, double lng2) {
+        double r = 6_371_000;
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLng = Math.toRadians(lng2 - lng1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        return 2 * r * Math.asin(Math.sqrt(a));
     }
 
     private static boolean similar(String a, String b) {
