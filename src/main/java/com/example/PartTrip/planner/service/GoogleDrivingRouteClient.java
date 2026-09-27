@@ -21,6 +21,7 @@ public class GoogleDrivingRouteClient {
     private final RestClient restClient;
     private final String apiKey;
 
+    /** API 키를 받아 Google Routes HTTP 클라이언트를 구성한다. */
     public GoogleDrivingRouteClient(@Value("${google.routes.api-key:}") String apiKey) {
         this.apiKey = apiKey == null ? "" : apiKey.trim();
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
@@ -32,10 +33,12 @@ public class GoogleDrivingRouteClient {
                 .build();
     }
 
+    /** Google Routes API 키가 설정되어 있는지 반환한다. */
     public boolean isConfigured() {
         return !apiKey.isBlank();
     }
 
+    /** 자동차·택시·도보 구간의 총 이동 시간을 조회한다. */
     public SearchResult search(PreferredTransport transport,
             double fromLatitude, double fromLongitude,
             double toLatitude, double toLongitude,
@@ -72,6 +75,7 @@ public class GoogleDrivingRouteClient {
         }
     }
 
+    /** Google Routes의 초 단위 소요 시간을 올림해 분으로 변환한다. */
     static Integer parseDurationMinutes(JsonNode response) {
         JsonNode routes = response == null ? null : response.path("routes");
         if (routes == null || !routes.isArray() || routes.isEmpty()) return null;
@@ -86,6 +90,7 @@ public class GoogleDrivingRouteClient {
         }
     }
 
+    /** Google Routes 요청 형식의 좌표 객체를 만든다. */
     private Map<String, Object> location(double latitude, double longitude) {
         return Map.of("location", Map.of("latLng", Map.of(
                 "latitude", latitude,

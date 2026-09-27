@@ -18,6 +18,7 @@ public class OdsayTransitRouteClient {
     private final RestClient restClient;
     private final String apiKey;
 
+    /** API 키를 받아 타임아웃이 제한된 ODsay HTTP 클라이언트를 구성한다. */
     public OdsayTransitRouteClient(@Value("${odsay.api-key:}") String apiKey) {
         this.apiKey = apiKey == null ? "" : apiKey.trim();
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
@@ -29,10 +30,12 @@ public class OdsayTransitRouteClient {
                 .build();
     }
 
+    /** ODsay API 키가 설정되어 있는지 반환한다. */
     public boolean isConfigured() {
         return !apiKey.isBlank();
     }
 
+    /** 두 좌표 사이의 대중교통 경로를 조회하고 API 실패를 상태값으로 변환한다. */
     public SearchResult search(double fromLongitude, double fromLatitude,
             double toLongitude, double toLatitude, String fromName, String toName) {
         if (!isConfigured()) return new SearchResult("WAITING_FOR_API_KEY", null);
@@ -60,6 +63,7 @@ public class OdsayTransitRouteClient {
         }
     }
 
+    /** ODsay 응답에서 최적 경로의 교통수단, 정류장, 시간을 추출한다. */
     static PlannerScheduleResponseDto.RouteLeg parse(
             JsonNode response, String fromName, String toName) {
         JsonNode paths = response == null ? null : response.path("result").path("path");
@@ -103,6 +107,7 @@ public class OdsayTransitRouteClient {
                 info.path("totalTime").asInt(), walkingMinutes, List.copyOf(steps));
     }
 
+    /** 여러 버전의 ODsay 응답 필드명 중 처음으로 채워진 문자열을 선택한다. */
     private static String firstText(JsonNode node, String... fields) {
         for (String field : fields) {
             String value = node.path(field).asText();
