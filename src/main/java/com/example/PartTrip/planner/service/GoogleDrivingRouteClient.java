@@ -22,7 +22,8 @@ public class GoogleDrivingRouteClient {
     private final String apiKey;
 
     /** API 키를 받아 Google Routes HTTP 클라이언트를 구성한다. */
-    public GoogleDrivingRouteClient(@Value("${google.routes.api-key:}") String apiKey) {
+    public GoogleDrivingRouteClient(
+            @Value("${GOOGLE_ROUTES_API_KEY:${google.routes.api-key:}}") String apiKey) {
         this.apiKey = apiKey == null ? "" : apiKey.trim();
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(2_000);

@@ -19,7 +19,8 @@ public class OdsayTransitRouteClient {
     private final String apiKey;
 
     /** API 키를 받아 타임아웃이 제한된 ODsay HTTP 클라이언트를 구성한다. */
-    public OdsayTransitRouteClient(@Value("${odsay.api-key:}") String apiKey) {
+    public OdsayTransitRouteClient(
+            @Value("${ODSAY_API_KEY:${odsay.api-key:}}") String apiKey) {
         this.apiKey = apiKey == null ? "" : apiKey.trim();
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(2_000);
