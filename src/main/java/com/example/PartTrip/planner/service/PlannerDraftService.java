@@ -81,6 +81,7 @@ public class PlannerDraftService {
     private final PlannerScheduleSlotRepository slotRepository;
     private final TransactionTemplate transactionTemplate;
     private final ObjectMapper objectMapper;
+    private final PlannerScheduleRouteService scheduleRouteService;
 
     public PlannerScheduleResponseDto generate(GeneratePlannerRequestDto dto, String userId) {
         String city = dto.getCityName().trim();
@@ -149,9 +150,30 @@ public class PlannerDraftService {
         Long plannerId = transactionTemplate.execute(status -> {
             Long id = plannerService.createPlanner(toCreateRequest(dto, city), userId).getPlannerId();
             GroupTravelPlanEntity plan = latestPlan(id);
+            GeneratePlannerRequestDto.DeparturePoint departurePoint = departurePoint(dto);
+            GeneratePlannerRequestDto.Block departureBlock = dto.getBlocks().stream()
+                    .filter(block -> block.getType() == PlannerBlockType.DEPARTURE_PLACE)
+                    .findFirst().orElse(null);
+            String departureName = departurePoint != null
+                    ? departurePoint.getPlaceName().trim()
+                    : departureBlock == null ? null
+                    : departureBlock.getPlaceName() == null || departureBlock.getPlaceName().isBlank()
+                    ? departureBlock.getValue().trim() : departureBlock.getPlaceName().trim();
+            if (departureName != null || dto.getDeparturePoint() != null) {
+                plan.setDeparturePlaceName(departureName);
+            }
+            if (departurePoint != null) {
+                plan.setDepartureLatitude(departurePoint.getLatitude());
+                plan.setDepartureLongitude(departurePoint.getLongitude());
+            } else if (departureBlock != null) {
+                plan.setDepartureLatitude(departureBlock.getLatitude());
+                plan.setDepartureLongitude(departureBlock.getLongitude());
+            }
+            groupTravelPlanRepository.save(plan);
             slotRepository.saveAll(toEntities(plan.getPlanId(), dates, days, lodgingId));
             return id;
         });
+        scheduleRouteService.recalculate(plannerId);
         return getSchedule(plannerId, userId);
     }
 
@@ -184,13 +206,41 @@ public class PlannerDraftService {
                         byDate.getOrDefault(date, List.of()).stream()
                                 .map(slot -> new PlannerScheduleResponseDto.Slot(
                                         slot.getSlotId(), slot.getSortOrder(),
-                                        toPlace(places.get(slot.getTourPlaceId()))))
+                                        toPlace(places.get(slot.getTourPlaceId())),
+                                        slot.getRouteStatus(), toRoute(slot.getRouteData())))
                                 .toList()))
                 .toList();
 
         return new PlannerScheduleResponseDto(
                 plannerId, group.getGroupName(), plan.getCityName(),
                 plan.getStartDate(), plan.getEndDate(), days);
+    }
+
+    private PlannerScheduleResponseDto.RouteLeg toRoute(String json) {
+        if (json == null || json.isBlank()) return null;
+        try {
+            return objectMapper.readValue(json, PlannerScheduleResponseDto.RouteLeg.class);
+        } catch (JsonProcessingException exception) {
+            return null;
+        }
+    }
+
+    private GeneratePlannerRequestDto.DeparturePoint departurePoint(GeneratePlannerRequestDto dto) {
+        if (dto.getDeparturePoint() != null) return dto.getDeparturePoint();
+        return dto.getBlocks().stream()
+                .filter(block -> block.getType() == PlannerBlockType.DEPARTURE_PLACE)
+                .filter(block -> block.getLatitude() != null && block.getLongitude() != null)
+                .findFirst()
+                .map(block -> {
+                    GeneratePlannerRequestDto.DeparturePoint point =
+                            new GeneratePlannerRequestDto.DeparturePoint();
+                    point.setPlaceName(block.getPlaceName() == null || block.getPlaceName().isBlank()
+                            ? block.getValue() : block.getPlaceName());
+                    point.setLatitude(block.getLatitude());
+                    point.setLongitude(block.getLongitude());
+                    return point;
+                })
+                .orElse(null);
     }
 
     static List<List<Long>> toSlots(

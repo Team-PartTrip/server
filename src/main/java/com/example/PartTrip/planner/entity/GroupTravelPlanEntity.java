@@ -50,6 +50,15 @@ public class GroupTravelPlanEntity {
     @Column(name = "end_date", nullable = false)
     private LocalDate endDate;
 
+    @Column(name = "departure_place_name", length = 255)
+    private String departurePlaceName;
+
+    @Column(name = "departure_latitude")
+    private Double departureLatitude;
+
+    @Column(name = "departure_longitude")
+    private Double departureLongitude;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 }

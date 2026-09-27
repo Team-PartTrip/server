@@ -41,6 +41,16 @@ public class PlannerScheduleSlotEntity {
     @Column(name = "tour_place_id")
     private Long tourPlaceId;
 
+    /** 이 카드 직전 구간의 계산 상태와 저장된 경로 정보. 일정 조회에서는 외부 API를 호출하지 않는다. */
+    @Column(name = "route_status", length = 40)
+    private String routeStatus;
+
+    @Column(name = "route_signature", length = 64)
+    private String routeSignature;
+
+    @Column(name = "route_data", columnDefinition = "text")
+    private String routeData;
+
     public PlannerScheduleSlotEntity(Long planId, LocalDate visitDate, int sortOrder, Long tourPlaceId) {
         this.planId = planId;
         this.visitDate = visitDate;
