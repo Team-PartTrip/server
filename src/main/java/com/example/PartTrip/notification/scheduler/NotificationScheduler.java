@@ -50,7 +50,7 @@ public class NotificationScheduler {
 
         LocalDate tomorrow = LocalDate.now().plusDays(1);
 
-        for (GroupTravelPlanEntity plan : planRepository.findByStartDate(tomorrow)) {
+        for (GroupTravelPlanEntity plan : planRepository.findConfirmedStartingOn(tomorrow)) {
             try {
                 // 플래너 하나당 한 번이라 linkId 만으로 중복이 가려진다
                 List<String> recipients = recipientsOf(
@@ -82,8 +82,7 @@ public class NotificationScheduler {
 
         LocalDate today = LocalDate.now();
 
-        for (GroupTravelPlanEntity plan :
-                planRepository.findByStartDateLessThanEqualAndEndDateGreaterThanEqual(today, today)) {
+        for (GroupTravelPlanEntity plan : planRepository.findConfirmedCovering(today)) {
             try {
                 String places = placesOn(plan.getPlanId(), today);
                 // 일정을 아직 안 짰거나 오늘 갈 곳이 없으면 보낼 내용이 없다.

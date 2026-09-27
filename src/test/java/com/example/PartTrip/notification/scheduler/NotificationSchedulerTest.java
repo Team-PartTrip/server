@@ -1,11 +1,13 @@
 package com.example.PartTrip.notification.scheduler;
 
+import com.example.PartTrip.main.entity.TourPlaceEntity;
 import com.example.PartTrip.main.repository.TourPlaceRepository;
 import com.example.PartTrip.notification.enums.NotificationType;
 import com.example.PartTrip.notification.repository.NotificationRepository;
 import com.example.PartTrip.notification.service.NotificationWriter;
 import com.example.PartTrip.planner.entity.GroupMemberEntity;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
+import com.example.PartTrip.planner.entity.PlannerScheduleSlotEntity;
 import com.example.PartTrip.planner.repository.GroupMemberRepository;
 import com.example.PartTrip.planner.repository.GroupTravelPlanRepository;
 import com.example.PartTrip.planner.repository.PlannerScheduleSlotRepository;
@@ -41,7 +43,7 @@ class NotificationSchedulerTest {
     @Test
     void 내일_떠나는_그룹은_전원이_받는다() {
 
-        given(planRepository.findByStartDate(any())).willReturn(List.of(plan()));
+        given(planRepository.findConfirmedStartingOn(any())).willReturn(List.of(plan()));
         given(groupMemberRepository.findByGroupIdOrderByJoinedAtAsc(7L))
                 .willReturn(List.of(member("할머니"), member("손주")));
         given(notificationRepository.existsByUserIdAndTypeAndLinkId(
@@ -61,7 +63,7 @@ class NotificationSchedulerTest {
     @Test
     void 이미_받은_사람에게는_다시_보내지_않는다() {
 
-        given(planRepository.findByStartDate(any())).willReturn(List.of(plan()));
+        given(planRepository.findConfirmedStartingOn(any())).willReturn(List.of(plan()));
         given(groupMemberRepository.findByGroupIdOrderByJoinedAtAsc(7L))
                 .willReturn(List.of(member("할머니"), member("손주")));
         given(notificationRepository.existsByUserIdAndTypeAndLinkId(
@@ -78,7 +80,7 @@ class NotificationSchedulerTest {
     @Test
     void 전원이_이미_받았으면_아무것도_보내지_않는다() {
 
-        given(planRepository.findByStartDate(any())).willReturn(List.of(plan()));
+        given(planRepository.findConfirmedStartingOn(any())).willReturn(List.of(plan()));
         given(groupMemberRepository.findByGroupIdOrderByJoinedAtAsc(7L))
                 .willReturn(List.of(member("할머니")));
         given(notificationRepository.existsByUserIdAndTypeAndLinkId(
@@ -89,11 +91,54 @@ class NotificationSchedulerTest {
         verify(notificationWriter, never()).writeAll(any(), any(), any(), any(), any(), any());
     }
 
+    @Test
+    void 오늘_가는_곳을_순서대로_적어_보낸다() {
+
+        given(planRepository.findConfirmedCovering(any())).willReturn(List.of(plan()));
+        given(slotRepository.findByPlanIdAndVisitDateOrderBySortOrderAsc(any(), any()))
+                .willReturn(List.of(slot(1, 100L), slot(2, 200L)));
+        given(tourPlaceRepository.findAllById(any()))
+                .willReturn(List.of(place(100L, "도톤보리"), place(200L, "오사카성")));
+        given(groupMemberRepository.findByGroupIdOrderByJoinedAtAsc(7L))
+                .willReturn(List.of(member("할머니")));
+        given(notificationRepository.existsByUserIdAndTypeAndLinkIdAndCreatedAtAfter(
+                anyString(), eq(NotificationType.TODAY_SCHEDULE), eq(7L), any())).willReturn(false);
+
+        scheduler.notifyTodaySchedule();
+
+        verify(notificationWriter).writeAll(
+                eq(List.of("할머니")),
+                eq(NotificationType.TODAY_SCHEDULE),
+                anyString(),
+                eq("오늘은 도톤보리 · 오사카성 일정이에요."),
+                eq("PLANNER"),
+                eq(7L));
+    }
+
+    // 오늘 일정은 같은 플래너로 매일 나가므로 linkId 만으로는 중복을 가릴 수 없다
+    @Test
+    void 오늘_이미_보냈으면_다시_보내지_않는다() {
+
+        given(planRepository.findConfirmedCovering(any())).willReturn(List.of(plan()));
+        given(slotRepository.findByPlanIdAndVisitDateOrderBySortOrderAsc(any(), any()))
+                .willReturn(List.of(slot(1, 100L)));
+        given(tourPlaceRepository.findAllById(any()))
+                .willReturn(List.of(place(100L, "도톤보리")));
+        given(groupMemberRepository.findByGroupIdOrderByJoinedAtAsc(7L))
+                .willReturn(List.of(member("할머니")));
+        given(notificationRepository.existsByUserIdAndTypeAndLinkIdAndCreatedAtAfter(
+                anyString(), any(), any(), any())).willReturn(true);
+
+        scheduler.notifyTodaySchedule();
+
+        verify(notificationWriter, never()).writeAll(any(), any(), any(), any(), any(), any());
+    }
+
     // 일정을 아직 안 짠 플래너에 빈 알림을 보내면 열어 보고 허탕만 친다
     @Test
     void 오늘_갈_곳이_없으면_오늘_일정을_보내지_않는다() {
 
-        given(planRepository.findByStartDateLessThanEqualAndEndDateGreaterThanEqual(any(), any()))
+        given(planRepository.findConfirmedCovering(any()))
                 .willReturn(List.of(plan()));
         given(slotRepository.findByPlanIdAndVisitDateOrderBySortOrderAsc(any(), any()))
                 .willReturn(List.of());
@@ -110,7 +155,7 @@ class NotificationSchedulerTest {
         GroupTravelPlanEntity broken = plan();
         broken.setGroupId(99L);
 
-        given(planRepository.findByStartDate(any())).willReturn(List.of(broken, plan()));
+        given(planRepository.findConfirmedStartingOn(any())).willReturn(List.of(broken, plan()));
         given(groupMemberRepository.findByGroupIdOrderByJoinedAtAsc(99L))
                 .willThrow(new RuntimeException("조회 실패"));
         given(groupMemberRepository.findByGroupIdOrderByJoinedAtAsc(7L))
@@ -155,6 +200,19 @@ class NotificationSchedulerTest {
         plan.setStartDate(LocalDate.now().plusDays(1));
         plan.setEndDate(LocalDate.now().plusDays(3));
         return plan;
+    }
+
+    private PlannerScheduleSlotEntity slot(int sortOrder, Long tourPlaceId) {
+
+        return new PlannerScheduleSlotEntity(10L, LocalDate.now(), sortOrder, tourPlaceId);
+    }
+
+    private TourPlaceEntity place(Long id, String placeName) {
+
+        TourPlaceEntity place = new TourPlaceEntity();
+        place.setTourPlaceId(id);
+        place.setPlaceName(placeName);
+        return place;
     }
 
     private GroupMemberEntity member(String userId) {

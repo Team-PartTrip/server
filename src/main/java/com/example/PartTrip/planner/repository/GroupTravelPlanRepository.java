@@ -13,11 +13,31 @@ public interface GroupTravelPlanRepository extends JpaRepository<GroupTravelPlan
 
     List<GroupTravelPlanEntity> findByGroupIdOrderByStartDateDesc(Long groupId);
 
-    // 알림 스케줄러가 쓴다 (#143)
-    List<GroupTravelPlanEntity> findByStartDate(LocalDate startDate);
+    /**
+     * 알림 스케줄러가 쓴다 (#143). 내일 떠나는 계획.
+     *
+     * <p>확정한 그룹만 본다. 일정 초안은 확정 전에 생기므로
+     * ({@code PlannerDraftService}) 상태를 보지 않으면 확정 버튼을 누르지도 않은
+     * 그룹에 "내일 출발이에요" 가 나간다. DONE 은 이미 끝난 여행이라 뺀다.
+     */
+    @Query("""
+            SELECT p FROM GroupTravelPlanEntity p
+            JOIN TravelGroupEntity g ON g.groupId = p.groupId
+            WHERE p.startDate = :startDate
+              AND g.status IN (com.example.PartTrip.planner.enums.GroupStatus.CONFIRMED,
+                               com.example.PartTrip.planner.enums.GroupStatus.TRAVELING)
+            """)
+    List<GroupTravelPlanEntity> findConfirmedStartingOn(@Param("startDate") LocalDate startDate);
 
-    List<GroupTravelPlanEntity> findByStartDateLessThanEqualAndEndDateGreaterThanEqual(
-            LocalDate onOrBefore, LocalDate onOrAfter);
+    /** 알림 스케줄러가 쓴다 (#143). 오늘이 기간 안인 확정된 계획. */
+    @Query("""
+            SELECT p FROM GroupTravelPlanEntity p
+            JOIN TravelGroupEntity g ON g.groupId = p.groupId
+            WHERE p.startDate <= :date AND p.endDate >= :date
+              AND g.status IN (com.example.PartTrip.planner.enums.GroupStatus.CONFIRMED,
+                               com.example.PartTrip.planner.enums.GroupStatus.TRAVELING)
+            """)
+    List<GroupTravelPlanEntity> findConfirmedCovering(@Param("date") LocalDate date);
 
     // 플래너 삭제용
     void deleteByGroupId(Long groupId);
