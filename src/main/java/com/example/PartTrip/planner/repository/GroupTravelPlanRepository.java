@@ -13,6 +13,12 @@ public interface GroupTravelPlanRepository extends JpaRepository<GroupTravelPlan
 
     List<GroupTravelPlanEntity> findByGroupIdOrderByStartDateDesc(Long groupId);
 
+    // 알림 스케줄러가 쓴다 (#143)
+    List<GroupTravelPlanEntity> findByStartDate(LocalDate startDate);
+
+    List<GroupTravelPlanEntity> findByStartDateLessThanEqualAndEndDateGreaterThanEqual(
+            LocalDate onOrBefore, LocalDate onOrAfter);
+
     // 플래너 삭제용
     void deleteByGroupId(Long groupId);
 

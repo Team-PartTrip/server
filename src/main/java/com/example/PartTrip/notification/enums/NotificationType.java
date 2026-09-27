@@ -31,7 +31,15 @@ public enum NotificationType {
     @Deprecated
     COUNTRY_ACQUIRED("국가 획득", NotificationCategory.RECORD),
     REGION_VISITED("새 지역 방문", NotificationCategory.RECORD),
-    TRIP_CARD_CREATED("여행카드 생성", NotificationCategory.RECORD);
+    TRIP_CARD_CREATED("여행카드 생성", NotificationCategory.RECORD),
+
+    // 날짜가 되어 나가는 알림 (#143). NotificationScheduler 가 만든다.
+    //
+    // 카테고리를 새로 늘리지 않고 VOTE(=플래너)에 넣는다. 값을 늘리면
+    // notification_category_check 에 걸리는 데다, 앱이 모르는 탭 값이라
+    // 어느 탭에도 안 보이게 된다. 탭 이름은 앱과 함께 정리한다
+    TRIP_DAY_BEFORE("여행 하루 전", NotificationCategory.VOTE),
+    TODAY_SCHEDULE("오늘 일정", NotificationCategory.VOTE);
 
     // 설정 화면 토글 이름. 서버가 내려주면 앱이 한글 문구를 따로 들고 있지 않아도 된다.
     private final String label;
