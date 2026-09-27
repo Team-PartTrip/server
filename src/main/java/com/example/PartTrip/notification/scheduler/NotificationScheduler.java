@@ -63,7 +63,7 @@ public class NotificationScheduler {
                         recipients,
                         NotificationType.TRIP_DAY_BEFORE,
                         NotificationType.TRIP_DAY_BEFORE.getLabel(),
-                        titleOf(plan) + " 여행이 내일이에요.",
+                        "내일 " + titleOf(plan) + " 출발이에요.",
                         "PLANNER",
                         plan.getGroupId());
 
@@ -154,6 +154,16 @@ public class NotificationScheduler {
                 .filter(place -> place != null)
                 .map(TourPlaceEntity::getPlaceName)
                 .toList();
+
+        return joinPlaces(names);
+    }
+
+    /**
+     * 앞의 몇 곳만 적고 나머지는 수로 줄인다. 갈 곳이 없으면 null.
+     *
+     * <p>리포지토리 없이 바로 시험할 수 있도록 떼어 뒀다
+     */
+    static String joinPlaces(List<String> names) {
 
         if (names.isEmpty()) {
             return null;
