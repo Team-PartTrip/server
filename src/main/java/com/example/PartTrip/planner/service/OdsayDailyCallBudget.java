@@ -28,7 +28,7 @@ public class OdsayDailyCallBudget {
     @Autowired
     public OdsayDailyCallBudget(
             OdsayDailyCallUsageRepository usageRepository,
-            @Value("${odsay.daily-call-limit:30}") int dailyLimit) {
+            @Value("${ODSAY_DAILY_CALL_LIMIT:${odsay.daily-call-limit:30}}") int dailyLimit) {
         this.usageRepository = usageRepository;
         this.dailyLimit = Math.max(0, dailyLimit);
         this.clock = Clock.system(KOREA);
