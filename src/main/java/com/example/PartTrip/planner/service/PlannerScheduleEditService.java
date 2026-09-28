@@ -41,6 +41,12 @@ public class PlannerScheduleEditService {
             throw new IllegalArgumentException("확정 전 일정만 수정할 수 있습니다.");
         }
         GroupTravelPlanEntity plan = latest(plannerId);
+        if (request.departurePoint() != null) {
+            plan.setDeparturePlaceName(request.departurePoint().getPlaceName().trim());
+            plan.setDepartureLatitude(request.departurePoint().getLatitude());
+            plan.setDepartureLongitude(request.departurePoint().getLongitude());
+            plans.save(plan);
+        }
         List<PlannerCityEntity> regions = cities.findByPlanIdOrderBySeqAsc(plan.getPlanId());
         List<PlannerScheduleSlotEntity> existing = slots.findByPlanIdOrderByVisitDateAscSortOrderAsc(plan.getPlanId());
         Map<Long, PlannerScheduleSlotEntity> byId = existing.stream()

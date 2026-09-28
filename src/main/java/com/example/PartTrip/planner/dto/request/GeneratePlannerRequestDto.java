@@ -2,11 +2,14 @@ package com.example.PartTrip.planner.dto.request;
 
 import com.example.PartTrip.planner.enums.PlannerBlockType;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -52,6 +55,31 @@ public class GeneratePlannerRequestDto {
     @Size(max = 100, message = "블록은 100개까지 넣을 수 있습니다.")
     private List<Block> blocks = new ArrayList<>();
 
+    /** 첫 이동 구간을 계산할 실제 출발 지점. 선택하지 않은 기존 클라이언트와 호환된다. */
+    @Valid
+    private DeparturePoint departurePoint;
+
+    @Getter
+    @Setter
+    public static class DeparturePoint {
+        @NotBlank
+        @Size(max = 255)
+        private String placeName;
+
+        @DecimalMin(value = "-90.0")
+        @DecimalMax(value = "90.0")
+        private Double latitude;
+
+        @DecimalMin(value = "-180.0")
+        @DecimalMax(value = "180.0")
+        private Double longitude;
+
+        @AssertTrue(message = "출발지 위도와 경도는 함께 입력해야 합니다.")
+        public boolean isCoordinatePairValid() {
+            return (latitude == null) == (longitude == null);
+        }
+    }
+
     @Getter
     @Setter
     public static class Block {
@@ -62,5 +90,23 @@ public class GeneratePlannerRequestDto {
         @NotBlank(message = "블록 값이 비어 있습니다.")
         @Size(max = 100, message = "블록 값은 100자를 넘을 수 없습니다.")
         private String value;
+
+        /** 출발 장소 블록에서 직접 지정한 장소의 좌표(다른 블록에서는 생략). */
+        @Size(max = 255)
+        private String placeName;
+
+        @DecimalMin(value = "-90.0")
+        @DecimalMax(value = "90.0")
+        private Double latitude;
+
+        @DecimalMin(value = "-180.0")
+        @DecimalMax(value = "180.0")
+        private Double longitude;
+
+        @AssertTrue(message = "출발지 위도와 경도는 함께 입력해야 합니다.")
+        public boolean isCoordinatePairValid() {
+            return type != PlannerBlockType.DEPARTURE_PLACE
+                    || (latitude == null) == (longitude == null);
+        }
     }
 }

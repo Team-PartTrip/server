@@ -14,7 +14,29 @@ public record PlannerScheduleResponseDto(
 ) {
     public record Day(LocalDate date, List<Slot> slots) {}
 
-    public record Slot(Long slotId, int order, Place place) {}
+    public record Slot(Long slotId, int order, Place place, String routeStatus, RouteLeg routeFromPrevious) {
+        public Slot(Long slotId, int order, Place place) {
+            this(slotId, order, place, null, null);
+        }
+    }
+
+    public record RouteLeg(
+            String transportMode,
+            String fromName,
+            String toName,
+            Integer durationMinutes,
+            Integer walkingMinutes,
+            List<RouteStep> steps
+    ) {}
+
+    public record RouteStep(
+            String type,
+            String name,
+            String boardingStop,
+            String alightingStop,
+            Integer stopCount,
+            Integer durationMinutes
+    ) {}
 
     public record Place(
             Long tourPlaceId,
