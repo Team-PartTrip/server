@@ -1,6 +1,7 @@
 package com.example.PartTrip.planner.service;
 
 import com.example.PartTrip.main.entity.TourPlaceEntity;
+import com.example.PartTrip.main.enums.TourPlaceCategory;
 import com.example.PartTrip.main.repository.TourPlaceRepository;
 import com.example.PartTrip.planner.dto.response.PlannerScheduleResponseDto;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
@@ -63,6 +64,7 @@ class PlannerScheduleRouteServiceTest {
     private PlannerScheduleSlotEntity slot;
     private TourPlaceEntity firstPlace;
     private TourPlaceEntity secondPlace;
+    private TourPlaceEntity lodging;
     private PlannerScheduleRouteService service;
 
     @BeforeEach
@@ -82,6 +84,8 @@ class PlannerScheduleRouteServiceTest {
         slot.setSlotId(501L);
         firstPlace = place(101L, "경포대", 37.80, 128.90);
         secondPlace = place(102L, "오죽헌", 37.78, 128.87);
+        lodging = place(103L, "강릉호텔", 37.76, 128.89);
+        lodging.setCategory(TourPlaceCategory.ACCOMMODATION);
 
         doAnswer(invocation -> {
             TransactionCallback<?> callback = invocation.getArgument(0);
@@ -100,7 +104,7 @@ class PlannerScheduleRouteServiceTest {
                 ignored -> List.of(slot));
         when(places.findAllById(anyCollection())).thenAnswer(invocation -> {
             Collection<?> ids = (Collection<?>) invocation.getArgument(0);
-            return List.of(firstPlace, secondPlace).stream()
+            return List.of(firstPlace, secondPlace, lodging).stream()
                     .filter(place -> ids.contains(place.getTourPlaceId())).toList();
         });
         when(preferences.getPreference("owner"))
@@ -130,6 +134,53 @@ class PlannerScheduleRouteServiceTest {
         verify(taskRunner, never()).submit(any());
         verify(odsay, never()).search(any(Double.class), any(Double.class), any(Double.class),
                 any(Double.class), any(), any());
+    }
+
+    @Test
+    void 둘째날_첫_장소는_전날_묵은_숙소에서_계산한다() {
+        PlannerScheduleSlotEntity night = new PlannerScheduleSlotEntity(planId, startDate, 2, 103L);
+        night.setSlotId(502L);
+        PlannerScheduleSlotEntity nextDay = new PlannerScheduleSlotEntity(planId, startDate.plusDays(1), 1, 102L);
+        nextDay.setSlotId(503L);
+        when(slots.findByPlanIdOrderByVisitDateAscSortOrderAsc(planId))
+                .thenAnswer(ignored -> List.of(slot, night, nextDay));
+
+        service.recalculate(plannerId);
+        captureCalculation().run();
+
+        verify(odsay).search(128.89, 37.76, 128.87, 37.78, "강릉호텔", "오죽헌");
+    }
+
+    @Test
+    void 숙소가_없으면_둘째날_첫_장소도_출발지에서_계산한다() {
+        PlannerScheduleSlotEntity nextDay = new PlannerScheduleSlotEntity(planId, startDate.plusDays(1), 1, 102L);
+        nextDay.setSlotId(503L);
+        when(slots.findByPlanIdOrderByVisitDateAscSortOrderAsc(planId))
+                .thenAnswer(ignored -> List.of(slot, nextDay));
+
+        service.recalculate(plannerId);
+        captureCalculation().run();
+
+        verify(odsay).search(128.90, 37.75, 128.87, 37.78, "강릉역", "오죽헌");
+        verify(odsay, never()).search(128.90, 37.80, 128.87, 37.78, "경포대", "오죽헌");
+    }
+
+    @Test
+    void 전날이_비어_있으면_전전날_숙소가_아니라_출발지에서_계산한다() {
+        PlannerScheduleSlotEntity night = new PlannerScheduleSlotEntity(planId, startDate, 2, 103L);
+        night.setSlotId(502L);
+        PlannerScheduleSlotEntity emptyDay = new PlannerScheduleSlotEntity(planId, startDate.plusDays(1), 1, null);
+        emptyDay.setSlotId(503L);
+        PlannerScheduleSlotEntity thirdDay = new PlannerScheduleSlotEntity(planId, startDate.plusDays(2), 1, 102L);
+        thirdDay.setSlotId(504L);
+        when(slots.findByPlanIdOrderByVisitDateAscSortOrderAsc(planId))
+                .thenAnswer(ignored -> List.of(slot, night, emptyDay, thirdDay));
+
+        service.recalculate(plannerId);
+        captureCalculation().run();
+
+        verify(odsay).search(128.90, 37.75, 128.87, 37.78, "강릉역", "오죽헌");
+        verify(odsay, never()).search(128.89, 37.76, 128.87, 37.78, "강릉호텔", "오죽헌");
     }
 
     @Test

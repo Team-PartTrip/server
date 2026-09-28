@@ -3,6 +3,7 @@ package com.example.PartTrip.profile.controller;
 import com.example.PartTrip.profile.dto.ProfileResponseDto;
 import com.example.PartTrip.profile.dto.ProfileStatsResponseDto;
 import com.example.PartTrip.profile.dto.ProfileUpdateRequestDto;
+import com.example.PartTrip.profile.dto.HomeRequestDto;
 import com.example.PartTrip.profile.dto.TravelPreferenceRequestDto;
 import com.example.PartTrip.profile.dto.TravelPreferenceResponseDto;
 import com.example.PartTrip.profile.service.AccountDeleteService;
@@ -76,6 +77,22 @@ public class ProfileController {
     ) {
         String userId = (String) authentication.getPrincipal();
         return ResponseEntity.ok(travelPreferenceService.updatePreference(userId, request));
+    }
+
+    /** 여행 첫 장소까지의 출발지 기본값인 집을 등록한다. */
+    @PutMapping("/home")
+    public ResponseEntity<TravelPreferenceResponseDto> updateHome(
+            Authentication authentication,
+            @Valid @RequestBody HomeRequestDto request
+    ) {
+        String userId = (String) authentication.getPrincipal();
+        return ResponseEntity.ok(travelPreferenceService.updateHome(userId, request));
+    }
+
+    @DeleteMapping("/home")
+    public ResponseEntity<TravelPreferenceResponseDto> deleteHome(Authentication authentication) {
+        String userId = (String) authentication.getPrincipal();
+        return ResponseEntity.ok(travelPreferenceService.deleteHome(userId));
     }
 
 

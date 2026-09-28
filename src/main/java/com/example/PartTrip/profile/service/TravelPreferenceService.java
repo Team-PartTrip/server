@@ -1,5 +1,6 @@
 package com.example.PartTrip.profile.service;
 
+import com.example.PartTrip.profile.dto.HomeRequestDto;
 import com.example.PartTrip.profile.dto.TravelPreferenceRequestDto;
 import com.example.PartTrip.profile.dto.TravelPreferenceResponseDto;
 import com.example.PartTrip.profile.entity.TravelPreferenceEntity;
@@ -50,6 +51,40 @@ public class TravelPreferenceService {
         preference.setDailyScheduleCount(request.getDailyScheduleCount());
         preference.setCanUseStairs(request.getCanUseStairs());
         return TravelPreferenceResponseDto.from(travelPreferenceRepository.save(preference));
+    }
+
+    /** 집을 등록하거나 바꾼다. 이동수단 등 다른 설정은 그대로 둔다 */
+    @Transactional
+    public TravelPreferenceResponseDto updateHome(String userId, HomeRequestDto request) {
+        TravelPreferenceEntity preference = lockedPreference(userId);
+        preference.setHomeName(request.getName().strip());
+        preference.setHomeAddress(request.getAddress());
+        preference.setHomeLatitude(request.getLatitude());
+        preference.setHomeLongitude(request.getLongitude());
+        return TravelPreferenceResponseDto.from(travelPreferenceRepository.save(preference));
+    }
+
+    @Transactional
+    public TravelPreferenceResponseDto deleteHome(String userId) {
+        TravelPreferenceEntity preference = lockedPreference(userId);
+        preference.setHomeName(null);
+        preference.setHomeAddress(null);
+        preference.setHomeLatitude(null);
+        preference.setHomeLongitude(null);
+        return TravelPreferenceResponseDto.from(travelPreferenceRepository.save(preference));
+    }
+
+    // 설정 행이 없던 사용자가 집부터 등록해도 나머지는 기본값으로 채운다
+    private TravelPreferenceEntity lockedPreference(String userId) {
+        userProfileRepository.findByUserIdForUpdate(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+        return travelPreferenceRepository.findById(userId).orElseGet(() -> {
+            TravelPreferenceEntity preference = newPreference(userId);
+            preference.setPreferredTransport(DEFAULT_TRANSPORT);
+            preference.setDailyScheduleCount(DEFAULT_DAILY_SCHEDULE_COUNT);
+            preference.setCanUseStairs(DEFAULT_CAN_USE_STAIRS);
+            return preference;
+        });
     }
 
     /** 신규 설정 행의 사용자 식별자를 초기화한다. */

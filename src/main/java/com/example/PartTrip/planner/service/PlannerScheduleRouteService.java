@@ -1,6 +1,7 @@
 package com.example.PartTrip.planner.service;
 
 import com.example.PartTrip.main.entity.TourPlaceEntity;
+import com.example.PartTrip.main.enums.TourPlaceCategory;
 import com.example.PartTrip.main.repository.TourPlaceRepository;
 import com.example.PartTrip.planner.dto.response.PlannerScheduleResponseDto;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
@@ -220,9 +221,18 @@ public class PlannerScheduleRouteService {
             List<PlannerScheduleSlotEntity> slots, Map<Long, TourPlaceEntity> places) {
         List<RouteInput> inputs = new ArrayList<>(slots.size());
         Long previousPlaceId = null;
+        LocalDate previousPlaceDate = null;
+        LocalDate previousDate = null;
         for (PlannerScheduleSlotEntity slot : slots) {
             TourPlaceEntity destination = places.get(slot.getTourPlaceId());
             TourPlaceEntity origin = places.get(previousPlaceId);
+            boolean newDay = previousDate != null && !slot.getVisitDate().equals(previousDate);
+            if (newDay && (origin == null || origin.getCategory() != TourPlaceCategory.ACCOMMODATION
+                    || !previousDate.equals(previousPlaceDate))) {
+                origin = null;
+            }
+            boolean fromDeparture = origin == null
+                    && (slot.getVisitDate().equals(plan.getStartDate()) || newDay);
             String originName = null;
             Double originLatitude = null;
             Double originLongitude = null;
@@ -232,14 +242,13 @@ public class PlannerScheduleRouteService {
                 originLatitude = origin.getLatitude();
                 originLongitude = origin.getLongitude();
                 originPlaceId = origin.getTourPlaceId();
-            } else if (slot.getVisitDate().equals(plan.getStartDate())) {
+            } else if (fromDeparture) {
                 originName = plan.getDeparturePlaceName();
                 originLatitude = plan.getDepartureLatitude();
                 originLongitude = plan.getDepartureLongitude();
             }
             boolean hasOrigin = origin != null
-                    || (slot.getVisitDate().equals(plan.getStartDate())
-                    && (originName != null || hasCoordinates(originLatitude, originLongitude)));
+                    || (fromDeparture && (originName != null || hasCoordinates(originLatitude, originLongitude)));
             boolean hasLeg = destination != null && hasOrigin;
             String destinationName = destination == null ? null : destination.getPlaceName();
             Double destinationLatitude = destination == null ? null : destination.getLatitude();
@@ -256,7 +265,11 @@ public class PlannerScheduleRouteService {
                     plan.getDeparturePlaceName(), plan.getDepartureLatitude(), plan.getDepartureLongitude(),
                     plan.getStartDate(), plan.getEndDate(), hasLeg, signature);
             inputs.add(input);
-            if (destination != null) previousPlaceId = destination.getTourPlaceId();
+            if (destination != null) {
+                previousPlaceId = destination.getTourPlaceId();
+                previousPlaceDate = slot.getVisitDate();
+            }
+            previousDate = slot.getVisitDate();
         }
         return inputs;
     }
