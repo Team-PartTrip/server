@@ -170,7 +170,7 @@ public class PlannerDraftService {
                 plan.setDepartureLongitude(departureBlock.getLongitude());
             }
             TravelPreferenceResponseDto.Home home = preference.getHome();
-            if (home != null && plan.getDepartureLatitude() == null
+            if (home != null && dto.getDeparturePoint() == null && plan.getDepartureLatitude() == null
                     && usesHome(departureBlock == null ? null : departureBlock.getValue())) {
                 plan.setDeparturePlaceName(home.name());
                 plan.setDepartureLatitude(home.latitude());

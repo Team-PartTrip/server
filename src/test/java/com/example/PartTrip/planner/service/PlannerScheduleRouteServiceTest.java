@@ -166,6 +166,24 @@ class PlannerScheduleRouteServiceTest {
     }
 
     @Test
+    void 전날이_비어_있으면_전전날_숙소가_아니라_출발지에서_계산한다() {
+        PlannerScheduleSlotEntity night = new PlannerScheduleSlotEntity(planId, startDate, 2, 103L);
+        night.setSlotId(502L);
+        PlannerScheduleSlotEntity emptyDay = new PlannerScheduleSlotEntity(planId, startDate.plusDays(1), 1, null);
+        emptyDay.setSlotId(503L);
+        PlannerScheduleSlotEntity thirdDay = new PlannerScheduleSlotEntity(planId, startDate.plusDays(2), 1, 102L);
+        thirdDay.setSlotId(504L);
+        when(slots.findByPlanIdOrderByVisitDateAscSortOrderAsc(planId))
+                .thenAnswer(ignored -> List.of(slot, night, emptyDay, thirdDay));
+
+        service.recalculate(plannerId);
+        captureCalculation().run();
+
+        verify(odsay).search(128.90, 37.75, 128.87, 37.78, "강릉역", "오죽헌");
+        verify(odsay, never()).search(128.89, 37.76, 128.87, 37.78, "강릉호텔", "오죽헌");
+    }
+
+    @Test
     void API_ERROR는_캐시하지_않고_다음_재계산에서_다시_호출한다() {
         when(odsay.search(any(Double.class), any(Double.class), any(Double.class), any(Double.class),
                 any(), any()))

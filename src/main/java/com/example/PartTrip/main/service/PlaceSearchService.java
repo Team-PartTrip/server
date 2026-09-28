@@ -6,9 +6,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
 import org.springframework.boot.http.client.ClientHttpRequestFactorySettings;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -42,10 +44,11 @@ public class PlaceSearchService {
             throw new IllegalArgumentException("검색어는 50자까지 쓸 수 있습니다.");
         }
         if (apiKey == null || apiKey.isBlank()) {
-            return List.of();
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "장소 검색을 쓸 수 없습니다.");
         }
+        JsonNode body;
         try {
-            JsonNode body = restClient.post()
+            body = restClient.post()
                     .uri(SEARCH_URL)
                     .contentType(MediaType.APPLICATION_JSON)
                     .header("X-Goog-Api-Key", apiKey)
@@ -58,11 +61,11 @@ public class PlaceSearchService {
                             "maxResultCount", MAX_RESULTS))
                     .retrieve()
                     .body(JsonNode.class);
-            return parse(body);
         } catch (Exception e) {
             log.warn("장소 검색 실패: {}", e.getMessage());
-            return List.of();
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "장소 검색이 잠시 안 됩니다.");
         }
+        return parse(body);
     }
 
     static List<PlaceSearchResponseDto> parse(JsonNode body) {
@@ -76,6 +79,9 @@ public class PlaceSearchService {
             if (name.isBlank() || !location.path("latitude").isNumber() || !location.path("longitude").isNumber()) {
                 continue;
             }
+            if (!inKorea(location.path("latitude").asDouble(), location.path("longitude").asDouble())) {
+                continue;
+            }
             result.add(new PlaceSearchResponseDto(
                     name,
                     place.path("formattedAddress").asText(""),
@@ -83,5 +89,9 @@ public class PlaceSearchService {
                     location.path("longitude").asDouble()));
         }
         return result;
+    }
+
+    static boolean inKorea(double latitude, double longitude) {
+        return latitude >= 33.0 && latitude <= 38.7 && longitude >= 124.5 && longitude <= 132.0;
     }
 }

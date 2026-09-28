@@ -221,12 +221,14 @@ public class PlannerScheduleRouteService {
             List<PlannerScheduleSlotEntity> slots, Map<Long, TourPlaceEntity> places) {
         List<RouteInput> inputs = new ArrayList<>(slots.size());
         Long previousPlaceId = null;
+        LocalDate previousPlaceDate = null;
         LocalDate previousDate = null;
         for (PlannerScheduleSlotEntity slot : slots) {
             TourPlaceEntity destination = places.get(slot.getTourPlaceId());
             TourPlaceEntity origin = places.get(previousPlaceId);
             boolean newDay = previousDate != null && !slot.getVisitDate().equals(previousDate);
-            if (newDay && (origin == null || origin.getCategory() != TourPlaceCategory.ACCOMMODATION)) {
+            if (newDay && (origin == null || origin.getCategory() != TourPlaceCategory.ACCOMMODATION
+                    || !previousDate.equals(previousPlaceDate))) {
                 origin = null;
             }
             boolean fromDeparture = origin == null
@@ -263,7 +265,10 @@ public class PlannerScheduleRouteService {
                     plan.getDeparturePlaceName(), plan.getDepartureLatitude(), plan.getDepartureLongitude(),
                     plan.getStartDate(), plan.getEndDate(), hasLeg, signature);
             inputs.add(input);
-            if (destination != null) previousPlaceId = destination.getTourPlaceId();
+            if (destination != null) {
+                previousPlaceId = destination.getTourPlaceId();
+                previousPlaceDate = slot.getVisitDate();
+            }
             previousDate = slot.getVisitDate();
         }
         return inputs;
