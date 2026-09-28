@@ -1,5 +1,6 @@
 package com.example.PartTrip.global.config;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
@@ -8,6 +9,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 //   LocationService             매시 오래된 위치 삭제
 //   KoreaFestivalImportService  매일 04:30 축제 동기화
 @Configuration
+@ConditionalOnProperty(name = "part-trip.scheduling.enabled", havingValue = "true", matchIfMissing = true)
 @EnableScheduling
 public class SchedulingConfig {
 }
