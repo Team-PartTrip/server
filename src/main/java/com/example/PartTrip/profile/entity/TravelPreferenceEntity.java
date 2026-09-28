@@ -31,4 +31,16 @@ public class TravelPreferenceEntity {
 
     @Column(name = "can_use_stairs", nullable = false)
     private Boolean canUseStairs;
+
+    @Column(name = "home_name", length = 255)
+    private String homeName;
+
+    @Column(name = "home_address", length = 255)
+    private String homeAddress;
+
+    @Column(name = "home_latitude")
+    private Double homeLatitude;
+
+    @Column(name = "home_longitude")
+    private Double homeLongitude;
 }

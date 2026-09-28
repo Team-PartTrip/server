@@ -169,6 +169,13 @@ public class PlannerDraftService {
                 plan.setDepartureLatitude(departureBlock.getLatitude());
                 plan.setDepartureLongitude(departureBlock.getLongitude());
             }
+            TravelPreferenceResponseDto.Home home = preference.getHome();
+            if (home != null && plan.getDepartureLatitude() == null
+                    && usesHome(departureBlock == null ? null : departureBlock.getValue())) {
+                plan.setDeparturePlaceName(home.name());
+                plan.setDepartureLatitude(home.latitude());
+                plan.setDepartureLongitude(home.longitude());
+            }
             groupTravelPlanRepository.save(plan);
             slotRepository.saveAll(toEntities(plan.getPlanId(), dates, days, lodgingId));
             return id;
@@ -471,6 +478,12 @@ public class PlannerDraftService {
         create.setStartDate(dto.getStartDate());
         create.setEndDate(dto.getEndDate());
         return create;
+    }
+
+    /** 출발 장소 블록을 안 골랐거나 "집 근처" 를 골랐을 때만 집을 출발지로 쓴다 */
+    static boolean usesHome(String departureBlockValue) {
+        return departureBlockValue == null || departureBlockValue.isBlank()
+                || departureBlockValue.strip().equals("집 근처");
     }
 
     /** 숙소는 마지막 날을 빼고 날마다 맨 끝 칸에 둔다. 그날 밤 자는 곳이다 */
