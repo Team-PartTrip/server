@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -32,7 +33,7 @@ public class RegionMapService {
     @Transactional(readOnly = true)
     public RegionMapResponseDto getRegionMap(String userId) {
         List<RegionMapResponseDto.VisitedRegionResponseDto> visited =
-                tripCardRepository.countTripsByRegion(userId).stream()
+                tripCardRepository.countTripsByRegion(userId, LocalDate.now()).stream()
                         // 지도가 쓰지 않는 코드가 섞여 있어도 지도 전체를 못 그리게 두지 않는다
                         .filter(row -> RegionCode.exists(row.getRegionCode()))
                         .map(row -> RegionMapResponseDto.VisitedRegionResponseDto.builder()
@@ -52,7 +53,8 @@ public class RegionMapService {
     }
 
     private List<RegionMapResponseDto.TripResponseDto> trips(String userId) {
-        List<TripCardEntity> cards = tripCardRepository.findByUserIdAndRegionCodeIsNotNull(userId).stream()
+        List<TripCardEntity> cards = tripCardRepository
+                .findByUserIdAndRegionCodeIsNotNullAndStartDateLessThanEqual(userId, LocalDate.now()).stream()
                 .filter(c -> RegionCode.exists(c.getRegionCode()))
                 .toList();
         if (cards.isEmpty()) {
