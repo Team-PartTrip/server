@@ -218,9 +218,13 @@ public class PlannerDraftService {
                                 .toList()))
                 .toList();
 
+        PlannerScheduleResponseDto.Departure departure = plan.getDeparturePlaceName() == null
+                ? null
+                : new PlannerScheduleResponseDto.Departure(plan.getDeparturePlaceName(),
+                        plan.getDepartureLatitude(), plan.getDepartureLongitude());
         return new PlannerScheduleResponseDto(
                 plannerId, group.getGroupName(), plan.getCityName(),
-                plan.getStartDate(), plan.getEndDate(), days);
+                plan.getStartDate(), plan.getEndDate(), days, departure);
     }
 
     private PlannerScheduleResponseDto.RouteLeg toRoute(String json) {

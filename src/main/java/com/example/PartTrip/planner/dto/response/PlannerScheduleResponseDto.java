@@ -10,8 +10,16 @@ public record PlannerScheduleResponseDto(
         String cityName,
         LocalDate startDate,
         LocalDate endDate,
-        List<Day> days
+        List<Day> days,
+        Departure departure
 ) {
+    public PlannerScheduleResponseDto(Long plannerId, String title, String cityName,
+            LocalDate startDate, LocalDate endDate, List<Day> days) {
+        this(plannerId, title, cityName, startDate, endDate, days, null);
+    }
+
+    public record Departure(String name, Double latitude, Double longitude) {}
+
     public record Day(LocalDate date, List<Slot> slots) {}
 
     public record Slot(Long slotId, int order, Place place, String routeStatus, RouteLeg routeFromPrevious) {
