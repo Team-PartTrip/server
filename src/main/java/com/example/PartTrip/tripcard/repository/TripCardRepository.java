@@ -14,22 +14,28 @@ public interface TripCardRepository extends JpaRepository<TripCardEntity, Long> 
     // Func-003-02 "여행카드들을 시간순으로 조회"
     List<TripCardEntity> findByUserIdOrderByStartDateDesc(String userId);
 
+    List<TripCardEntity> findByUserIdAndStartDateLessThanEqualOrderByStartDateDesc(
+            String userId, LocalDate today);
+
+    List<TripCardEntity> findByStartDateAndRegionCodeIsNotNull(LocalDate startDate);
+
     // 대한민국 지도 (#162). 방문 지역은 따로 저장하지 않고 카드를 시·도로 묶어 센다.
     // 카드가 곧 방문 기록이라, 따로 두면 둘이 어긋날 자리만 생긴다.
     @Query("""
             SELECT c.regionCode AS regionCode, COUNT(c) AS tripCount
             FROM TripCardEntity c
-            WHERE c.userId = :userId AND c.regionCode IS NOT NULL
+            WHERE c.userId = :userId AND c.regionCode IS NOT NULL AND c.startDate <= :today
             GROUP BY c.regionCode
             """)
-    List<RegionTripCount> countTripsByRegion(String userId);
+    List<RegionTripCount> countTripsByRegion(String userId, LocalDate today);
 
     interface RegionTripCount {
         String getRegionCode();
         long getTripCount();
     }
 
-    List<TripCardEntity> findByUserIdAndRegionCodeIsNotNull(String userId);
+    List<TripCardEntity> findByUserIdAndRegionCodeIsNotNullAndStartDateLessThanEqual(
+            String userId, LocalDate today);
 
     @Query("""
             SELECT p.tripCardId AS tripCardId, p.latitude AS latitude, p.longitude AS longitude
@@ -53,9 +59,9 @@ public interface TripCardRepository extends JpaRepository<TripCardEntity, Long> 
 
     @Query("""
             SELECT COUNT(DISTINCT c.regionCode) FROM TripCardEntity c
-            WHERE c.userId = :userId AND c.regionCode IS NOT NULL
+            WHERE c.userId = :userId AND c.regionCode IS NOT NULL AND c.startDate <= :today
             """)
-    long countDistinctRegionsByUserId(String userId);
+    long countDistinctRegionsByUserId(String userId, LocalDate today);
 
     // 조회 · 수정 · 삭제 시 소유자까지 함께 확인한다
     Optional<TripCardEntity> findByTripCardIdAndUserId(Long tripCardId, String userId);

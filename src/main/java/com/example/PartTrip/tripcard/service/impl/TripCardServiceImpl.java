@@ -69,7 +69,8 @@ public class TripCardServiceImpl implements TripCardService {
         String currentUserId = currentUserProvider.getCurrentUserId();
 
         // 명세서 비고: "시간순 정렬"
-        return tripCardRepository.findByUserIdOrderByStartDateDesc(currentUserId)
+        return tripCardRepository
+                .findByUserIdAndStartDateLessThanEqualOrderByStartDateDesc(currentUserId, LocalDate.now())
                 .stream()
                 .map(TripCardResponse::from)
                 .toList();

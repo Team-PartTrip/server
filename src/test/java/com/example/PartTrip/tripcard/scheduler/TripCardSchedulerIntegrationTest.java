@@ -3,6 +3,7 @@ package com.example.PartTrip.tripcard.scheduler;
 import com.example.PartTrip.tripcard.entity.TripCardEntity;
 import com.example.PartTrip.tripcard.repository.TripCardRepository;
 import com.example.PartTrip.tripcard.service.TripCardCloseService;
+import com.example.PartTrip.tripcard.service.TripStartNotifier;
 import com.example.PartTrip.tripcard.service.impl.TripCardGeneratorServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +18,8 @@ import java.time.LocalDateTime;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
-@Import({TripCardScheduler.class, TripCardGeneratorServiceImpl.class, TripCardCloseService.class})
+@Import({TripCardScheduler.class, TripCardGeneratorServiceImpl.class, TripCardCloseService.class,
+        TripStartNotifier.class})
 class TripCardSchedulerIntegrationTest {
 
     @Autowired private TripCardScheduler tripCardScheduler;

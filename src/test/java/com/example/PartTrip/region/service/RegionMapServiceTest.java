@@ -79,6 +79,30 @@ class RegionMapServiceTest {
                 new double[]{34.8544, 128.4332}, new double[]{34.8402, 128.4181});
     }
 
+    @Test
+    void 확정만_하고_아직_시작_안_한_여행은_지도에_없다() {
+        save("traveler", "27", "대구");
+        Long future = tripCardRepository.save(TripCardEntity.builder()
+                .userId("traveler")
+                .title("부산 여행")
+                .regionCode("26")
+                .cityName("부산")
+                .startDate(LocalDate.now().plusDays(40))
+                .endDate(LocalDate.now().plusDays(42))
+                .createdAt(LocalDateTime.now())
+                .build()).getTripCardId();
+        point(future, 35.15, 129.16, true);
+
+        RegionMapResponseDto map = regionMapService.getRegionMap("traveler");
+
+        assertThat(map.getVisited())
+                .extracting(RegionMapResponseDto.VisitedRegionResponseDto::getRegionCode)
+                .containsExactly("27");
+        assertThat(map.getTrips())
+                .extracting(RegionMapResponseDto.TripResponseDto::getTripCardId)
+                .doesNotContain(future);
+    }
+
     private void point(Long cardId, double lat, double lng, boolean place) {
         if (place) {
             TripCardPlaceEntity p = new TripCardPlaceEntity();

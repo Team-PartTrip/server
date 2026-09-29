@@ -129,9 +129,12 @@ public class PlannerConfirmService {
                     new TripCardCreatedEvent(card.getTripCardId(), card.getUserId()));
             // 처음 가는 시·도인지는 알림 쪽에서 가린다 (#162).
             // 여기서 카드를 세면 같은 순간에 확정된 다른 카드가 아직 안 보여
-            // 둘 다 "처음" 으로 세어진다
-            eventPublisher.publishEvent(
-                    new RegionVisitedEvent(card.getRegionCode(), card.getUserId()));
+            // 둘 다 "처음" 으로 세어진다.
+            // 아직 시작 전인 여행은 첫날 TripCardScheduler 가 보낸다 (#214)
+            if (card.getStartDate() == null || !card.getStartDate().isAfter(LocalDate.now())) {
+                eventPublisher.publishEvent(
+                        new RegionVisitedEvent(card.getRegionCode(), card.getUserId()));
+            }
         });
 
         TripCardEntity ownerCard = cardsByUserId.get(group.getOwnerUserId());

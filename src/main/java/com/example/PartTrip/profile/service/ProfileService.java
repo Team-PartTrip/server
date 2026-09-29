@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import java.time.LocalDate;
 
 
 @Service
@@ -38,7 +39,7 @@ public class ProfileService {
     public ProfileStatsResponseDto getStats(String userId) {
         return new ProfileStatsResponseDto(
                 tripCardRepository.countByUserId(userId),
-                tripCardRepository.countDistinctRegionsByUserId(userId),
+                tripCardRepository.countDistinctRegionsByUserId(userId, LocalDate.now()),
                 tripCardPhotoRepository.countByUserId(userId)
         );
     }
