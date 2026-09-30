@@ -24,11 +24,11 @@ public class OdsayDailyCallBudget {
     private LocalDate countedDate;
     private int usedCalls;
 
-    /** 실제 서버에서는 DB 기반 카운터를 사용한다. */
+    /** 실제 서버에서는 DB 기반 카운터를 사용한다. 기본값은 사실상 무제한이고 ODsay 쪽 한도에 맡긴다. */
     @Autowired
     public OdsayDailyCallBudget(
             OdsayDailyCallUsageRepository usageRepository,
-            @Value("${ODSAY_DAILY_CALL_LIMIT:${odsay.daily-call-limit:30}}") int dailyLimit) {
+            @Value("${ODSAY_DAILY_CALL_LIMIT:${odsay.daily-call-limit:2147483647}}") int dailyLimit) {
         this.usageRepository = usageRepository;
         this.dailyLimit = Math.max(0, dailyLimit);
         this.clock = Clock.system(KOREA);
