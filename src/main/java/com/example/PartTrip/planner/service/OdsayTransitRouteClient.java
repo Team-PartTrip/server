@@ -10,10 +10,19 @@ import org.springframework.web.client.RestClientException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /** ODsay 국내 대중교통 경로 검색 클라이언트. 키는 odsay.api-key 설정으로 받는다. */
 @Component
 public class OdsayTransitRouteClient {
+
+    static final double WALK_ONLY_METERS = 700;
+    static final double INTERCITY_METERS = 30_000;
+    private static final double WALK_DETOUR = 1.3;
+    private static final double WALK_METERS_PER_MINUTE = 67;
+
+    private static final Map<Integer, String> INTERCITY_TYPES = Map.of(
+            4, "TRAIN", 5, "EXPRESS_BUS", 6, "INTERCITY_BUS", 7, "AIR");
 
     private final RestClient restClient;
     private final String apiKey;
@@ -40,6 +49,10 @@ public class OdsayTransitRouteClient {
     public SearchResult search(double fromLongitude, double fromLatitude,
             double toLongitude, double toLatitude, String fromName, String toName) {
         if (!isConfigured()) return new SearchResult("WAITING_FOR_API_KEY", null);
+        double meters = distanceMeters(fromLatitude, fromLongitude, toLatitude, toLongitude);
+        if (meters <= WALK_ONLY_METERS) {
+            return new SearchResult("READY", walking(meters, fromName, toName));
+        }
 
         try {
             JsonNode response = restClient.get()
@@ -54,7 +67,8 @@ public class OdsayTransitRouteClient {
                             .build())
                     .retrieve()
                     .body(JsonNode.class);
-            PlannerScheduleResponseDto.RouteLeg route = parse(response, fromName, toName);
+            PlannerScheduleResponseDto.RouteLeg route =
+                    parse(response, fromName, toName, meters >= INTERCITY_METERS);
             return route == null
                     ? new SearchResult("NO_ROUTE", null)
                     : new SearchResult("READY", route);
@@ -67,10 +81,23 @@ public class OdsayTransitRouteClient {
     /** ODsay 응답에서 최적 경로의 교통수단, 정류장, 시간을 추출한다. */
     static PlannerScheduleResponseDto.RouteLeg parse(
             JsonNode response, String fromName, String toName) {
+        return parse(response, fromName, toName, false);
+    }
+
+    static PlannerScheduleResponseDto.RouteLeg parse(
+            JsonNode response, String fromName, String toName, boolean preferIntercity) {
         JsonNode paths = response == null ? null : response.path("result").path("path");
         if (paths == null || !paths.isArray() || paths.isEmpty()) return null;
 
         JsonNode bestPath = paths.get(0);
+        if (preferIntercity) {
+            for (JsonNode path : paths) {
+                if (hasIntercitySegment(path)) {
+                    bestPath = path;
+                    break;
+                }
+            }
+        }
         JsonNode info = bestPath.path("info");
         if (!info.path("totalTime").canConvertToInt()) return null;
 
@@ -83,6 +110,17 @@ public class OdsayTransitRouteClient {
                 walkingMinutes += duration;
                 steps.add(new PlannerScheduleResponseDto.RouteStep(
                         "WALK", "도보", null, null, null, duration));
+                continue;
+            }
+            String intercity = INTERCITY_TYPES.get(trafficType);
+            if (intercity != null) {
+                steps.add(new PlannerScheduleResponseDto.RouteStep(
+                        intercity,
+                        null,
+                        firstText(segment, "startName", "startNameKor"),
+                        firstText(segment, "endName", "endNameKor"),
+                        null,
+                        duration));
                 continue;
             }
             if (trafficType != 1 && trafficType != 2) continue;
@@ -106,6 +144,30 @@ public class OdsayTransitRouteClient {
         return new PlannerScheduleResponseDto.RouteLeg(
                 "PUBLIC_TRANSIT", fromName, toName,
                 info.path("totalTime").asInt(), walkingMinutes, List.copyOf(steps));
+    }
+
+    private static boolean hasIntercitySegment(JsonNode path) {
+        for (JsonNode segment : path.path("subPath")) {
+            if (INTERCITY_TYPES.containsKey(segment.path("trafficType").asInt(-1))) return true;
+        }
+        return false;
+    }
+
+    static PlannerScheduleResponseDto.RouteLeg walking(double meters, String fromName, String toName) {
+        int minutes = Math.max(1, (int) Math.ceil(meters * WALK_DETOUR / WALK_METERS_PER_MINUTE));
+        return new PlannerScheduleResponseDto.RouteLeg(
+                "WALKING", fromName, toName, minutes, minutes,
+                List.of(new PlannerScheduleResponseDto.RouteStep(
+                        "WALK", "도보", null, null, null, minutes)));
+    }
+
+    static double distanceMeters(double lat1, double lon1, double lat2, double lon2) {
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.pow(Math.sin(dLat / 2), 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.pow(Math.sin(dLon / 2), 2);
+        return 2 * 6_371_000 * Math.asin(Math.sqrt(a));
     }
 
     /** 여러 버전의 ODsay 응답 필드명 중 처음으로 채워진 문자열을 선택한다. */

@@ -45,6 +45,48 @@ class OdsayTransitRouteClientTest {
     }
 
     @Test
+    void 기차_구간을_단계로_남기고_먼_구간은_도시간_경로를_고른다() throws Exception {
+        JsonNode response = objectMapper.readTree("""
+                {
+                  "result": {
+                    "path": [
+                      {"info": {"totalTime": 150}, "subPath": [
+                        {"trafficType": 2, "sectionTime": 150, "startName": "반월당", "endName": "경주",
+                         "lane": [{"busNo": "999"}]}
+                      ]},
+                      {"info": {"totalTime": 60}, "subPath": [
+                        {"trafficType": 4, "sectionTime": 40, "startName": "동대구", "endName": "경주"},
+                        {"trafficType": 3, "sectionTime": 20}
+                      ]}
+                    ]
+                  }
+                }
+                """);
+
+        assertThat(OdsayTransitRouteClient.parse(response, "대구", "경주", false)
+                .durationMinutes()).isEqualTo(150);
+
+        PlannerScheduleResponseDto.RouteLeg route =
+                OdsayTransitRouteClient.parse(response, "대구", "경주", true);
+        assertThat(route.durationMinutes()).isEqualTo(60);
+        assertThat(route.steps().get(0).type()).isEqualTo("TRAIN");
+        assertThat(route.steps().get(0).boardingStop()).isEqualTo("동대구");
+        assertThat(route.steps().get(0).alightingStop()).isEqualTo("경주");
+    }
+
+    @Test
+    void 칠백미터_안은_호출없이_걸어서_가는_경로로_둔다() {
+        OdsayTransitRouteClient client = new OdsayTransitRouteClient("test-key");
+
+        OdsayTransitRouteClient.SearchResult result =
+                client.search(128.5877, 35.8697, 128.5812, 35.8691, "청라언덕", "서문시장");
+
+        assertThat(result.status()).isEqualTo("READY");
+        assertThat(result.route().transportMode()).isEqualTo("WALKING");
+        assertThat(result.route().durationMinutes()).isEqualTo(12);
+    }
+
+    @Test
     void 경로가_없으면_null을_반환한다() throws Exception {
         JsonNode response = objectMapper.readTree("{\"result\":{\"path\":[]}}");
 
