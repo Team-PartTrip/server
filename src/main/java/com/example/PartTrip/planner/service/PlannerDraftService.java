@@ -14,6 +14,7 @@ import com.example.PartTrip.planner.dto.response.PlannerScheduleResponseDto;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
 import com.example.PartTrip.planner.entity.PlannerScheduleSlotEntity;
 import com.example.PartTrip.planner.entity.TravelGroupEntity;
+import com.example.PartTrip.planner.enums.GroupStatus;
 import com.example.PartTrip.planner.enums.PlannerBlockType;
 import com.example.PartTrip.planner.repository.GroupMemberRepository;
 import com.example.PartTrip.planner.repository.GroupTravelPlanRepository;
@@ -81,7 +82,6 @@ public class PlannerDraftService {
     private final PlannerScheduleSlotRepository slotRepository;
     private final TransactionTemplate transactionTemplate;
     private final ObjectMapper objectMapper;
-    private final PlannerScheduleRouteService scheduleRouteService;
 
     public PlannerScheduleResponseDto generate(GeneratePlannerRequestDto dto, String userId) {
         String city = dto.getCityName().trim();
@@ -180,7 +180,6 @@ public class PlannerDraftService {
             slotRepository.saveAll(toEntities(plan.getPlanId(), dates, days, lodgingId));
             return id;
         });
-        scheduleRouteService.recalculate(plannerId);
         return getSchedule(plannerId, userId);
     }
 
@@ -206,6 +205,7 @@ public class PlannerDraftService {
         Map<LocalDate, List<PlannerScheduleSlotEntity>> byDate = slots.stream()
                 .collect(Collectors.groupingBy(PlannerScheduleSlotEntity::getVisitDate));
 
+        boolean withRoute = group.getStatus() != GroupStatus.PLANNING;
         // 카드가 없는 날도 빠지지 않게 여행 기간으로 돈다
         List<PlannerScheduleResponseDto.Day> days = datesOf(plan.getStartDate(), plan.getEndDate())
                 .stream()
@@ -214,7 +214,8 @@ public class PlannerDraftService {
                                 .map(slot -> new PlannerScheduleResponseDto.Slot(
                                         slot.getSlotId(), slot.getSortOrder(),
                                         toPlace(places.get(slot.getTourPlaceId())),
-                                        slot.getRouteStatus(), toRoute(slot.getRouteData())))
+                                        withRoute ? slot.getRouteStatus() : null,
+                                        withRoute ? toRoute(slot.getRouteData()) : null))
                                 .toList()))
                 .toList();
 

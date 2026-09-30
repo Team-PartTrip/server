@@ -4,7 +4,6 @@ import com.example.PartTrip.planner.dto.request.SavePlannerScheduleRequestDto;
 import com.example.PartTrip.planner.dto.response.PlannerScheduleResponseDto;
 import com.example.PartTrip.planner.service.PlannerDraftService;
 import com.example.PartTrip.planner.service.PlannerScheduleEditService;
-import com.example.PartTrip.planner.service.PlannerScheduleRouteService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -18,7 +17,6 @@ import java.util.List;
 @RequestMapping("/api/planners/{plannerId}/schedule")
 public class PlannerScheduleController {
     private final PlannerScheduleEditService service;
-    private final PlannerScheduleRouteService routeService;
     private final PlannerDraftService draftService;
 
     /** 배열 순서대로 전체 일정을 저장한다. */
@@ -27,7 +25,6 @@ public class PlannerScheduleController {
             @Valid @RequestBody SavePlannerScheduleRequestDto request, Authentication authentication) {
         String userId = authentication.getName();
         service.save(plannerId, request, userId);
-        routeService.recalculate(plannerId);
         return draftService.getSchedule(plannerId, userId);
     }
 

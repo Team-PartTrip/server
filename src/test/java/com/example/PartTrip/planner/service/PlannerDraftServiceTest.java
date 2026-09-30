@@ -6,7 +6,10 @@ import com.example.PartTrip.main.enums.TourPlaceCategory;
 import com.example.PartTrip.main.repository.TourPlaceRepository;
 import com.example.PartTrip.main.service.TourPlaceImportService;
 import com.example.PartTrip.planner.dto.request.GeneratePlannerRequestDto;
+import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
 import com.example.PartTrip.planner.entity.PlannerScheduleSlotEntity;
+import com.example.PartTrip.planner.entity.TravelGroupEntity;
+import com.example.PartTrip.planner.enums.GroupStatus;
 import com.example.PartTrip.planner.enums.PlannerBlockType;
 import com.example.PartTrip.planner.repository.GroupMemberRepository;
 import com.example.PartTrip.planner.repository.GroupTravelPlanRepository;
@@ -29,6 +32,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -338,5 +342,28 @@ class PlannerDraftServiceTest {
         ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
         verify(openAiClient).completeJson(anyString(), prompt.capture());
         assertThat(prompt.getValue()).contains("900|할머니댁|").contains("901|장소901|");
+    }
+
+    @Test
+    void scheduleHidesRoutesUntilConfirmed() {
+        TravelGroupEntity group = new TravelGroupEntity();
+        group.setStatus(GroupStatus.PLANNING);
+        GroupTravelPlanEntity plan = new GroupTravelPlanEntity();
+        plan.setPlanId(1L);
+        plan.setStartDate(D1);
+        plan.setEndDate(D1);
+        PlannerScheduleSlotEntity slot = new PlannerScheduleSlotEntity();
+        slot.setVisitDate(D1);
+        slot.setSortOrder(0);
+        slot.setRouteStatus("READY");
+        given(travelGroupRepository.findById(7L)).willReturn(Optional.of(group));
+        given(groupMemberRepository.existsByGroupIdAndUserId(7L, "u")).willReturn(true);
+        given(groupTravelPlanRepository.findFirstByGroupIdOrderByCreatedAtDesc(7L)).willReturn(Optional.of(plan));
+        given(slotRepository.findByPlanIdOrderByVisitDateAscSortOrderAsc(1L)).willReturn(List.of(slot));
+
+        assertThat(service.getSchedule(7L, "u").days().get(0).slots().get(0).routeStatus()).isNull();
+
+        group.setStatus(GroupStatus.CONFIRMED);
+        assertThat(service.getSchedule(7L, "u").days().get(0).slots().get(0).routeStatus()).isEqualTo("READY");
     }
 }

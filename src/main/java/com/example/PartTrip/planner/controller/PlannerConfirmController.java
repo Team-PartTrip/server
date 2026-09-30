@@ -4,6 +4,7 @@ import com.example.PartTrip.planner.dto.response.PlannerConfirmResponseDto;
 import com.example.PartTrip.planner.dto.response.PlannerFinalResponseDto;
 import com.example.PartTrip.planner.service.PlannerConfirmService;
 import com.example.PartTrip.planner.service.PlannerFinalService;
+import com.example.PartTrip.planner.service.PlannerScheduleRouteService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -20,15 +21,17 @@ public class PlannerConfirmController {
 
     private final PlannerConfirmService plannerConfirmService;
     private final PlannerFinalService plannerFinalService;
+    private final PlannerScheduleRouteService routeService;
 
     @PostMapping("/{plannerId}/confirm")
     public ResponseEntity<PlannerConfirmResponseDto> confirmPlanner(
             Authentication authentication,
             @PathVariable Long plannerId
     ) {
-        return ResponseEntity.ok(
-                plannerConfirmService.confirmPlanner(plannerId, authentication.getName())
-        );
+        PlannerConfirmResponseDto response =
+                plannerConfirmService.confirmPlanner(plannerId, authentication.getName());
+        routeService.recalculate(plannerId);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{plannerId}/confirmed-places")
