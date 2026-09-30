@@ -55,20 +55,13 @@ public class OdsayTransitRouteClient {
         }
 
         try {
-            JsonNode response = restClient.get()
-                    .uri(uri -> uri.path("/v1/api/searchPubTransPathT")
-                            .queryParam("apiKey", apiKey)
-                            .queryParam("SX", fromLongitude)
-                            .queryParam("SY", fromLatitude)
-                            .queryParam("EX", toLongitude)
-                            .queryParam("EY", toLatitude)
-                            .queryParam("OPT", 0)
-                            .queryParam("output", "json")
-                            .build())
-                    .retrieve()
-                    .body(JsonNode.class);
-            PlannerScheduleResponseDto.RouteLeg route =
-                    parse(response, fromName, toName, meters >= INTERCITY_METERS);
+            JsonNode path = pickPath(request(fromLongitude, fromLatitude, toLongitude, toLatitude),
+                    meters >= INTERCITY_METERS);
+            PlannerScheduleResponseDto.RouteLeg route = toLeg(path, fromName, toName);
+            if (route != null && hasIntercitySegment(path)) {
+                route = withLocalLegs(route, path, fromLongitude, fromLatitude,
+                        toLongitude, toLatitude, fromName, toName);
+            }
             return route == null
                     ? new SearchResult("NO_ROUTE", null)
                     : new SearchResult("READY", route);
@@ -86,18 +79,87 @@ public class OdsayTransitRouteClient {
 
     static PlannerScheduleResponseDto.RouteLeg parse(
             JsonNode response, String fromName, String toName, boolean preferIntercity) {
+        return toLeg(pickPath(response, preferIntercity), fromName, toName);
+    }
+
+    private JsonNode request(double fromLongitude, double fromLatitude,
+            double toLongitude, double toLatitude) {
+        return restClient.get()
+                .uri(uri -> uri.path("/v1/api/searchPubTransPathT")
+                        .queryParam("apiKey", apiKey)
+                        .queryParam("SX", fromLongitude)
+                        .queryParam("SY", fromLatitude)
+                        .queryParam("EX", toLongitude)
+                        .queryParam("EY", toLatitude)
+                        .queryParam("OPT", 0)
+                        .queryParam("output", "json")
+                        .build())
+                .retrieve()
+                .body(JsonNode.class);
+    }
+
+    static JsonNode pickPath(JsonNode response, boolean preferIntercity) {
         JsonNode paths = response == null ? null : response.path("result").path("path");
         if (paths == null || !paths.isArray() || paths.isEmpty()) return null;
-
-        JsonNode bestPath = paths.get(0);
         if (preferIntercity) {
             for (JsonNode path : paths) {
-                if (hasIntercitySegment(path)) {
-                    bestPath = path;
-                    break;
-                }
+                if (hasIntercitySegment(path)) return path;
             }
         }
+        return paths.get(0);
+    }
+
+    private PlannerScheduleResponseDto.RouteLeg withLocalLegs(
+            PlannerScheduleResponseDto.RouteLeg intercity, JsonNode path,
+            double fromLongitude, double fromLatitude, double toLongitude, double toLatitude,
+            String fromName, String toName) {
+        JsonNode first = null;
+        JsonNode last = null;
+        for (JsonNode segment : path.path("subPath")) {
+            if (!INTERCITY_TYPES.containsKey(segment.path("trafficType").asInt(-1))) continue;
+            if (first == null) first = segment;
+            last = segment;
+        }
+        PlannerScheduleResponseDto.RouteLeg head = local(fromLongitude, fromLatitude,
+                first.path("startX").asDouble(Double.NaN), first.path("startY").asDouble(Double.NaN),
+                fromName, firstText(first, "startName", "startNameKor"));
+        PlannerScheduleResponseDto.RouteLeg tail = local(
+                last.path("endX").asDouble(Double.NaN), last.path("endY").asDouble(Double.NaN),
+                toLongitude, toLatitude, firstText(last, "endName", "endNameKor"), toName);
+        return join(intercity, head, tail);
+    }
+
+    private PlannerScheduleResponseDto.RouteLeg local(double fromLongitude, double fromLatitude,
+            double toLongitude, double toLatitude, String fromName, String toName) {
+        if (Double.isNaN(fromLongitude) || Double.isNaN(fromLatitude)
+                || Double.isNaN(toLongitude) || Double.isNaN(toLatitude)) return null;
+        double meters = distanceMeters(fromLatitude, fromLongitude, toLatitude, toLongitude);
+        if (meters <= WALK_ONLY_METERS) return walking(meters, fromName, toName);
+        try {
+            return toLeg(pickPath(request(fromLongitude, fromLatitude, toLongitude, toLatitude), false),
+                    fromName, toName);
+        } catch (RestClientException | IllegalArgumentException exception) {
+            return null;
+        }
+    }
+
+    static PlannerScheduleResponseDto.RouteLeg join(PlannerScheduleResponseDto.RouteLeg intercity,
+            PlannerScheduleResponseDto.RouteLeg head, PlannerScheduleResponseDto.RouteLeg tail) {
+        List<PlannerScheduleResponseDto.RouteStep> steps = new ArrayList<>();
+        int total = 0;
+        int walking = 0;
+        for (PlannerScheduleResponseDto.RouteLeg leg : new PlannerScheduleResponseDto.RouteLeg[]{head, intercity, tail}) {
+            if (leg == null) continue;
+            steps.addAll(leg.steps());
+            total += leg.durationMinutes() == null ? 0 : leg.durationMinutes();
+            walking += leg.walkingMinutes() == null ? 0 : leg.walkingMinutes();
+        }
+        return new PlannerScheduleResponseDto.RouteLeg("PUBLIC_TRANSIT",
+                intercity.fromName(), intercity.toName(), total, walking, List.copyOf(steps));
+    }
+
+    static PlannerScheduleResponseDto.RouteLeg toLeg(JsonNode bestPath, String fromName, String toName) {
+        if (bestPath == null) return null;
         JsonNode info = bestPath.path("info");
         if (!info.path("totalTime").canConvertToInt()) return null;
 
