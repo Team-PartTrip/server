@@ -18,7 +18,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.task.TaskRejectedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -52,18 +51,12 @@ public class PlannerScheduleRouteService {
     private final GoogleDrivingRouteClient googleRouteClient;
     private final ObjectMapper objectMapper;
     private final TransactionTemplate transactionTemplate;
-    private final PlannerRouteTaskRunner taskRunner;
 
-    /** 경로 상태를 즉시 갱신하고, 외부 API 계산을 백그라운드에 예약한다. */
+    /** 확정 때 부른다. 경로 계산이 끝난 뒤 돌아와서 확정 응답을 받으면 경로가 다 채워져 있다. */
     public void recalculate(Long plannerId) {
         RouteSnapshot snapshot = transactionTemplate.execute(status -> prepare(plannerId));
         if (snapshot == null || snapshot.pending().isEmpty()) return;
-        try {
-            taskRunner.submit(() -> calculateAndPersist(snapshot));
-        } catch (TaskRejectedException exception) {
-            log.warn("일정 경로 작업 대기열이 가득 차 경로 계산을 예약하지 못했습니다. plannerId={}", plannerId);
-            persistFailure(snapshot);
-        }
+        calculateAndPersist(snapshot);
     }
 
     /** 잠금 트랜잭션에서 입력 스냅샷을 만들고, 계산 대기 상태를 기록한다. */

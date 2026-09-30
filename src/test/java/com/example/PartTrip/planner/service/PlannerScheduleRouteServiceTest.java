@@ -17,7 +17,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.transaction.TransactionStatus;
@@ -54,7 +53,6 @@ class PlannerScheduleRouteServiceTest {
     @Mock private OdsayDailyCallBudget odsayBudget;
     @Mock private GoogleDrivingRouteClient google;
     @Mock private TransactionTemplate transactions;
-    @Mock private PlannerRouteTaskRunner taskRunner;
 
     private final Long plannerId = 41L;
     private final Long planId = 72L;
@@ -116,22 +114,19 @@ class PlannerScheduleRouteServiceTest {
                 new PlannerScheduleResponseDto.RouteLeg("PUBLIC_TRANSIT", "강릉역", "경포대",
                         25, 5, List.of())));
         service = new PlannerScheduleRouteService(groups, plans, slots, places, preferences,
-                odsay, odsayBudget, google, new ObjectMapper(), transactions, taskRunner);
+                odsay, odsayBudget, google, new ObjectMapper(), transactions);
     }
 
     @Test
     void 첫날_첫_장소는_계획_출발지에서_계산하고_같은_경로는_재사용한다() {
         service.recalculate(plannerId);
-        Runnable calculation = captureCalculation();
-        calculation.run();
 
         verify(odsay).search(128.90, 37.75, 128.90, 37.80, "강릉역", "경포대");
         assertThat(slot.getRouteStatus()).isEqualTo("READY");
 
-        clearInvocations(taskRunner, odsay);
+        clearInvocations(odsay);
         service.recalculate(plannerId);
 
-        verify(taskRunner, never()).submit(any());
         verify(odsay, never()).search(any(Double.class), any(Double.class), any(Double.class),
                 any(Double.class), any(), any());
     }
@@ -146,7 +141,6 @@ class PlannerScheduleRouteServiceTest {
                 .thenAnswer(ignored -> List.of(slot, night, nextDay));
 
         service.recalculate(plannerId);
-        captureCalculation().run();
 
         verify(odsay).search(128.89, 37.76, 128.87, 37.78, "강릉호텔", "오죽헌");
     }
@@ -159,7 +153,6 @@ class PlannerScheduleRouteServiceTest {
                 .thenAnswer(ignored -> List.of(slot, nextDay));
 
         service.recalculate(plannerId);
-        captureCalculation().run();
 
         verify(odsay).search(128.90, 37.75, 128.87, 37.78, "강릉역", "오죽헌");
         verify(odsay, never()).search(128.90, 37.80, 128.87, 37.78, "경포대", "오죽헌");
@@ -177,7 +170,6 @@ class PlannerScheduleRouteServiceTest {
                 .thenAnswer(ignored -> List.of(slot, night, emptyDay, thirdDay));
 
         service.recalculate(plannerId);
-        captureCalculation().run();
 
         verify(odsay).search(128.90, 37.75, 128.87, 37.78, "강릉역", "오죽헌");
         verify(odsay, never()).search(128.89, 37.76, 128.87, 37.78, "강릉호텔", "오죽헌");
@@ -193,11 +185,9 @@ class PlannerScheduleRouteServiceTest {
                                 25, 5, List.of())));
 
         service.recalculate(plannerId);
-        captureCalculation().run();
         assertThat(slot.getRouteStatus()).isEqualTo("API_ERROR");
 
         service.recalculate(plannerId);
-        captureCalculation().run();
 
         verify(odsay, org.mockito.Mockito.times(2)).search(any(Double.class), any(Double.class),
                 any(Double.class), any(Double.class), any(), any());
@@ -211,35 +201,8 @@ class PlannerScheduleRouteServiceTest {
         service.recalculate(plannerId);
 
         assertThat(slot.getRouteStatus()).isEqualTo("WAITING_FOR_API_KEY");
-        verify(taskRunner, never()).submit(any());
         verify(odsay, never()).search(any(Double.class), any(Double.class), any(Double.class),
                 any(Double.class), any(), any());
-    }
-
-    @Test
-    void 일정이_계산중_변경되면_이전_경로로_덮어쓰지_않는다() {
-        service.recalculate(plannerId);
-        Runnable oldCalculation = captureCalculation();
-
-        slot.setTourPlaceId(102L);
-        service.recalculate(plannerId);
-        Runnable currentCalculation = captureCalculation();
-
-        oldCalculation.run();
-        assertThat(slot.getRouteStatus()).isEqualTo("CALCULATING");
-        currentCalculation.run();
-
-        verify(odsay).search(128.90, 37.75, 128.87, 37.78, "강릉역", "오죽헌");
-        assertThat(slot.getRouteStatus()).isEqualTo("READY");
-    }
-
-    private Runnable captureCalculation() {
-        ArgumentCaptor<Runnable> captor = ArgumentCaptor.forClass(Runnable.class);
-        verify(taskRunner, org.mockito.Mockito.atLeastOnce()).submit(captor.capture());
-        List<Runnable> calculations = captor.getAllValues();
-        Runnable calculation = calculations.get(calculations.size() - 1);
-        clearInvocations(taskRunner);
-        return calculation;
     }
 
     private TourPlaceEntity place(Long id, String name, double latitude, double longitude) {
