@@ -87,6 +87,28 @@ class OdsayTransitRouteClientTest {
     }
 
     @Test
+    void 역까지_가는_시내_구간을_기차_앞뒤에_붙인다() {
+        var step = (java.util.function.BiFunction<String, Integer, PlannerScheduleResponseDto.RouteStep>)
+                (type, minutes) -> new PlannerScheduleResponseDto.RouteStep(type, null, null, null, null, minutes);
+        var head = new PlannerScheduleResponseDto.RouteLeg("PUBLIC_TRANSIT", "집", "서울",
+                20, 5, java.util.List.of(step.apply("WALK", 5), step.apply("SUBWAY", 15)));
+        var train = new PlannerScheduleResponseDto.RouteLeg("PUBLIC_TRANSIT", "집", "월정교",
+                117, 0, java.util.List.of(step.apply("TRAIN", 117)));
+        var tail = new PlannerScheduleResponseDto.RouteLeg("PUBLIC_TRANSIT", "경주", "월정교",
+                30, 8, java.util.List.of(step.apply("BUS", 22), step.apply("WALK", 8)));
+
+        var joined = OdsayTransitRouteClient.join(train, head, tail);
+
+        assertThat(joined.durationMinutes()).isEqualTo(167);
+        assertThat(joined.walkingMinutes()).isEqualTo(13);
+        assertThat(joined.fromName()).isEqualTo("집");
+        assertThat(joined.steps()).extracting(PlannerScheduleResponseDto.RouteStep::type)
+                .containsExactly("WALK", "SUBWAY", "TRAIN", "BUS", "WALK");
+        // 한쪽을 못 찾으면 있는 쪽만 붙인다
+        assertThat(OdsayTransitRouteClient.join(train, null, tail).steps()).hasSize(3);
+    }
+
+    @Test
     void 경로가_없으면_null을_반환한다() throws Exception {
         JsonNode response = objectMapper.readTree("{\"result\":{\"path\":[]}}");
 
