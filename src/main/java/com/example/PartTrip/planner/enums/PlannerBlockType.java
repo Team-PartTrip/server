@@ -39,7 +39,7 @@ public enum PlannerBlockType {
     DAILY_WALK("하루 보행량", false, "직접 지정"),
     STAIRS_SLOPE("계단·경사 조건", true, "계단 피하기", "급경사 피하기", "평지 중심"),
     MOBILITY_AID("이동 보조 조건", false, "휠체어 이용", "보행기 이용", "지팡이 이용", "별도 조건 없음"),
-    ACCESSIBILITY("장소 접근성", true, "경사로", "엘리베이터", "무장애 화장실", "가까운 하차 지점"),
+    ACCESSIBILITY("편의 시설", true, "경사로", "엘리베이터", "장애인 화장실", "가까운 하차 지점"),
     REST_FREQUENCY("휴식 빈도", false, "장소마다 휴식", "일정 간격으로 휴식", "필요할 때"),
     REST_PLACE("휴식 장소", true, "벤치", "실내 쉼터", "카페", "숙소에서 낮 휴식"),
     RESTROOM("화장실 편의", true, "방문 장소마다 확인", "가까운 화장실 우선"),
