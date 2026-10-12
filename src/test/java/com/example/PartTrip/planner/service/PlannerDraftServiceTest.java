@@ -35,6 +35,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -284,6 +285,51 @@ class PlannerDraftServiceTest {
     }
 
     @Test
+    void 이동이_불편하면_무장애가_아닌_액티비티를_후보에서_뺀다() {
+        TourPlaceEntity museum = place(1L);
+        TourPlaceEntity laserTag = place(2L);
+        laserTag.setCategory(TourPlaceCategory.ACTIVITY);
+        TourPlaceEntity rampedActivity = place(3L);
+        rampedActivity.setCategory(TourPlaceCategory.ACTIVITY);
+        given(tourPlaceRepository.findByCountryNameAndCityName("대한민국", "강릉"))
+                .willReturn(List.of(museum, laserTag, rampedActivity));
+        given(travelPreferenceService.getPreference("user"))
+                .willReturn(new TravelPreferenceResponseDto(PreferredTransport.PUBLIC_TRANSIT, 3, true,
+                        null, null, null, true));
+        TourPlaceAccessibilityEntity row = new TourPlaceAccessibilityEntity();
+        row.setTourPlaceId(3L);
+        row.setContentId("1");
+        row.setItemsJson("[{\"key\":\"ROUTE\",\"label\":\"접근로\",\"text\":\"경사로\"}]");
+        given(accessibilityRepository.findAllById(any())).willReturn(List.of(row));
+        given(openAiClient.completeJson(anyString(), anyString()))
+                .willThrow(new AiUnavailableException("실패"));
+
+        assertThatThrownBy(() -> service.generate(request(), "user"));
+
+        ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
+        verify(openAiClient).completeJson(anyString(), prompt.capture());
+        assertThat(prompt.getValue())
+                .contains("1|장소1|")
+                .doesNotContain("2|장소2|")
+                .contains("3|장소3|");
+    }
+
+    @Test
+    void 맛집끼리_카페끼리_붙으면_뒤쪽을_다른_장소와_바꾼다() {
+        Map<Long, TourPlaceCategory> categories = Map.of(
+                1L, TourPlaceCategory.RESTAURANT, 2L, TourPlaceCategory.RESTAURANT,
+                3L, TourPlaceCategory.ATTRACTION, 4L, TourPlaceCategory.CAFE,
+                5L, TourPlaceCategory.CAFE);
+
+        assertThat(PlannerDraftService.spreadMeals(List.of(1L, 2L, 3L), categories))
+                .containsExactly(1L, 3L, 2L);
+        assertThat(PlannerDraftService.spreadMeals(List.of(3L, 4L, 5L), categories))
+                .containsExactly(3L, 4L, 5L);
+        assertThat(PlannerDraftService.spreadMeals(List.of(1L, 4L, 3L), categories))
+                .containsExactly(1L, 4L, 3L);
+    }
+
+    @Test
     void 블록과_기본_설정을_프롬프트에_넣는다() {
         givenCandidates();
         given(openAiClient.completeJson(anyString(), anyString()))
@@ -304,6 +350,8 @@ class PlannerDraftServiceTest {
     @Test
     void 후보가_없으면_AI를_부르지_않는다() {
         given(tourPlaceRepository.findByCountryNameAndCityName("대한민국", "강릉")).willReturn(List.of());
+        given(travelPreferenceService.getPreference("user"))
+                .willReturn(new TravelPreferenceResponseDto(PreferredTransport.PUBLIC_TRANSIT, 3, true));
 
         assertThatThrownBy(() -> service.generate(request(), "user"))
                 .isInstanceOf(IllegalArgumentException.class)
