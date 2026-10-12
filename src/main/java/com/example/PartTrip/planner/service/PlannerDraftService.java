@@ -272,7 +272,8 @@ public class PlannerDraftService {
 
     /**
      * 같은 날 맛집끼리 · 카페끼리 붙어 있으면 뒤쪽 장소를 그 뒤의 다른 분류 장소와 바꾼다.
-     * 프롬프트 규칙만으로는 AI 가 자주 어긴다. 바꿀 장소가 없으면 그대로 둔다
+     * 뒤에 바꿀 장소가 없으면 앞쪽에서 같은 분류와 닿지 않는 자리로 옮긴다.
+     * 프롬프트 규칙만으로는 AI 가 자주 어긴다. 둘 다 안 되면 그대로 둔다
      */
     static List<Long> spreadMeals(List<Long> day, Map<Long, TourPlaceCategory> categories) {
         List<Long> result = new ArrayList<>(day);
@@ -280,10 +281,19 @@ public class PlannerDraftService {
             TourPlaceCategory current = categories.get(result.get(i));
             boolean meal = current == TourPlaceCategory.RESTAURANT || current == TourPlaceCategory.CAFE;
             if (!meal || current != categories.get(result.get(i - 1))) continue;
-            for (int j = i + 1; j < result.size(); j++) {
+            boolean moved = false;
+            for (int j = i + 1; j < result.size() && !moved; j++) {
                 if (categories.get(result.get(j)) != current) {
                     Collections.swap(result, i, j);
-                    break;
+                    moved = true;
+                }
+            }
+            // 하루 끝에 몰려 뒤에 바꿀 곳이 없으면, 앞쪽 빈틈 중 원래 자리에서 가까운 곳으로 옮긴다
+            for (int k = i - 2; k >= 0 && !moved; k--) {
+                boolean clearBefore = k == 0 || categories.get(result.get(k - 1)) != current;
+                if (clearBefore && categories.get(result.get(k)) != current) {
+                    result.add(k, result.remove(i));
+                    moved = true;
                 }
             }
         }

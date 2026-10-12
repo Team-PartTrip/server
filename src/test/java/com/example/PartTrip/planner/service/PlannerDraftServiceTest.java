@@ -319,12 +319,18 @@ class PlannerDraftServiceTest {
         Map<Long, TourPlaceCategory> categories = Map.of(
                 1L, TourPlaceCategory.RESTAURANT, 2L, TourPlaceCategory.RESTAURANT,
                 3L, TourPlaceCategory.ATTRACTION, 4L, TourPlaceCategory.CAFE,
-                5L, TourPlaceCategory.CAFE);
+                5L, TourPlaceCategory.CAFE, 6L, TourPlaceCategory.SHOPPING);
 
         assertThat(PlannerDraftService.spreadMeals(List.of(1L, 2L, 3L), categories))
                 .containsExactly(1L, 3L, 2L);
+        // 뒤에 바꿀 곳이 없으면 앞쪽 빈틈으로 옮긴다
         assertThat(PlannerDraftService.spreadMeals(List.of(3L, 4L, 5L), categories))
-                .containsExactly(3L, 4L, 5L);
+                .containsExactly(5L, 3L, 4L);
+        assertThat(PlannerDraftService.spreadMeals(List.of(3L, 6L, 1L, 2L), categories))
+                .containsExactly(3L, 2L, 6L, 1L);
+        // 전부 맛집이면 고칠 수 없다
+        assertThat(PlannerDraftService.spreadMeals(List.of(1L, 2L), categories))
+                .containsExactly(1L, 2L);
         assertThat(PlannerDraftService.spreadMeals(List.of(1L, 4L, 3L), categories))
                 .containsExactly(1L, 4L, 3L);
     }
