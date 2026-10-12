@@ -58,6 +58,10 @@ public class SecurityConfig {
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/main/tour-place/*/photo").permitAll()
 
+                        // 오류가 나면 /error 로 다시 보내는데 JWT 필터는 그 요청에 인증을 붙이지 않는다.
+                        // 막으면 404 · 503 이 모두 403 으로 바뀐다. 응답 본문에 메시지는 담지 않는다(기본값)
+                        .requestMatchers("/error").permitAll()
+
                         // 나머지 요청은 로그인 필요
                         .anyRequest().authenticated()
                 )
