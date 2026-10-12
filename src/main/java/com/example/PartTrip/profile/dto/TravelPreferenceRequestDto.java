@@ -1,5 +1,6 @@
 package com.example.PartTrip.profile.dto;
 
+import com.example.PartTrip.profile.enums.AvoidFood;
 import com.example.PartTrip.profile.enums.PreferredTransport;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -7,6 +8,8 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.util.List;
 
 @Getter
 @Setter
@@ -23,4 +26,6 @@ public class TravelPreferenceRequestDto {
 
     @NotNull(message = "계단 이용 가능 여부는 필수입니다.")
     private Boolean canUseStairs;
+
+    private List<@NotNull AvoidFood> avoidFoods;
 }

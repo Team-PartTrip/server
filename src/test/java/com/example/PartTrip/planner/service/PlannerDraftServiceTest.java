@@ -16,6 +16,7 @@ import com.example.PartTrip.planner.repository.GroupTravelPlanRepository;
 import com.example.PartTrip.planner.repository.PlannerScheduleSlotRepository;
 import com.example.PartTrip.planner.repository.TravelGroupRepository;
 import com.example.PartTrip.profile.dto.TravelPreferenceResponseDto;
+import com.example.PartTrip.profile.enums.AvoidFood;
 import com.example.PartTrip.profile.enums.PreferredTransport;
 import com.example.PartTrip.profile.service.TravelPreferenceService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -237,6 +238,22 @@ class PlannerDraftServiceTest {
                 .isInstanceOf(AiUnavailableException.class);
         verify(transactionTemplate, never()).execute(any());
         verify(plannerService, never()).createPlanner(any(), anyString());
+    }
+
+    @Test
+    void 피하는_음식을_프롬프트에_넣는다() {
+        givenCandidates();
+        given(travelPreferenceService.getPreference("user"))
+                .willReturn(new TravelPreferenceResponseDto(PreferredTransport.PUBLIC_TRANSIT, 3, true,
+                        null, List.of(AvoidFood.SEAFOOD, AvoidFood.HARD)));
+        given(openAiClient.completeJson(anyString(), anyString()))
+                .willThrow(new AiUnavailableException("실패"));
+
+        assertThatThrownBy(() -> service.generate(request(), "user"));
+
+        ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
+        verify(openAiClient).completeJson(anyString(), prompt.capture());
+        assertThat(prompt.getValue()).contains("피하는 음식: 해산물, 딱딱하거나 질긴 음식");
     }
 
     @Test

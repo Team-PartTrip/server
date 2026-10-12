@@ -3,6 +3,7 @@ package com.example.PartTrip.profile.service;
 import com.example.PartTrip.profile.dto.TravelPreferenceRequestDto;
 import com.example.PartTrip.profile.dto.TravelPreferenceResponseDto;
 import com.example.PartTrip.profile.entity.TravelPreferenceEntity;
+import com.example.PartTrip.profile.enums.AvoidFood;
 import com.example.PartTrip.profile.enums.PreferredTransport;
 import com.example.PartTrip.profile.repository.TravelPreferenceRepository;
 import com.example.PartTrip.profile.repository.UserProfileRepository;
@@ -12,6 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -80,6 +82,39 @@ class TravelPreferenceServiceTest {
     }
 
     /** 가입하지 않은 사용자는 설정을 조회할 수 없다. */
+    @Test
+    void 피하는_음식을_저장하고_빼고_보내면_그대로_둔다() {
+        TravelPreferenceEntity preference = new TravelPreferenceEntity();
+        preference.setUserId("user");
+        given(userProfileRepository.findByUserIdForUpdate("user"))
+                .willReturn(Optional.of(new com.example.PartTrip.signup.entity.UserEntity()));
+        given(travelPreferenceRepository.findById("user")).willReturn(Optional.of(preference));
+        given(travelPreferenceRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+        TravelPreferenceRequestDto request = request(PreferredTransport.PUBLIC_TRANSIT, 3, true);
+        request.setAvoidFoods(List.of(AvoidFood.SEAFOOD, AvoidFood.SPICY, AvoidFood.SEAFOOD));
+
+        assertThat(travelPreferenceService.updatePreference("user", request).getAvoidFoods())
+                .containsExactly(AvoidFood.SEAFOOD, AvoidFood.SPICY);
+
+        request.setAvoidFoods(null);
+        assertThat(travelPreferenceService.updatePreference("user", request).getAvoidFoods())
+                .containsExactly(AvoidFood.SEAFOOD, AvoidFood.SPICY);
+
+        request.setAvoidFoods(List.of());
+        assertThat(travelPreferenceService.updatePreference("user", request).getAvoidFoods())
+                .isEmpty();
+    }
+
+    @Test
+    void 피하는_음식을_묻지_않았으면_null로_준다() {
+        TravelPreferenceEntity preference = new TravelPreferenceEntity();
+        preference.setUserId("user");
+        given(userProfileRepository.existsById("user")).willReturn(true);
+        given(travelPreferenceRepository.findById("user")).willReturn(Optional.of(preference));
+
+        assertThat(travelPreferenceService.getPreference("user").getAvoidFoods()).isNull();
+    }
+
     @Test
     void 존재하지_않는_사용자의_설정은_조회하지_않는다() {
         given(userProfileRepository.existsById("missing")).willReturn(false);

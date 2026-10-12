@@ -21,6 +21,7 @@ import com.example.PartTrip.planner.repository.GroupTravelPlanRepository;
 import com.example.PartTrip.planner.repository.PlannerScheduleSlotRepository;
 import com.example.PartTrip.planner.repository.TravelGroupRepository;
 import com.example.PartTrip.profile.dto.TravelPreferenceResponseDto;
+import com.example.PartTrip.profile.enums.AvoidFood;
 import com.example.PartTrip.profile.service.TravelPreferenceService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -417,7 +418,14 @@ public class PlannerDraftService {
         b.append("\n기본 설정 (같은 내용의 지침이 있으면 지침을 따른다):\n");
         b.append("- 선호 이동수단: ").append(preference.getPreferredTransport()).append('\n');
         b.append("- 계단 이용: ").append(Boolean.FALSE.equals(preference.getCanUseStairs())
-                ? "어려움" : "가능").append("\n\n");
+                ? "어려움" : "가능").append('\n');
+        List<AvoidFood> avoidFoods = preference.getAvoidFoods();
+        if (avoidFoods != null && !avoidFoods.isEmpty()) {
+            b.append("- 피하는 음식: ").append(avoidFoods.stream().map(AvoidFood::getLabel)
+                    .collect(Collectors.joining(", ")))
+                    .append(" (이름으로 보아 이런 음식이 주메뉴인 맛집은 고르지 않는다)\n");
+        }
+        b.append('\n');
 
         b.append("후보 장소 (id|이름|분류|위도,경도|평점):\n");
         daytime.forEach(place -> b.append(line(place)));
