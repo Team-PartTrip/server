@@ -315,6 +315,44 @@ class PlannerDraftServiceTest {
     }
 
     @Test
+    void 하루_맛집이_넘치면_가까운_다른_후보로_바꾼다() {
+        TourPlaceEntity meal1 = located(1L, TourPlaceCategory.RESTAURANT, 35.0);
+        TourPlaceEntity meal2 = located(2L, TourPlaceCategory.RESTAURANT, 35.1);
+        TourPlaceEntity meal3 = located(3L, TourPlaceCategory.RESTAURANT, 35.2);
+        TourPlaceEntity shop = located(4L, TourPlaceCategory.SHOPPING, 35.3);
+        TourPlaceEntity nearMuseum = located(5L, TourPlaceCategory.ATTRACTION, 35.21);
+        TourPlaceEntity farMuseum = located(6L, TourPlaceCategory.ATTRACTION, 36.0);
+        List<TourPlaceEntity> candidates = List.of(meal1, meal2, meal3, shop, nearMuseum, farMuseum);
+
+        // 세 번째 맛집은 바로 앞(맛집2)과 가까운 명소로 바뀐다
+        assertThat(PlannerDraftService.capMeals(
+                List.of(Arrays.asList(1L, 4L, 2L, 3L)), 2, candidates, Set.of()))
+                .containsExactly(List.of(1L, 4L, 2L, 5L));
+        // 미식이면 세 곳까지 둔다
+        assertThat(PlannerDraftService.capMeals(
+                List.of(Arrays.asList(1L, 4L, 2L, 3L)), 3, candidates, Set.of()))
+                .containsExactly(List.of(1L, 4L, 2L, 3L));
+        // 반드시 포함할 맛집은 지우지 않는다
+        assertThat(PlannerDraftService.capMeals(
+                List.of(Arrays.asList(1L, 4L, 2L, 3L)), 2, candidates, Set.of(3L)))
+                .containsExactly(List.of(1L, 4L, 2L, 3L));
+        // 바꿀 후보가 없으면 빈 칸
+        assertThat(PlannerDraftService.capMeals(
+                List.of(Arrays.asList(1L, 2L, 3L)), 2, List.of(meal1, meal2, meal3), Set.of()))
+                .containsExactly(Arrays.asList(1L, 2L, null));
+    }
+
+    private static TourPlaceEntity located(long id, TourPlaceCategory category, double latitude) {
+        TourPlaceEntity place = new TourPlaceEntity();
+        place.setTourPlaceId(id);
+        place.setPlaceName("장소" + id);
+        place.setCategory(category);
+        place.setLatitude(latitude);
+        place.setLongitude(128.0);
+        return place;
+    }
+
+    @Test
     void 맛집끼리_카페끼리_붙으면_뒤쪽을_다른_장소와_바꾼다() {
         Map<Long, TourPlaceCategory> categories = Map.of(
                 1L, TourPlaceCategory.RESTAURANT, 2L, TourPlaceCategory.RESTAURANT,

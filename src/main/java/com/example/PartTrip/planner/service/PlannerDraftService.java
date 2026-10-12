@@ -156,7 +156,10 @@ public class PlannerDraftService {
         List<Long> mustIds = must.stream().map(TourPlaceEntity::getTourPlaceId).toList();
         Map<Long, TourPlaceCategory> categories = new HashMap<>();
         daytime.forEach(place -> categories.put(place.getTourPlaceId(), place.getCategory()));
-        List<List<Long>> days = toSlots(answer, dates, perDay, daytimeIds, mustIds).stream()
+        // 미식을 고른 여행은 맛집을 하루 한 곳 더 둔다
+        int maxMeals = values(dto, PlannerBlockType.TRAVEL_TYPE).contains("미식") ? 3 : 2;
+        List<List<Long>> days = capMeals(toSlots(answer, dates, perDay, daytimeIds, mustIds),
+                maxMeals, daytime, Set.copyOf(mustIds)).stream()
                 .map(day -> spreadMeals(day, categories))
                 .toList();
         Long lodgingId = pickLodging(answer, lodgings.stream()
@@ -268,6 +271,53 @@ public class PlannerDraftService {
                     return point;
                 })
                 .orElse(null);
+    }
+
+    static List<List<Long>> capMeals(List<List<Long>> days, int maxMeals,
+            List<TourPlaceEntity> candidates, Set<Long> mustInclude) {
+        Map<Long, TourPlaceEntity> byId = new HashMap<>();
+        candidates.forEach(place -> byId.put(place.getTourPlaceId(), place));
+        Set<Long> used = new HashSet<>();
+        days.forEach(day -> day.stream().filter(Objects::nonNull).forEach(used::add));
+
+        List<List<Long>> result = new ArrayList<>();
+        for (List<Long> day : days) {
+            List<Long> slots = new ArrayList<>(day);
+            int meals = 0;
+            for (int i = 0; i < slots.size(); i++) {
+                TourPlaceEntity place = byId.get(slots.get(i));
+                if (place == null || place.getCategory() != TourPlaceCategory.RESTAURANT) continue;
+                if (++meals <= maxMeals || mustInclude.contains(place.getTourPlaceId())) continue;
+                TourPlaceEntity previous = i > 0 ? byId.get(slots.get(i - 1)) : null;
+                TourPlaceEntity replacement = nearestUnused(previous == null ? place : previous,
+                        candidates, used);
+                slots.set(i, replacement == null ? null : replacement.getTourPlaceId());
+                if (replacement != null) used.add(replacement.getTourPlaceId());
+            }
+            result.add(slots);
+        }
+        return result;
+    }
+
+    private static TourPlaceEntity nearestUnused(TourPlaceEntity from, List<TourPlaceEntity> candidates,
+            Set<Long> used) {
+        TourPlaceEntity best = null;
+        double bestMeters = Double.MAX_VALUE;
+        for (TourPlaceEntity place : candidates) {
+            if (used.contains(place.getTourPlaceId())
+                    || place.getCategory() == TourPlaceCategory.RESTAURANT
+                    || place.getCategory() == TourPlaceCategory.ACCOMMODATION) continue;
+            double meters = from.getLatitude() == null || from.getLongitude() == null
+                    || place.getLatitude() == null || place.getLongitude() == null
+                    ? Double.MAX_VALUE - 1
+                    : OdsayTransitRouteClient.distanceMeters(from.getLatitude(), from.getLongitude(),
+                            place.getLatitude(), place.getLongitude());
+            if (meters < bestMeters) {
+                best = place;
+                bestMeters = meters;
+            }
+        }
+        return best;
     }
 
     /**
