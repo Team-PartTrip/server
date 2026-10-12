@@ -106,6 +106,29 @@ class TravelPreferenceServiceTest {
     }
 
     @Test
+    void 휠체어와_오래_걷기를_저장하고_빼고_보내면_그대로_둔다() {
+        TravelPreferenceEntity preference = new TravelPreferenceEntity();
+        preference.setUserId("user");
+        given(userProfileRepository.findByUserIdForUpdate("user"))
+                .willReturn(Optional.of(new com.example.PartTrip.signup.entity.UserEntity()));
+        given(travelPreferenceRepository.findById("user")).willReturn(Optional.of(preference));
+        given(travelPreferenceRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+        TravelPreferenceRequestDto request = request(PreferredTransport.PUBLIC_TRANSIT, 3, false);
+        request.setUsesWheelchair(true);
+        request.setLimitedWalking(false);
+
+        TravelPreferenceResponseDto saved = travelPreferenceService.updatePreference("user", request);
+        assertThat(saved.getUsesWheelchair()).isTrue();
+        assertThat(saved.getLimitedWalking()).isFalse();
+
+        request.setUsesWheelchair(null);
+        request.setLimitedWalking(null);
+        TravelPreferenceResponseDto kept = travelPreferenceService.updatePreference("user", request);
+        assertThat(kept.getUsesWheelchair()).isTrue();
+        assertThat(kept.getLimitedWalking()).isFalse();
+    }
+
+    @Test
     void 피하는_음식을_묻지_않았으면_null로_준다() {
         TravelPreferenceEntity preference = new TravelPreferenceEntity();
         preference.setUserId("user");

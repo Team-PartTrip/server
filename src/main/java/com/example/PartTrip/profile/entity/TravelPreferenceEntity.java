@@ -46,4 +46,10 @@ public class TravelPreferenceEntity {
 
     @Column(name = "avoid_foods", length = 100)
     private String avoidFoods;
+
+    @Column(name = "uses_wheelchair")
+    private Boolean usesWheelchair;
+
+    @Column(name = "limited_walking")
+    private Boolean limitedWalking;
 }

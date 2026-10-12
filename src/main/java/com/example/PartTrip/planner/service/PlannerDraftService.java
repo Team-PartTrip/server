@@ -5,6 +5,8 @@ import com.example.PartTrip.global.exception.ForbiddenException;
 import com.example.PartTrip.global.exception.NotFoundException;
 import com.example.PartTrip.main.entity.TourPlaceEntity;
 import com.example.PartTrip.main.enums.TourPlaceCategory;
+import com.example.PartTrip.main.entity.TourPlaceAccessibilityEntity;
+import com.example.PartTrip.main.repository.TourPlaceAccessibilityRepository;
 import com.example.PartTrip.main.repository.TourPlaceRepository;
 import com.example.PartTrip.main.service.TourPlaceImportService;
 import com.example.PartTrip.planner.dto.request.CreatePlannerRequestDto;
@@ -74,6 +76,7 @@ public class PlannerDraftService {
 
     private final TourPlaceImportService tourPlaceImportService;
     private final TourPlaceRepository tourPlaceRepository;
+    private final TourPlaceAccessibilityRepository accessibilityRepository;
     private final TravelPreferenceService travelPreferenceService;
     private final OpenAiClient openAiClient;
     private final PlannerService plannerService;
@@ -139,7 +142,8 @@ public class PlannerDraftService {
 
         JsonNode answer = parse(openAiClient.completeJson(
                 SYSTEM_PROMPT,
-                userPrompt(dto, city, dates, perDay, preference, daytime, lodgings)));
+                userPrompt(dto, city, dates, perDay, preference, daytime, lodgings,
+                        barrierFreeIds(preference, daytime))));
 
         Set<Long> daytimeIds = daytime.stream()
                 .map(TourPlaceEntity::getTourPlaceId).collect(Collectors.toSet());
@@ -394,7 +398,8 @@ public class PlannerDraftService {
             int perDay,
             TravelPreferenceResponseDto preference,
             List<TourPlaceEntity> daytime,
-            List<TourPlaceEntity> lodgings
+            List<TourPlaceEntity> lodgings,
+            Set<Long> barrierFree
     ) {
         StringBuilder b = new StringBuilder();
         int people = Boolean.TRUE.equals(dto.getIsSolo()) ? 1 : dto.getMemberCount();
@@ -425,23 +430,40 @@ public class PlannerDraftService {
                     .collect(Collectors.joining(", ")))
                     .append(" (이름으로 보아 이런 음식이 주메뉴인 맛집은 고르지 않는다)\n");
         }
+        if (Boolean.TRUE.equals(preference.getUsesWheelchair())) {
+            b.append("- 휠체어 이용: 예 (계단 · 비탈 · 흙길이 많은 곳은 고르지 않는다. 무장애 표시가 있는 곳을 우선한다)\n");
+        }
+        if (Boolean.TRUE.equals(preference.getLimitedWalking())) {
+            b.append("- 오래 걷기: 어려움 (넓은 공원 · 산 · 긴 산책로처럼 많이 걸어야 하는 곳은 피하고, 가까운 곳끼리 잇는다)\n");
+        }
         b.append('\n');
 
-        b.append("후보 장소 (id|이름|분류|위도,경도|평점):\n");
-        daytime.forEach(place -> b.append(line(place)));
+        b.append("후보 장소 (id|이름|분류|위도,경도|평점|무장애):\n");
+        daytime.forEach(place -> b.append(line(place, barrierFree)));
         b.append("\n숙소 후보:\n");
         if (lodgings.isEmpty()) {
             b.append("- 없음 (lodgingId 는 null)\n");
         }
-        lodgings.forEach(place -> b.append(line(place)));
+        lodgings.forEach(place -> b.append(line(place, barrierFree)));
         return b.toString();
     }
 
-    private static String line(TourPlaceEntity place) {
+    private static String line(TourPlaceEntity place, Set<Long> barrierFree) {
         return place.getTourPlaceId() + "|" + place.getPlaceName() + "|"
                 + (place.getCategory() == null ? "" : place.getCategory().getLabel()) + "|"
                 + place.getLatitude() + "," + place.getLongitude() + "|"
-                + (place.getRating() == null ? "" : place.getRating()) + "\n";
+                + (place.getRating() == null ? "" : place.getRating()) + "|"
+                + (barrierFree.contains(place.getTourPlaceId()) ? "무장애" : "") + "\n";
+    }
+
+    private Set<Long> barrierFreeIds(TravelPreferenceResponseDto preference, List<TourPlaceEntity> daytime) {
+        if (!Boolean.TRUE.equals(preference.getUsesWheelchair())) return Set.of();
+        return accessibilityRepository.findAllById(daytime.stream()
+                        .map(TourPlaceEntity::getTourPlaceId).toList())
+                .stream()
+                .filter(row -> row.getContentId() != null && !"[]".equals(row.getItemsJson()))
+                .map(TourPlaceAccessibilityEntity::getTourPlaceId)
+                .collect(Collectors.toSet());
     }
 
     // ── 나머지 ──────────────────────────────────────────────
