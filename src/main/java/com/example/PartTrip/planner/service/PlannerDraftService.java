@@ -38,6 +38,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
@@ -106,6 +107,10 @@ public class PlannerDraftService {
                 .findByCountryNameAndCityName(KOREA, city).stream()
                 .filter(place -> !matchesAny(place.getPlaceName(), exclude))
                 .toList();
+        TravelPreferenceResponseDto preference = travelPreferenceService.getPreference(userId);
+        Set<Long> barrierFree = barrierFreeIds(preference, all);
+        boolean limitedMobility = Boolean.TRUE.equals(preference.getUsesWheelchair())
+                || Boolean.TRUE.equals(preference.getLimitedWalking());
         // 반드시 포함할 곳은 평점과 상관없이 후보에 넣는다. 자르고 나서 찾으면 빠질 수 있다
         List<TourPlaceEntity> must = all.stream()
                 .filter(place -> place.getCategory() != TourPlaceCategory.ACCOMMODATION)
@@ -113,6 +118,9 @@ public class PlannerDraftService {
                 .toList();
         List<TourPlaceEntity> daytime = Stream.concat(must.stream(), all.stream()
                         .filter(place -> place.getCategory() != TourPlaceCategory.ACCOMMODATION)
+                        .filter(place -> !limitedMobility
+                                || place.getCategory() != TourPlaceCategory.ACTIVITY
+                                || barrierFree.contains(place.getTourPlaceId()))
                         .sorted(Comparator.comparing(TourPlaceEntity::getRating,
                                 Comparator.nullsLast(Comparator.reverseOrder()))))
                 .distinct()
@@ -130,7 +138,6 @@ public class PlannerDraftService {
                         .toList()
                 : List.of();
 
-        TravelPreferenceResponseDto preference = travelPreferenceService.getPreference(userId);
         int perDay = slotsPerDay(
                 last(values(dto, PlannerBlockType.DAILY_DENSITY)),
                 preference.getDailyScheduleCount());
@@ -142,13 +149,16 @@ public class PlannerDraftService {
 
         JsonNode answer = parse(openAiClient.completeJson(
                 SYSTEM_PROMPT,
-                userPrompt(dto, city, dates, perDay, preference, daytime, lodgings,
-                        barrierFreeIds(preference, daytime))));
+                userPrompt(dto, city, dates, perDay, preference, daytime, lodgings, barrierFree)));
 
         Set<Long> daytimeIds = daytime.stream()
                 .map(TourPlaceEntity::getTourPlaceId).collect(Collectors.toSet());
         List<Long> mustIds = must.stream().map(TourPlaceEntity::getTourPlaceId).toList();
-        List<List<Long>> days = toSlots(answer, dates, perDay, daytimeIds, mustIds);
+        Map<Long, TourPlaceCategory> categories = new HashMap<>();
+        daytime.forEach(place -> categories.put(place.getTourPlaceId(), place.getCategory()));
+        List<List<Long>> days = toSlots(answer, dates, perDay, daytimeIds, mustIds).stream()
+                .map(day -> spreadMeals(day, categories))
+                .toList();
         Long lodgingId = pickLodging(answer, lodgings.stream()
                 .map(TourPlaceEntity::getTourPlaceId).collect(Collectors.toSet()));
 
@@ -258,6 +268,26 @@ public class PlannerDraftService {
                     return point;
                 })
                 .orElse(null);
+    }
+
+    /**
+     * 같은 날 맛집끼리 · 카페끼리 붙어 있으면 뒤쪽 장소를 그 뒤의 다른 분류 장소와 바꾼다.
+     * 프롬프트 규칙만으로는 AI 가 자주 어긴다. 바꿀 장소가 없으면 그대로 둔다
+     */
+    static List<Long> spreadMeals(List<Long> day, Map<Long, TourPlaceCategory> categories) {
+        List<Long> result = new ArrayList<>(day);
+        for (int i = 1; i < result.size(); i++) {
+            TourPlaceCategory current = categories.get(result.get(i));
+            boolean meal = current == TourPlaceCategory.RESTAURANT || current == TourPlaceCategory.CAFE;
+            if (!meal || current != categories.get(result.get(i - 1))) continue;
+            for (int j = i + 1; j < result.size(); j++) {
+                if (categories.get(result.get(j)) != current) {
+                    Collections.swap(result, i, j);
+                    break;
+                }
+            }
+        }
+        return result;
     }
 
     static List<List<Long>> toSlots(
@@ -456,9 +486,10 @@ public class PlannerDraftService {
                 + (barrierFree.contains(place.getTourPlaceId()) ? "무장애" : "") + "\n";
     }
 
-    private Set<Long> barrierFreeIds(TravelPreferenceResponseDto preference, List<TourPlaceEntity> daytime) {
-        if (!Boolean.TRUE.equals(preference.getUsesWheelchair())) return Set.of();
-        return accessibilityRepository.findAllById(daytime.stream()
+    private Set<Long> barrierFreeIds(TravelPreferenceResponseDto preference, List<TourPlaceEntity> places) {
+        if (!Boolean.TRUE.equals(preference.getUsesWheelchair())
+                && !Boolean.TRUE.equals(preference.getLimitedWalking())) return Set.of();
+        return accessibilityRepository.findAllById(places.stream()
                         .map(TourPlaceEntity::getTourPlaceId).toList())
                 .stream()
                 .filter(row -> row.getContentId() != null && !"[]".equals(row.getItemsJson()))
