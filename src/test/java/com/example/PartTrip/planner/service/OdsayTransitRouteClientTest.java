@@ -117,16 +117,18 @@ class OdsayTransitRouteClientTest {
 
     @Test
     void 자동차_경로_초를_올림해_분으로_변환한다() throws Exception {
-        JsonNode response = objectMapper.readTree("{\"routes\":[{\"duration\":\"61s\"}]}");
+        JsonNode response = objectMapper.readTree(
+                "{\"routes\":[{\"result_code\":0,\"summary\":{\"duration\":1357}}]}");
 
-        assertThat(GoogleDrivingRouteClient.parseDurationMinutes(response)).isEqualTo(2);
+        assertThat(KakaoDrivingRouteClient.parseDurationMinutes(response)).isEqualTo(23);
     }
 
     @Test
-    void 자동차_경로가_없으면_null을_반환한다() throws Exception {
-        JsonNode response = objectMapper.readTree("{\"routes\":[]}");
+    void 자동차_길을_못_찾으면_null을_반환한다() throws Exception {
+        JsonNode response = objectMapper.readTree(
+                "{\"routes\":[{\"result_code\":104,\"result_msg\":\"출발지와 도착지가 5 m 이내\"}]}");
 
-        assertThat(GoogleDrivingRouteClient.parseDurationMinutes(response)).isNull();
+        assertThat(KakaoDrivingRouteClient.parseDurationMinutes(response)).isNull();
     }
 
     @Test
@@ -138,12 +140,23 @@ class OdsayTransitRouteClientTest {
     }
 
     @Test
-    void 구글_경로_키가_없으면_외부_호출없이_대기상태를_반환한다() {
-        GoogleDrivingRouteClient client = new GoogleDrivingRouteClient("");
+    void 카카오_키가_없으면_외부_호출없이_대기상태를_반환한다() {
+        KakaoDrivingRouteClient client = new KakaoDrivingRouteClient("");
 
         assertThat(client.search(PreferredTransport.CAR,
                 37.0, 127.0, 37.1, 127.1, "출발", "도착").status())
                 .isEqualTo("WAITING_FOR_API_KEY");
+    }
+
+    @Test
+    void 도보는_키_없이_거리로_시간을_어림한다() {
+        KakaoDrivingRouteClient client = new KakaoDrivingRouteClient("");
+
+        KakaoDrivingRouteClient.SearchResult result = client.search(PreferredTransport.WALKING,
+                35.8797, 128.6286, 35.8797, 128.6386, "출발", "도착");
+
+        assertThat(result.status()).isEqualTo("READY");
+        assertThat(result.route().durationMinutes()).isEqualTo(18);
     }
 
     @Test

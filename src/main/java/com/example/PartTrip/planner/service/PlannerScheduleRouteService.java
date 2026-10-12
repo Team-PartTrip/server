@@ -48,7 +48,7 @@ public class PlannerScheduleRouteService {
     private final TravelPreferenceService travelPreferenceService;
     private final OdsayTransitRouteClient odsayClient;
     private final OdsayDailyCallBudget odsayDailyCallBudget;
-    private final GoogleDrivingRouteClient googleRouteClient;
+    private final KakaoDrivingRouteClient drivingRouteClient;
     private final ObjectMapper objectMapper;
     private final TransactionTemplate transactionTemplate;
 
@@ -158,7 +158,7 @@ public class PlannerScheduleRouteService {
             return new RouteCache(result.status(), encode(result.route()), input.signature());
         }
 
-        GoogleDrivingRouteClient.SearchResult result = googleRouteClient.search(
+        KakaoDrivingRouteClient.SearchResult result = drivingRouteClient.search(
                 input.mode(), input.originLatitude(), input.originLongitude(),
                 input.destinationLatitude(), input.destinationLongitude(),
                 input.originName(), input.destinationName());
@@ -289,7 +289,7 @@ public class PlannerScheduleRouteService {
     private boolean isProviderConfigured(PreferredTransport mode) {
         return mode == PreferredTransport.PUBLIC_TRANSIT
                 ? odsayClient.isConfigured()
-                : googleRouteClient.isConfigured();
+                : drivingRouteClient.isConfigured(mode);
     }
 
     /** 완료 상태만 캐시로 재사용하고 일시 오류나 대기 상태는 다시 계산한다. */

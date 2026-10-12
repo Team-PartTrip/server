@@ -51,7 +51,7 @@ class PlannerScheduleRouteServiceTest {
     @Mock private TravelPreferenceService preferences;
     @Mock private OdsayTransitRouteClient odsay;
     @Mock private OdsayDailyCallBudget odsayBudget;
-    @Mock private GoogleDrivingRouteClient google;
+    @Mock private KakaoDrivingRouteClient driving;
     @Mock private TransactionTemplate transactions;
 
     private final Long plannerId = 41L;
@@ -114,7 +114,7 @@ class PlannerScheduleRouteServiceTest {
                 new PlannerScheduleResponseDto.RouteLeg("PUBLIC_TRANSIT", "강릉역", "경포대",
                         25, 5, List.of())));
         service = new PlannerScheduleRouteService(groups, plans, slots, places, preferences,
-                odsay, odsayBudget, google, new ObjectMapper(), transactions);
+                odsay, odsayBudget, driving, new ObjectMapper(), transactions);
     }
 
     @Test
