@@ -1,9 +1,13 @@
 package com.example.PartTrip.profile.dto;
 
 import com.example.PartTrip.profile.entity.TravelPreferenceEntity;
+import com.example.PartTrip.profile.enums.AvoidFood;
 import com.example.PartTrip.profile.enums.PreferredTransport;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+
+import java.util.Arrays;
+import java.util.List;
 
 @Getter
 @AllArgsConstructor
@@ -13,10 +17,11 @@ public class TravelPreferenceResponseDto {
     private Integer dailyScheduleCount;
     private Boolean canUseStairs;
     private Home home;
+    private List<AvoidFood> avoidFoods;
 
     public TravelPreferenceResponseDto(PreferredTransport preferredTransport,
                                        Integer dailyScheduleCount, Boolean canUseStairs) {
-        this(preferredTransport, dailyScheduleCount, canUseStairs, null);
+        this(preferredTransport, dailyScheduleCount, canUseStairs, null, null);
     }
 
     public record Home(String name, String address, double latitude, double longitude) {
@@ -31,7 +36,16 @@ public class TravelPreferenceResponseDto {
                 preference.getHomeLatitude() == null || preference.getHomeLongitude() == null
                         ? null
                         : new Home(preference.getHomeName(), preference.getHomeAddress(),
-                                preference.getHomeLatitude(), preference.getHomeLongitude())
+                                preference.getHomeLatitude(), preference.getHomeLongitude()),
+                avoidFoods(preference.getAvoidFoods())
         );
+    }
+
+    private static List<AvoidFood> avoidFoods(String joined) {
+        if (joined == null) return null;
+        return Arrays.stream(joined.split(","))
+                .filter(name -> !name.isBlank())
+                .map(AvoidFood::valueOf)
+                .toList();
     }
 }

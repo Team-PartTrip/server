@@ -43,4 +43,7 @@ public class TravelPreferenceEntity {
 
     @Column(name = "home_longitude")
     private Double homeLongitude;
+
+    @Column(name = "avoid_foods", length = 100)
+    private String avoidFoods;
 }

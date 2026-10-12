@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 public class TravelPreferenceService {
@@ -50,6 +52,12 @@ public class TravelPreferenceService {
         preference.setPreferredTransport(request.getPreferredTransport());
         preference.setDailyScheduleCount(request.getDailyScheduleCount());
         preference.setCanUseStairs(request.getCanUseStairs());
+        if (request.getAvoidFoods() != null) {
+            preference.setAvoidFoods(request.getAvoidFoods().stream()
+                    .distinct()
+                    .map(Enum::name)
+                    .collect(Collectors.joining(",")));
+        }
         return TravelPreferenceResponseDto.from(travelPreferenceRepository.save(preference));
     }
 
