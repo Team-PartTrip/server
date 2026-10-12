@@ -3,6 +3,8 @@ package com.example.PartTrip.planner.service;
 import com.example.PartTrip.global.exception.AiUnavailableException;
 import com.example.PartTrip.main.entity.TourPlaceEntity;
 import com.example.PartTrip.main.enums.TourPlaceCategory;
+import com.example.PartTrip.main.entity.TourPlaceAccessibilityEntity;
+import com.example.PartTrip.main.repository.TourPlaceAccessibilityRepository;
 import com.example.PartTrip.main.repository.TourPlaceRepository;
 import com.example.PartTrip.main.service.TourPlaceImportService;
 import com.example.PartTrip.planner.dto.request.GeneratePlannerRequestDto;
@@ -53,6 +55,7 @@ class PlannerDraftServiceTest {
 
     @Mock private TourPlaceImportService tourPlaceImportService;
     @Mock private TourPlaceRepository tourPlaceRepository;
+    @Mock private TourPlaceAccessibilityRepository accessibilityRepository;
     @Mock private TravelPreferenceService travelPreferenceService;
     @Mock private OpenAiClient openAiClient;
     @Mock private PlannerService plannerService;
@@ -245,7 +248,7 @@ class PlannerDraftServiceTest {
         givenCandidates();
         given(travelPreferenceService.getPreference("user"))
                 .willReturn(new TravelPreferenceResponseDto(PreferredTransport.PUBLIC_TRANSIT, 3, true,
-                        null, List.of(AvoidFood.SEAFOOD, AvoidFood.HARD)));
+                        null, List.of(AvoidFood.SEAFOOD, AvoidFood.HARD), null, null));
         given(openAiClient.completeJson(anyString(), anyString()))
                 .willThrow(new AiUnavailableException("실패"));
 
@@ -254,6 +257,30 @@ class PlannerDraftServiceTest {
         ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
         verify(openAiClient).completeJson(anyString(), prompt.capture());
         assertThat(prompt.getValue()).contains("피하는 음식: 해산물, 딱딱하거나 질긴 음식");
+    }
+
+    @Test
+    void 휠체어와_오래_걷기를_프롬프트에_넣고_무장애_장소를_표시한다() {
+        givenCandidates();
+        given(travelPreferenceService.getPreference("user"))
+                .willReturn(new TravelPreferenceResponseDto(PreferredTransport.PUBLIC_TRANSIT, 3, false,
+                        null, null, true, true));
+        TourPlaceAccessibilityEntity row = new TourPlaceAccessibilityEntity();
+        row.setTourPlaceId(1L);
+        row.setContentId("126508");
+        row.setItemsJson("[{\"key\":\"ROUTE\",\"label\":\"접근로\",\"text\":\"경사로 있음\"}]");
+        given(accessibilityRepository.findAllById(List.of(1L))).willReturn(List.of(row));
+        given(openAiClient.completeJson(anyString(), anyString()))
+                .willThrow(new AiUnavailableException("실패"));
+
+        assertThatThrownBy(() -> service.generate(request(), "user"));
+
+        ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
+        verify(openAiClient).completeJson(anyString(), prompt.capture());
+        assertThat(prompt.getValue())
+                .contains("휠체어 이용: 예")
+                .contains("오래 걷기: 어려움")
+                .contains("1|장소1|명소|null,null||무장애");
     }
 
     @Test

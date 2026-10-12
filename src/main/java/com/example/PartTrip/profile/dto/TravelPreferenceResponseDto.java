@@ -18,10 +18,12 @@ public class TravelPreferenceResponseDto {
     private Boolean canUseStairs;
     private Home home;
     private List<AvoidFood> avoidFoods;
+    private Boolean usesWheelchair;
+    private Boolean limitedWalking;
 
     public TravelPreferenceResponseDto(PreferredTransport preferredTransport,
                                        Integer dailyScheduleCount, Boolean canUseStairs) {
-        this(preferredTransport, dailyScheduleCount, canUseStairs, null, null);
+        this(preferredTransport, dailyScheduleCount, canUseStairs, null, null, null, null);
     }
 
     public record Home(String name, String address, double latitude, double longitude) {
@@ -37,7 +39,9 @@ public class TravelPreferenceResponseDto {
                         ? null
                         : new Home(preference.getHomeName(), preference.getHomeAddress(),
                                 preference.getHomeLatitude(), preference.getHomeLongitude()),
-                avoidFoods(preference.getAvoidFoods())
+                avoidFoods(preference.getAvoidFoods()),
+                preference.getUsesWheelchair(),
+                preference.getLimitedWalking()
         );
     }
 

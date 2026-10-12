@@ -28,4 +28,7 @@ public class TravelPreferenceRequestDto {
     private Boolean canUseStairs;
 
     private List<@NotNull AvoidFood> avoidFoods;
+
+    private Boolean usesWheelchair;
+    private Boolean limitedWalking;
 }

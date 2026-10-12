@@ -58,6 +58,12 @@ public class TravelPreferenceService {
                     .map(Enum::name)
                     .collect(Collectors.joining(",")));
         }
+        if (request.getUsesWheelchair() != null) {
+            preference.setUsesWheelchair(request.getUsesWheelchair());
+        }
+        if (request.getLimitedWalking() != null) {
+            preference.setLimitedWalking(request.getLimitedWalking());
+        }
         return TravelPreferenceResponseDto.from(travelPreferenceRepository.save(preference));
     }
 
