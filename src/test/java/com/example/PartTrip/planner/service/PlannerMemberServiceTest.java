@@ -35,17 +35,38 @@ class PlannerMemberServiceTest {
     @InjectMocks private PlannerMemberService plannerMemberService;
 
     @Test
-    void 계획중이_아닌_플래너에는_참여할_수_없다() {
+    void 일정이_확정된_플래너에도_초대링크로_참여할_수_있다() {
         JoinPlannerRequestDto request = new JoinPlannerRequestDto();
         request.setInviteCode("invite");
         TravelGroupEntity group = new TravelGroupEntity();
+        group.setGroupId(1L);
+        group.setHeadcount(2);
         group.setStatus(GroupStatus.CONFIRMED);
+        when(travelGroupRepository.findByInviteCodeForUpdate("INVITE"))
+                .thenReturn(Optional.of(group));
+        when(groupMemberRepository.existsByGroupIdAndUserId(1L, "user")).thenReturn(false);
+        when(groupMemberRepository.countByGroupId(1L)).thenReturn(1L);
+
+        org.assertj.core.api.Assertions.assertThatCode(
+                () -> plannerMemberService.joinPlanner(request, "user"))
+                .doesNotThrowAnyException();
+
+        verify(groupMemberRepository).save(any());
+        verify(eventPublisher).publishEvent(any(Object.class));
+    }
+
+    @Test
+    void 여행이_종료된_플래너에는_참여할_수_없다() {
+        JoinPlannerRequestDto request = new JoinPlannerRequestDto();
+        request.setInviteCode("invite");
+        TravelGroupEntity group = new TravelGroupEntity();
+        group.setStatus(GroupStatus.DONE);
         when(travelGroupRepository.findByInviteCodeForUpdate("INVITE"))
                 .thenReturn(Optional.of(group));
 
         assertThatThrownBy(() -> plannerMemberService.joinPlanner(request, "user"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("계획 중");
+                .hasMessage("여행이 종료된 플래너에는 참여할 수 없습니다.");
 
         verifyNoInteractions(groupMemberRepository, eventPublisher);
     }
