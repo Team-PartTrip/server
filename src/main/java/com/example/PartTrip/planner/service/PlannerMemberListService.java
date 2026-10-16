@@ -84,6 +84,7 @@ public class PlannerMemberListService {
         return PlannerMemberResponseDto.builder()
                 .userId(member.getUserId())
                 .nickName(user == null ? "알 수 없는 사용자" : user.getNickName())
+                .imgUrl(user == null ? null : user.getImgUrl())
                 .role(member.getRole().name())
                 .status(member.getRole() == GroupRole.OWNER ? "HOST" : "ACCEPTED")
                 .joinedAt(member.getJoinedAt())
@@ -98,6 +99,7 @@ public class PlannerMemberListService {
                 .invitationId(invitation.getInvitationId())
                 .userId(invitation.getInvitedUserId())
                 .nickName(user == null ? "알 수 없는 사용자" : user.getNickName())
+                .imgUrl(user == null ? null : user.getImgUrl())
                 .role(GroupRole.MEMBER.name())
                 .status(InvitationStatus.PENDING.name())
                 .build();
