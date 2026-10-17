@@ -638,6 +638,7 @@ public class PlannerDraftService {
                 category == null ? null : category.name(),
                 category == null ? null : category.getLabel(),
                 place.getImageUrl(), place.getAddress(), place.getRating(),
-                place.getLatitude(), place.getLongitude());
+                place.getLatitude(), place.getLongitude(),
+                place.getDescription(), place.getPrimaryTypeLabel());
     }
 }
