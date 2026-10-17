@@ -57,10 +57,13 @@ public class PlannerScheduleRouteService {
     /** 확정 때 부른다. 경로 계산이 끝난 뒤 돌아와서 확정 응답을 받으면 경로가 다 채워져 있다. */
     public void recalculate(Long plannerId) {
         running.merge(plannerId, 1, Integer::sum);
+        long startedAt = System.currentTimeMillis();
         try {
             RouteSnapshot snapshot = transactionTemplate.execute(status -> prepare(plannerId));
             if (snapshot == null || snapshot.pending().isEmpty()) return;
+            log.info("경로 계산 시작 plannerId={} 대기 {}칸", plannerId, snapshot.pending().size());
             calculateAndPersist(snapshot);
+            log.info("경로 계산 끝 plannerId={} {}ms", plannerId, System.currentTimeMillis() - startedAt);
         } finally {
             running.computeIfPresent(plannerId, (id, count) -> count <= 1 ? null : count - 1);
         }
@@ -69,6 +72,7 @@ public class PlannerScheduleRouteService {
     public void recoverStuck() {
         for (Long plannerId : slotRepository.findPlannerIdsByRouteStatus(CALCULATING)) {
             if (running.containsKey(plannerId)) continue;
+            log.info("멈춘 경로 계산을 다시 시작합니다. plannerId={}", plannerId);
             try {
                 recalculate(plannerId);
             } catch (RuntimeException exception) {
@@ -146,7 +150,10 @@ public class PlannerScheduleRouteService {
             for (RouteInput input : snapshot.pending()) {
                 RouteCache cache = reusableRoutes.get(input.signature());
                 if (cache == null) {
+                    long legStartedAt = System.currentTimeMillis();
                     cache = calculate(input);
+                    log.info("경로 구간 계산 planId={} slotId={} {} {}ms", snapshot.planId(),
+                            input.slotId(), cache.status(), System.currentTimeMillis() - legStartedAt);
                     if (isReusableStatus(cache.status())) {
                         reusableRoutes.put(input.signature(), cache);
                     }
@@ -155,7 +162,8 @@ public class PlannerScheduleRouteService {
             }
             persistIfInputsMatch(snapshot, routesBySlotId);
         } catch (RuntimeException exception) {
-            log.warn("일정 경로 계산을 완료하지 못했습니다. planId={}", snapshot.planId());
+            log.warn("일정 경로 계산을 완료하지 못했습니다. planId={} 원인={}", snapshot.planId(),
+                    exception.getClass().getSimpleName());
             persistFailure(snapshot);
         }
     }
@@ -192,7 +200,10 @@ public class PlannerScheduleRouteService {
             if (group == null) return;
             GroupTravelPlanEntity plan = planRepository
                     .findFirstByGroupIdOrderByCreatedAtDesc(group.getGroupId()).orElse(null);
-            if (plan == null || !Objects.equals(plan.getPlanId(), snapshot.planId())) return;
+            if (plan == null || !Objects.equals(plan.getPlanId(), snapshot.planId())) {
+                log.warn("경로 결과를 저장하지 않았습니다: 최신 계획이 아닙니다. planId={}", snapshot.planId());
+                return;
+            }
 
             List<PlannerScheduleSlotEntity> currentSlots = slotRepository
                     .findByPlanIdOrderByVisitDateAscSortOrderAsc(plan.getPlanId());
@@ -204,15 +215,26 @@ public class PlannerScheduleRouteService {
                     .collect(Collectors.toMap(RouteInput::slotId, Function.identity()));
 
             boolean changed = false;
+            int skippedChanged = 0;
+            int skippedNoResult = 0;
             for (PlannerScheduleSlotEntity slot : currentSlots) {
                 RouteInput expected = expectedInputs.get(slot.getSlotId());
                 RouteInput current = currentInputs.get(slot.getSlotId());
                 RouteCache cache = routesBySlotId.get(slot.getSlotId());
-                if (expected == null || current == null || !expected.equals(current) || cache == null) {
+                if (cache == null) {
+                    if (expected != null && expected.hasLeg()) skippedNoResult++;
+                    continue;
+                }
+                if (expected == null || current == null || !expected.equals(current)) {
+                    skippedChanged++;
                     continue;
                 }
                 setRoute(slot, cache);
                 changed = true;
+            }
+            if (skippedChanged > 0 || skippedNoResult > 0) {
+                log.warn("경로 결과를 일부 저장하지 않았습니다. planId={} 입력이 달라짐={}칸 결과 없음={}칸",
+                        snapshot.planId(), skippedChanged, skippedNoResult);
             }
             if (changed) slotRepository.saveAll(currentSlots);
         });
