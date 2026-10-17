@@ -12,6 +12,7 @@ import org.springframework.web.client.RestClient;
 public class KakaoPlaceNameService {
 
     private static final int RADIUS_METERS = 500;
+    static final double MAX_DISTANCE_METERS = 700;
 
     private final RestClient restClient;
     private final String apiKey;
@@ -34,7 +35,8 @@ public class KakaoPlaceNameService {
 
     public String koreanName(String name, Double latitude, Double longitude) {
         if (hasHangul(name) || name == null || name.isBlank()
-                || latitude == null || longitude == null || apiKey.isBlank()) {
+                || latitude == null || longitude == null || apiKey.isBlank()
+                || !PlaceSearchService.inKorea(latitude, longitude)) {
             return null;
         }
         try {
@@ -50,23 +52,37 @@ public class KakaoPlaceNameService {
                     .header("Authorization", "KakaoAK " + apiKey)
                     .retrieve()
                     .body(JsonNode.class);
-            return pick(body);
+            return pick(body, latitude, longitude);
         } catch (Exception e) {
             log.warn("카카오 장소 이름 검색 실패: {}", e.getClass().getSimpleName());
             return null;
         }
     }
 
-    static String pick(JsonNode body) {
+    static String pick(JsonNode body, double latitude, double longitude) {
         if (body == null) {
             return null;
         }
         for (JsonNode doc : body.path("documents")) {
             String placeName = doc.path("place_name").asText("");
-            if (hasHangul(placeName)) {
+            if (!hasHangul(placeName) || !doc.path("x").isTextual() || !doc.path("y").isTextual()) {
+                continue;
+            }
+            double distance = distanceMeters(latitude, longitude,
+                    Double.parseDouble(doc.path("y").asText()), Double.parseDouble(doc.path("x").asText()));
+            if (distance <= MAX_DISTANCE_METERS) {
                 return placeName.strip();
             }
         }
         return null;
+    }
+
+    static double distanceMeters(double lat1, double lon1, double lat2, double lon2) {
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.pow(Math.sin(dLat / 2), 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.pow(Math.sin(dLon / 2), 2);
+        return 2 * 6_371_000 * Math.asin(Math.sqrt(a));
     }
 }
