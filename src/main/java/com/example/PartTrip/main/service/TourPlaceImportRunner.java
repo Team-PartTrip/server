@@ -29,7 +29,8 @@ import static org.springframework.util.StringUtils.hasText;
 @ConditionalOnExpression(
         "T(org.springframework.util.StringUtils).hasText(environment.getProperty('parttrip.places.import'))"
                 + " or T(org.springframework.util.StringUtils).hasText(environment.getProperty('parttrip.places.translate-cities'))"
-                + " or T(org.springframework.util.StringUtils).hasText(environment.getProperty('parttrip.places.fill-photos'))")
+                + " or T(org.springframework.util.StringUtils).hasText(environment.getProperty('parttrip.places.fill-photos'))"
+                + " or T(org.springframework.util.StringUtils).hasText(environment.getProperty('parttrip.places.localize-names'))")
 public class TourPlaceImportRunner implements ApplicationRunner {
 
     private final TourPlaceImportService tourPlaceImportService;
@@ -68,6 +69,11 @@ public class TourPlaceImportRunner implements ApplicationRunner {
                 tourPlaceImportService.fillMissingPhotos(parts[0].trim(), parts[1].trim());
             }
             log.info("빠진 사진 채우기 끝");
+        }
+
+        if (hasText(environment.getProperty("parttrip.places.localize-names"))) {
+            log.info("장소 이름 한글화 시작");
+            log.info("장소 이름 한글화 끝: {}곳", tourPlaceImportService.localizeStoredNames());
         }
 
         // 도시 이름 한글화도 같은 실행에서 함께 할 수 있게 둔다

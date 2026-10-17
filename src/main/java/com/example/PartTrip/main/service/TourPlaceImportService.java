@@ -95,6 +95,7 @@ public class TourPlaceImportService {
     private final TourPlaceRepository tourPlaceRepository;
     private final TransactionTemplate transactionTemplate;
     private final TourPlacePhotoService tourPlacePhotoService;
+    private final KakaoPlaceNameService kakaoPlaceNameService;
 
     @Value("${google.places.api-key}")
     private String apiKey;
@@ -399,7 +400,31 @@ public class TourPlaceImportService {
         entity.setLongitude(place.path("location").path("longitude").isNumber()
                 ? place.path("location").path("longitude").asDouble()
                 : null);
+        String korean = kakaoPlaceNameService.koreanName(
+                entity.getPlaceName(), entity.getLatitude(), entity.getLongitude());
+        if (korean != null) {
+            entity.setPlaceName(cut(korean, 200));
+        }
         return entity;
+    }
+
+    public int localizeStoredNames() {
+        int changed = 0;
+        for (TourPlaceEntity place : tourPlaceRepository.findAll()) {
+            if (KakaoPlaceNameService.hasHangul(place.getPlaceName())) {
+                continue;
+            }
+            String korean = kakaoPlaceNameService.koreanName(
+                    place.getPlaceName(), place.getLatitude(), place.getLongitude());
+            if (korean == null) {
+                continue;
+            }
+            log.info("장소 이름 한글화: {} → {}", place.getPlaceName(), korean);
+            place.setPlaceName(cut(korean, 200));
+            tourPlaceRepository.save(place);
+            changed++;
+        }
+        return changed;
     }
 
 
