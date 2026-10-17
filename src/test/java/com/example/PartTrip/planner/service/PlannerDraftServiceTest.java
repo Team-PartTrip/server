@@ -217,6 +217,18 @@ class PlannerDraftServiceTest {
         return dto;
     }
 
+    @Test
+    void 일정_장소에_설명과_세부_종류를_담는다() {
+        TourPlaceEntity place = place(1);
+        place.setDescription("노포 국수집");
+        place.setPrimaryTypeLabel("국수 전문점");
+
+        var response = PlannerDraftService.toPlace(place);
+
+        assertThat(response.description()).isEqualTo("노포 국수집");
+        assertThat(response.typeLabel()).isEqualTo("국수 전문점");
+    }
+
     private TourPlaceEntity place(long id) {
         TourPlaceEntity place = new TourPlaceEntity();
         place.setTourPlaceId(id);

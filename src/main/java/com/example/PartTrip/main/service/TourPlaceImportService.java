@@ -54,6 +54,7 @@ public class TourPlaceImportService {
             "places.rating",
             "places.location",
             "places.editorialSummary",
+            "places.primaryTypeDisplayName",
             "places.photos");
 
     /** 카테고리마다 한글로 검색한다. 한국어 결과가 그대로 화면에 들어간다 */
@@ -85,6 +86,7 @@ public class TourPlaceImportService {
             "places.formattedAddress",
             "places.rating",
             "places.location",
+            "places.primaryTypeDisplayName",
             "places.photos",
             "nextPageToken");
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
@@ -385,6 +387,8 @@ public class TourPlaceImportService {
                 place.path("editorialSummary").path("text").isMissingNode()
                         ? null
                         : cut(place.path("editorialSummary").path("text").asText(), 1000));
+        entity.setPrimaryTypeLabel(
+                cut(place.path("primaryTypeDisplayName").path("text").asText(""), 100));
         entity.setRating(place.path("rating").isNumber()
                 ? place.path("rating").asDouble()
                 : null);

@@ -55,6 +55,8 @@ public record PlannerScheduleResponseDto(
             String address,
             Double rating,
             Double latitude,
-            Double longitude
+            Double longitude,
+            String description,
+            String typeLabel
     ) {}
 }
