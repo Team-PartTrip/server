@@ -69,7 +69,8 @@ public class TripCardServiceImpl implements TripCardService {
         String currentUserId = currentUserProvider.getCurrentUserId();
 
         // 명세서 비고: "시간순 정렬"
-        return tripCardRepository.findByUserIdOrderByStartDateDesc(currentUserId)
+        return tripCardRepository
+                .findByUserIdAndStartDateLessThanEqualOrderByStartDateDesc(currentUserId, LocalDate.now())
                 .stream()
                 .map(TripCardResponse::from)
                 .toList();
@@ -98,6 +99,9 @@ public class TripCardServiceImpl implements TripCardService {
                 .filter(Objects::nonNull)
                 .toList();
 
+        // 외래키 연쇄 삭제가 없어서 사진 · 장소 행을 먼저 지운다 (#187)
+        tripCardPhotoRepository.deleteByTripCardIdIn(cardIds);
+        tripCardPlaceRepository.deleteByTripCardIdIn(cardIds);
         tripCardRepository.deleteAllById(cardIds);
 
         // 파일 삭제는 커밋이 끝난 뒤에 한다.
@@ -148,6 +152,11 @@ public class TripCardServiceImpl implements TripCardService {
                             .entryId(photo.getTripCardPhotoId())
                             .date(date).type(hasLocation ? TimelineItemType.PHOTO : TimelineItemType.NO_INFO_PHOTO)
                             .imageUrl(photo.getImageUrl()).comment(photo.getComment()).takenAt(photo.getTakenAt())
+                            // 지도에서 직접 고른 사진은 장소 이름이 있다. 없으면 앱·웹이
+                            // "사진 촬영 위치" 로만 보여준다.
+                            .placeName(photo.getPlaceName())
+                            .locationSource(photo.getLocationSource())
+                            .takenAtSource(photo.getTakenAtSource())
                             .latitude(photo.getLatitude()).longitude(photo.getLongitude()).build()));
         }
         return entries.stream()

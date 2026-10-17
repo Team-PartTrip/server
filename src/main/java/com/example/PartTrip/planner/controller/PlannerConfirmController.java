@@ -1,17 +1,16 @@
 package com.example.PartTrip.planner.controller;
 
-import com.example.PartTrip.planner.dto.request.PlannerConfirmRequestDto;
 import com.example.PartTrip.planner.dto.response.PlannerConfirmResponseDto;
 import com.example.PartTrip.planner.dto.response.PlannerFinalResponseDto;
 import com.example.PartTrip.planner.service.PlannerConfirmService;
 import com.example.PartTrip.planner.service.PlannerFinalService;
+import com.example.PartTrip.planner.service.PlannerScheduleRouteService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -22,21 +21,17 @@ public class PlannerConfirmController {
 
     private final PlannerConfirmService plannerConfirmService;
     private final PlannerFinalService plannerFinalService;
+    private final PlannerScheduleRouteService routeService;
 
     @PostMapping("/{plannerId}/confirm")
     public ResponseEntity<PlannerConfirmResponseDto> confirmPlanner(
             Authentication authentication,
-            @PathVariable Long plannerId,
-            // 본문 없이 부르던 기존 호출을 그대로 받아준다
-            @RequestBody(required = false) PlannerConfirmRequestDto request
+            @PathVariable Long plannerId
     ) {
-        return ResponseEntity.ok(
-                plannerConfirmService.confirmPlanner(
-                        plannerId,
-                        request,
-                        authentication.getName()
-                )
-        );
+        PlannerConfirmResponseDto response =
+                plannerConfirmService.confirmPlanner(plannerId, authentication.getName());
+        routeService.recalculate(plannerId);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{plannerId}/confirmed-places")

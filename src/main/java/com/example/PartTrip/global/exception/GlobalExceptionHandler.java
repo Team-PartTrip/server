@@ -53,6 +53,15 @@ public class GlobalExceptionHandler {
                 .body("토큰이 유효하지 않습니다. 다시 로그인 해주세요.");
     }
 
+    // AI 호출 실패. 잠시 뒤 다시 누르면 될 수 있다
+    @ExceptionHandler(AiUnavailableException.class)
+    public ResponseEntity<String> handleAiUnavailable(AiUnavailableException e) {
+
+        return ResponseEntity
+                .status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(e.getMessage());
+    }
+
     // IllegalArgumentException이 발생하면 여기서 처리
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<String> handleIllegalArgumentException(IllegalArgumentException e) {

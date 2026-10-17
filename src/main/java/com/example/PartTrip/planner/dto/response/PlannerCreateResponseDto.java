@@ -21,7 +21,9 @@ public class PlannerCreateResponseDto {
 
     private LocalDate endDate;
 
-    private String countryName;
+    private String regionCode;
+
+    private String regionName;
 
     private String cityName;
 

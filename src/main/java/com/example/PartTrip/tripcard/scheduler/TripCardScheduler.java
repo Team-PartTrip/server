@@ -1,6 +1,7 @@
 package com.example.PartTrip.tripcard.scheduler;
 
 import com.example.PartTrip.tripcard.service.TripCardGeneratorService;
+import com.example.PartTrip.tripcard.service.TripStartNotifier;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -21,6 +22,7 @@ import java.time.LocalDate;
 public class TripCardScheduler {
 
     private final TripCardGeneratorService tripCardGeneratorService;
+    private final TripStartNotifier tripStartNotifier;
 
     // 매일 새벽 1시. 하루 한 번이면 충분하다.
     // 값을 밖으로 뺀 것은 시연이나 테스트에서 짧게 돌리기 위해서다.
@@ -34,6 +36,18 @@ public class TripCardScheduler {
         } catch (Exception e) {
             // 스케줄러가 매일 스택트레이스를 남기지 않도록 경고만 남긴다
             log.warn("여행 종료 처리 실패", e);
+        }
+    }
+
+    @Scheduled(cron = "${part-trip.trip-card.start-cron:0 10 0 * * *}")
+    public void announceStartedTrips() {
+        try {
+            int started = tripStartNotifier.announceTripsStartingOn(LocalDate.now());
+            if (started > 0) {
+                log.info("여행 시작 알림 {}건", started);
+            }
+        } catch (Exception e) {
+            log.warn("여행 시작 알림 실패", e);
         }
     }
 }

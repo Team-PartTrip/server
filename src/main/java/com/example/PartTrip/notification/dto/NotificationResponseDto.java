@@ -22,7 +22,7 @@ public class NotificationResponseDto {
     private String body;
 
     // 알림을 눌렀을 때 이동할 대상. 앱이 이 둘로 화면을 정한다.
-    // 예) linkType "VOTE", linkId 12 → 투표 12번 화면
+    // 예) linkType "TRIP_CARD", linkId 12 → 여행카드 12번 화면
     private String linkType;
 
     private Long linkId;

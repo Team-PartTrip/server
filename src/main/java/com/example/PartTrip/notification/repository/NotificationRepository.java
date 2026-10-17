@@ -2,6 +2,7 @@ package com.example.PartTrip.notification.repository;
 
 import com.example.PartTrip.notification.entity.NotificationEntity;
 import com.example.PartTrip.notification.enums.NotificationCategory;
+import com.example.PartTrip.notification.enums.NotificationType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -35,6 +36,15 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
     Optional<NotificationEntity> findByNotificationIdAndUserId(Long notificationId, String userId);
 
     long countByUserIdAndIsReadFalse(String userId);
+
+    // "새 지역 방문" 을 이 지역에 대해 이미 보냈는지 (#162).
+    // 방문 기록을 따로 저장하지 않으므로 알림 자체가 그 기록이다.
+    boolean existsByUserIdAndTypeAndLinkId(String userId, NotificationType type, Long linkId);
+
+    // "오늘 일정" 은 같은 플래너로 매일 나가므로 linkId 만으로는 중복을 가릴 수 없다.
+    // 오늘 이미 보냈는지를 본다 (배포로 스케줄러가 두 번 도는 경우)
+    boolean existsByUserIdAndTypeAndLinkIdAndCreatedAtAfter(
+            String userId, NotificationType type, Long linkId, LocalDateTime createdAt);
 
     @Modifying(clearAutomatically = true)
     @Query("""

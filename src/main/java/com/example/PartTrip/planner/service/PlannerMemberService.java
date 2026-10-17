@@ -38,8 +38,8 @@ public class PlannerMemberService {
                 .findByInviteCodeForUpdate(inviteCode)
                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 초대 코드입니다."));
 
-        if (group.getStatus() != GroupStatus.PLANNING) {
-            throw new IllegalArgumentException("계획 중인 플래너에만 참여할 수 있습니다.");
+        if (group.getStatus() == GroupStatus.DONE) {
+            throw new IllegalArgumentException("여행이 종료된 플래너에는 참여할 수 없습니다.");
         }
 
         if (groupMemberRepository.existsByGroupIdAndUserId(group.getGroupId(), userId)) {

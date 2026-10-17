@@ -1,8 +1,10 @@
 package com.example.PartTrip.planner.service;
 
+import com.example.PartTrip.region.enums.RegionCode;
 import com.example.PartTrip.planner.dto.request.CreatePlannerRequestDto;
 import com.example.PartTrip.planner.dto.response.PlannerCreateResponseDto;
 import com.example.PartTrip.planner.entity.GroupMemberEntity;
+import com.example.PartTrip.planner.dto.request.PlannerCityRequestDto;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
 import com.example.PartTrip.planner.entity.TravelGroupEntity;
 import com.example.PartTrip.planner.enums.GroupRole;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -24,6 +27,7 @@ public class PlannerService {
     private final TravelGroupRepository travelGroupRepository;
     private final GroupMemberRepository groupMemberRepository;
     private final GroupTravelPlanRepository groupTravelPlanRepository;
+    private final PlannerCityWriter plannerCityWriter;
     private final PlannerInviteLinkFactory inviteLinkFactory;
     private final PlannerScheduleLockService plannerScheduleLockService;
 
@@ -67,7 +71,9 @@ public class PlannerService {
                 .memberCount(savedGroup.getHeadcount())
                 .startDate(travelPlan == null ? null : travelPlan.getStartDate())
                 .endDate(travelPlan == null ? null : travelPlan.getEndDate())
-                .countryName(travelPlan == null ? null : travelPlan.getCountryName())
+                .regionCode(travelPlan == null ? null : travelPlan.getRegionCode())
+                .regionName(travelPlan == null
+                        ? null : RegionCode.nameOf(travelPlan.getRegionCode()))
                 .cityName(travelPlan == null ? null : travelPlan.getCityName())
                 .inviteLink(inviteLinkFactory.create(savedGroup.getInviteCode()))
                 .build();
@@ -88,12 +94,12 @@ public class PlannerService {
             throw new IllegalArgumentException("함께 여행하는 경우 인원은 2명 이상이어야 합니다.");
         }
 
-        boolean hasAnyTravelPlanValue = dto.getCountryName() != null
+        boolean hasAnyTravelPlanValue = dto.getRegionCode() != null
                 || dto.getCityName() != null
                 || dto.getStartDate() != null
                 || dto.getEndDate() != null;
-        boolean hasAllTravelPlanValues = dto.getCountryName() != null
-                && !dto.getCountryName().isBlank()
+        boolean hasAllTravelPlanValues = dto.getRegionCode() != null
+                && !dto.getRegionCode().isBlank()
                 && dto.getCityName() != null
                 && !dto.getCityName().isBlank()
                 && dto.getStartDate() != null
@@ -113,19 +119,30 @@ public class PlannerService {
             TravelGroupEntity savedGroup,
             LocalDateTime now
     ) {
-        if (dto.getCountryName() == null) {
+        if (dto.getRegionCode() == null) {
             return null;
         }
 
         GroupTravelPlanEntity travelPlan = new GroupTravelPlanEntity();
         travelPlan.setGroupId(savedGroup.getGroupId());
         travelPlan.setTravelTitle(dto.getTitle());
-        travelPlan.setCountryName(dto.getCountryName().trim());
+        travelPlan.setRegionCode(RegionCode.of(dto.getRegionCode()).getCode());
         travelPlan.setCityName(dto.getCityName().trim());
         travelPlan.setStartDate(dto.getStartDate());
         travelPlan.setEndDate(dto.getEndDate());
         travelPlan.setCreatedAt(now);
-        return groupTravelPlanRepository.save(travelPlan);
+
+        List<PlannerCityRequestDto> cities = dto.getCities();
+        if (cities != null && !cities.isEmpty()) {
+            // 첫 도시를 대표로 둔다. 도시 하나만 보던 기존 코드가 이걸 읽는다
+            travelPlan.setRegionCode(RegionCode.of(cities.get(0).getRegionCode()).getCode());
+            travelPlan.setCityName(cities.get(0).getCityName().trim());
+        }
+
+        GroupTravelPlanEntity saved = groupTravelPlanRepository.save(travelPlan);
+
+        plannerCityWriter.replace(saved, cities);
+        return saved;
     }
 
     private String createUniqueInviteCode() {

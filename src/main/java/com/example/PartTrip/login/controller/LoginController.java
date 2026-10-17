@@ -1,6 +1,5 @@
 package com.example.PartTrip.login.controller;
 
-import com.example.PartTrip.login.dto.LoginRequestDto;
 import com.example.PartTrip.login.dto.LogoutRequestDto;
 import com.example.PartTrip.login.dto.RefreshRequestDto;
 import com.example.PartTrip.login.dto.TokenResponseDto;
@@ -17,11 +16,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class LoginController {
 
     private final LoginService loginService;
-
-    @PostMapping("/login")
-    public TokenResponseDto login(@RequestBody LoginRequestDto dto) {
-        return loginService.login(dto);
-    }
 
     @PostMapping("/refresh")
     public TokenResponseDto refresh(@RequestBody RefreshRequestDto dto) {

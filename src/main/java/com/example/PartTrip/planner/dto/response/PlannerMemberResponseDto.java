@@ -12,6 +12,7 @@ public class PlannerMemberResponseDto {
     private Long invitationId;
     private String userId;
     private String nickName;
+    private String imgUrl;
     private String role;
     private String status;
     private LocalDateTime joinedAt;

@@ -18,7 +18,7 @@ class TripCardCommentRuleTest {
         method.setAccessible(true);
         try {
             return (String) method.invoke(
-                    new TripCardEntryServiceImpl(null, null, null, null), comment);
+                    new TripCardEntryServiceImpl(null, null, null, null, null), comment);
         } catch (java.lang.reflect.InvocationTargetException e) {
             throw (Exception) e.getCause();
         }

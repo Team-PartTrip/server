@@ -49,7 +49,6 @@ public interface GroupMemberRepository extends JpaRepository<GroupMemberEntity, 
      *
      * createdAt 이 같을 때를 대비해 planId 로 한 번 더 정렬한다. 안 그러면
      * 목록·상세·D-Day 가 서로 다른 계획을 골라 화면마다 값이 달라진다.
-     * VoteRepository.findLatestPlanVotes 도 MAX(planId) 를 쓴다.
      */
     @Query("""
             SELECT m, g, p,

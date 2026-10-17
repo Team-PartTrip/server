@@ -50,7 +50,8 @@ public class NotificationEntity {
     @Column(name = "body", length = 255)
     private String body;
 
-    // 알림을 눌렀을 때 이동할 대상 (앱 E8 "투표 보러가기")
+    // 알림을 눌렀을 때 이동할 대상. 지금 쓰는 값은 네 가지다
+    // GROUP · GROUP_INVITATION · TRIP_CARD · REGION_MAP
     @Column(name = "link_type", length = 30)
     private String linkType;
 

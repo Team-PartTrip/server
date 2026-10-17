@@ -1,7 +1,10 @@
 package com.example.PartTrip.main.service;
 
 import com.example.PartTrip.main.dto.DdayResponseDto;
+import com.example.PartTrip.main.dto.TripPhase;
+import com.example.PartTrip.planner.service.PlannerDraftService;
 import com.example.PartTrip.planner.entity.GroupMemberEntity;
+import com.example.PartTrip.region.enums.RegionCode;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
 import com.example.PartTrip.planner.entity.TravelGroupEntity;
 import com.example.PartTrip.planner.repository.GroupMemberRepository;
@@ -12,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.Clock;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -25,6 +29,8 @@ public class TravelPlanService {
     private final GroupMemberRepository groupMemberRepository;
     private final GroupTravelPlanRepository groupTravelPlanRepository;
     private final TravelGroupRepository travelGroupRepository;
+    private final PlannerDraftService plannerDraftService;
+    private final Clock clock;
 
     // D-Day 조회
     //
@@ -44,7 +50,7 @@ public class TravelPlanService {
             return restingDto();
         }
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         Set<Long> groupsWithLatestPlan = new HashSet<>();
 
         // 이미 끝난 여행은 제외하고 시작일이 가장 이른 것을 고른다.
@@ -69,52 +75,68 @@ public class TravelPlanService {
                 .map(TravelGroupEntity::getHeadcount)
                 .orElse(null);
 
-        return toDdayResponseDto(
-                nearest.getCountryName(),
+        DdayResponseDto response = toDdayResponseDto(
+                RegionCode.nameOf(nearest.getRegionCode()),
                 nearest.getCityName(),
                 nearest.getStartDate(),
                 nearest.getEndDate(),
-                headcount
+                headcount,
+                today
         );
+        if (response.getStatus() == TripPhase.DURING) {
+            var schedule = plannerDraftService.getSchedule(nearest.getGroupId(), userId);
+            response.setTodaySchedule(schedule.days().stream()
+                    .filter(day -> today.equals(day.date()))
+                    .flatMap(day -> day.slots().stream())
+                    .toList());
+        }
+        return response;
     }
 
-    // 보여줄 여행이 없을 때. 앱은 날짜가 null 이면 '쉬는 중' 화면을 그린다.
+    // 보여줄 여행이 없을 때. 문구는 클라이언트가 status 를 보고 정한다.
     private DdayResponseDto restingDto() {
-        return new DdayResponseDto(null, null, null, null, null, "쉬는 중");
+        return new DdayResponseDto(
+                null, null, null, null, null, "쉬는 중", TripPhase.NO_TRIP);
     }
 
     // 여행 정보 -> DdayResponseDto 변환
     private DdayResponseDto toDdayResponseDto(
-            String countryName,
+            String regionName,
             String cityName,
             LocalDate startDate,
             LocalDate endDate,
-            Integer headcount
+            Integer headcount,
+            LocalDate today
     ) {
 
-        LocalDate today = LocalDate.now();
 
         long days = ChronoUnit.DAYS.between(today, startDate);
 
         String dday;
+        TripPhase status;
 
         if (days > 0) {
             dday = "D - " + days;
+            status = TripPhase.BEFORE;
         } else if (days == 0) {
             dday = "D-Day";
+            status = TripPhase.DURING;
         } else if (!today.isAfter(endDate)) {
             dday = "여행 중";
+            status = TripPhase.DURING;
         } else {
             dday = "여행 종료";
+            status = TripPhase.ENDED;
         }
 
         return new DdayResponseDto(
-                countryName,
+                regionName,
                 cityName,
                 startDate,
                 endDate,
                 headcount,
-                dday
+                dday,
+                status
         );
     }
 }

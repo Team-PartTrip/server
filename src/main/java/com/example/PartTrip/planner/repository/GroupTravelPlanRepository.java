@@ -13,6 +13,45 @@ public interface GroupTravelPlanRepository extends JpaRepository<GroupTravelPlan
 
     List<GroupTravelPlanEntity> findByGroupIdOrderByStartDateDesc(Long groupId);
 
+    /**
+     * 알림 스케줄러가 쓴다 (#143). 내일 떠나는 계획.
+     *
+     * <p>확정한 그룹만 본다. 일정 초안은 확정 전에 생기므로
+     * ({@code PlannerDraftService}) 상태를 보지 않으면 확정 버튼을 누르지도 않은
+     * 그룹에 "내일 출발이에요" 가 나간다. DONE 은 이미 끝난 여행이라 뺀다.
+     *
+     * <p>그룹별로 최신 계획 하나만 본다. 다른 화면이 모두
+     * {@code findFirstByGroupIdOrderByCreatedAtDesc} 로 최신 하나만 보는데
+     * 여기만 전부 보면, 남아 있는 옛 계획 날짜로 알림이 나간다.
+     *
+     * <p>{@code MAX(createdAt)} 이 아니라 {@code MAX(planId)} 인 것은 위 메서드의
+     * 설명과 같은 이유다 — {@code createdAt} 이 같은 계획이 둘이면 어느 쪽인지
+     * 정해지지 않아 둘 다 뽑힌다. {@code planId} 는 IDENTITY 라 시간순으로
+     * 증가하면서 같은 값이 없다.
+     */
+    @Query("""
+            SELECT p FROM GroupTravelPlanEntity p
+            JOIN TravelGroupEntity g ON g.groupId = p.groupId
+            WHERE p.startDate = :startDate
+              AND g.status IN (com.example.PartTrip.planner.enums.GroupStatus.CONFIRMED,
+                               com.example.PartTrip.planner.enums.GroupStatus.TRAVELING)
+              AND p.planId = (SELECT MAX(p2.planId) FROM GroupTravelPlanEntity p2
+                               WHERE p2.groupId = p.groupId)
+            """)
+    List<GroupTravelPlanEntity> findConfirmedStartingOn(@Param("startDate") LocalDate startDate);
+
+    /** 알림 스케줄러가 쓴다 (#143). 오늘이 기간 안인 확정된 계획. 위와 같이 그룹별 최신 하나만. */
+    @Query("""
+            SELECT p FROM GroupTravelPlanEntity p
+            JOIN TravelGroupEntity g ON g.groupId = p.groupId
+            WHERE p.startDate <= :date AND p.endDate >= :date
+              AND g.status IN (com.example.PartTrip.planner.enums.GroupStatus.CONFIRMED,
+                               com.example.PartTrip.planner.enums.GroupStatus.TRAVELING)
+              AND p.planId = (SELECT MAX(p2.planId) FROM GroupTravelPlanEntity p2
+                               WHERE p2.groupId = p.groupId)
+            """)
+    List<GroupTravelPlanEntity> findConfirmedCovering(@Param("date") LocalDate date);
+
     // 플래너 삭제용
     void deleteByGroupId(Long groupId);
 

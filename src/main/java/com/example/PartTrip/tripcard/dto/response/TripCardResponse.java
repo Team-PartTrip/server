@@ -1,5 +1,6 @@
 package com.example.PartTrip.tripcard.dto.response;
 
+import com.example.PartTrip.region.enums.RegionCode;
 import com.example.PartTrip.tripcard.entity.TripCardEntity;
 import lombok.Builder;
 import lombok.Getter;
@@ -12,7 +13,8 @@ import java.time.LocalDate;
 @Builder
 public class TripCardResponse {
     private Long cardId;
-    private String countryName;
+    private String regionCode;
+    private String regionName;
     private String cityName;
     private LocalDate startDate;
     private LocalDate endDate;
@@ -23,7 +25,8 @@ public class TripCardResponse {
     public static TripCardResponse from(TripCardEntity tripCard) {
         return TripCardResponse.builder()
                 .cardId(tripCard.getTripCardId())
-                .countryName(tripCard.getCountryName())
+                .regionCode(tripCard.getRegionCode())
+                .regionName(RegionCode.nameOf(tripCard.getRegionCode()))
                 .cityName(tripCard.getCityName())
                 .startDate(tripCard.getStartDate())
                 .endDate(tripCard.getEndDate())
