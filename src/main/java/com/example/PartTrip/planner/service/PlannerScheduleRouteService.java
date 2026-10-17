@@ -52,11 +52,29 @@ public class PlannerScheduleRouteService {
     private final ObjectMapper objectMapper;
     private final TransactionTemplate transactionTemplate;
 
+    private final Map<Long, Integer> running = new java.util.concurrent.ConcurrentHashMap<>();
+
     /** 확정 때 부른다. 경로 계산이 끝난 뒤 돌아와서 확정 응답을 받으면 경로가 다 채워져 있다. */
     public void recalculate(Long plannerId) {
-        RouteSnapshot snapshot = transactionTemplate.execute(status -> prepare(plannerId));
-        if (snapshot == null || snapshot.pending().isEmpty()) return;
-        calculateAndPersist(snapshot);
+        running.merge(plannerId, 1, Integer::sum);
+        try {
+            RouteSnapshot snapshot = transactionTemplate.execute(status -> prepare(plannerId));
+            if (snapshot == null || snapshot.pending().isEmpty()) return;
+            calculateAndPersist(snapshot);
+        } finally {
+            running.computeIfPresent(plannerId, (id, count) -> count <= 1 ? null : count - 1);
+        }
+    }
+
+    public void recoverStuck() {
+        for (Long plannerId : slotRepository.findPlannerIdsByRouteStatus(CALCULATING)) {
+            if (running.containsKey(plannerId)) continue;
+            try {
+                recalculate(plannerId);
+            } catch (RuntimeException exception) {
+                log.warn("멈춘 경로 계산을 다시 하지 못했습니다. plannerId={}", plannerId);
+            }
+        }
     }
 
     /** 잠금 트랜잭션에서 입력 스냅샷을 만들고, 계산 대기 상태를 기록한다. */

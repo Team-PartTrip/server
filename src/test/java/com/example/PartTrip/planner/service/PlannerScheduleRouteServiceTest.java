@@ -132,6 +132,33 @@ class PlannerScheduleRouteServiceTest {
     }
 
     @Test
+    void 재시작으로_멈춘_CALCULATING_칸을_다시_계산한다() {
+        slot.setRouteStatus("CALCULATING");
+        when(slots.findPlannerIdsByRouteStatus("CALCULATING")).thenReturn(List.of(plannerId));
+
+        service.recoverStuck();
+
+        assertThat(slot.getRouteStatus()).isEqualTo("READY");
+    }
+
+    @Test
+    void 지금_계산_중인_플래너는_다시_계산하지_않는다() {
+        when(slots.findPlannerIdsByRouteStatus("CALCULATING")).thenReturn(List.of(plannerId));
+        when(odsay.search(any(Double.class), any(Double.class), any(Double.class), any(Double.class),
+                any(), any())).thenAnswer(invocation -> {
+                    service.recoverStuck();
+                    return new OdsayTransitRouteClient.SearchResult("READY",
+                            new PlannerScheduleResponseDto.RouteLeg("PUBLIC_TRANSIT", "강릉역", "경포대",
+                                    25, 5, List.of()));
+                });
+
+        service.recalculate(plannerId);
+
+        verify(odsay, org.mockito.Mockito.times(1)).search(any(Double.class), any(Double.class),
+                any(Double.class), any(Double.class), any(), any());
+    }
+
+    @Test
     void 둘째날_첫_장소는_전날_묵은_숙소에서_계산한다() {
         PlannerScheduleSlotEntity night = new PlannerScheduleSlotEntity(planId, startDate, 2, 103L);
         night.setSlotId(502L);
