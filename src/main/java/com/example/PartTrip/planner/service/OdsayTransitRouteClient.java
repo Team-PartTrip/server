@@ -16,6 +16,8 @@ import java.util.Map;
 @Component
 public class OdsayTransitRouteClient {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OdsayTransitRouteClient.class);
+
     static final double WALK_ONLY_METERS = 700;
     static final double INTERCITY_METERS = 30_000;
     private static final double WALK_DETOUR = 1.3;
@@ -55,8 +57,9 @@ public class OdsayTransitRouteClient {
         }
 
         try {
-            JsonNode path = pickPath(request(fromLongitude, fromLatitude, toLongitude, toLatitude),
-                    meters >= INTERCITY_METERS);
+            JsonNode response = request(fromLongitude, fromLatitude, toLongitude, toLatitude);
+            logOdsayError(response);
+            JsonNode path = pickPath(response, meters >= INTERCITY_METERS);
             PlannerScheduleResponseDto.RouteLeg route = toLeg(path, fromName, toName);
             if (route != null && hasIntercitySegment(path)) {
                 route = withLocalLegs(route, path, fromLongitude, fromLatitude,
@@ -98,6 +101,13 @@ public class OdsayTransitRouteClient {
                 .body(JsonNode.class);
     }
 
+    private static void logOdsayError(JsonNode response) {
+        JsonNode error = response == null ? null : response.path("error");
+        if (error == null || error.isMissingNode() || error.isNull()) return;
+        JsonNode first = error.isArray() ? error.path(0) : error;
+        log.warn("ODsay 오류 응답 code={} msg={}", first.path("code").asText("?"), first.path("msg").asText("?"));
+    }
+
     static JsonNode pickPath(JsonNode response, boolean preferIntercity) {
         JsonNode paths = response == null ? null : response.path("result").path("path");
         if (paths == null || !paths.isArray() || paths.isEmpty()) return null;
@@ -136,8 +146,9 @@ public class OdsayTransitRouteClient {
         double meters = distanceMeters(fromLatitude, fromLongitude, toLatitude, toLongitude);
         if (meters <= WALK_ONLY_METERS) return walking(meters, fromName, toName);
         try {
-            return toLeg(pickPath(request(fromLongitude, fromLatitude, toLongitude, toLatitude), false),
-                    fromName, toName);
+            JsonNode response = request(fromLongitude, fromLatitude, toLongitude, toLatitude);
+            logOdsayError(response);
+            return toLeg(pickPath(response, false), fromName, toName);
         } catch (RestClientException | IllegalArgumentException exception) {
             return null;
         }
