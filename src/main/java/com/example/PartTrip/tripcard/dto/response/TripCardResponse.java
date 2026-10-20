@@ -13,6 +13,7 @@ import java.time.LocalDate;
 @Builder
 public class TripCardResponse {
     private Long cardId;
+    private String title;
     private String regionCode;
     private String regionName;
     private String cityName;
@@ -25,6 +26,7 @@ public class TripCardResponse {
     public static TripCardResponse from(TripCardEntity tripCard) {
         return TripCardResponse.builder()
                 .cardId(tripCard.getTripCardId())
+                .title(tripCard.getTitle())
                 .regionCode(tripCard.getRegionCode())
                 .regionName(RegionCode.nameOf(tripCard.getRegionCode()))
                 .cityName(tripCard.getCityName())
