@@ -9,12 +9,14 @@ import lombok.Getter;
 public class ProfileResponseDto {
 
     private String userId;
+    private String email;
     private String nickName;
     private String imgUrl;
 
     public static ProfileResponseDto from(UserEntity user) {
         return new ProfileResponseDto(
                 user.getUserId(),
+                user.getUserMail(),
                 user.getNickName(),
                 user.getImgUrl()
         );
