@@ -82,7 +82,8 @@ class PlannerConfirmServiceTest {
         plan.setStartDate(DAY1);
         plan.setEndDate(DAY2);
 
-        given(travelGroupRepository.findByIdForUpdate(PLANNER_ID)).willReturn(Optional.of(group));
+        // 확정이 아닌 경로(확정 뒤 참여)는 그룹을 잠그지 않아 이 스텁을 쓰지 않는다
+        lenient().when(travelGroupRepository.findByIdForUpdate(PLANNER_ID)).thenReturn(Optional.of(group));
         lenient().when(groupMemberRepository.findByGroupIdAndUserId(PLANNER_ID, OWNER_ID))
                 .thenReturn(Optional.of(member(OWNER_ID, GroupRole.OWNER)));
         lenient().when(groupTravelPlanRepository.findFirstByGroupIdOrderByCreatedAtDesc(PLANNER_ID))
@@ -207,5 +208,38 @@ class PlannerConfirmServiceTest {
         // 리더가 정한 일정을 추천으로 덮지 않는다
         verify(plannerScheduleService, never()).buildSchedule(any(), any(), any());
         assertThat(group.getStatus()).isEqualTo(GroupStatus.CONFIRMED);
+    }
+
+    @Test
+    void 확정_뒤에_들어온_멤버에게만_여행카드를_만든다() {
+        group.setStatus(GroupStatus.CONFIRMED);
+        given(groupMemberRepository.findByGroupIdOrderByJoinedAtAsc(PLANNER_ID))
+                .willReturn(List.of(member(OWNER_ID, GroupRole.OWNER), member("late", GroupRole.MEMBER)));
+        given(tripCardRepository.findByPlanIdAndUserIdIn(eq(PLAN_ID), any()))
+                .willReturn(List.of(TripCardEntity.builder()
+                        .tripCardId(7L).userId(OWNER_ID).planId(PLAN_ID).build()));
+        given(plannerScheduleSlotRepository.findByPlanIdOrderByVisitDateAscSortOrderAsc(PLAN_ID))
+                .willReturn(List.of(new PlannerScheduleSlotEntity(PLAN_ID, DAY1, 1, 5L)));
+        given(plannerScheduleService.fromSlots(any()))
+                .willReturn(List.of(scheduled(5L, DAY1, 1)));
+        given(tripCardRepository.saveAll(any())).willReturn(List.of(TripCardEntity.builder()
+                .tripCardId(8L).userId("late").planId(PLAN_ID).build()));
+
+        plannerConfirmService.createCardsForNewMembers(group);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<TripCardEntity>> cards = ArgumentCaptor.forClass(List.class);
+        verify(tripCardRepository).saveAll(cards.capture());
+        assertThat(cards.getValue()).extracting(TripCardEntity::getUserId).containsExactly("late");
+        verify(tripCardPlaceRepository).saveAll(any());
+    }
+
+    @Test
+    void 시도가_없는_플래너는_참여해도_카드를_만들지_않는다() {
+        plan.setRegionCode(null);
+
+        plannerConfirmService.createCardsForNewMembers(group);
+
+        verify(tripCardRepository, never()).saveAll(any());
     }
 }

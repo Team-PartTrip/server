@@ -17,4 +17,7 @@ public interface TripCardService {
 
     @Transactional
     String deleteTripCard(Set<Long> cardIds);
+
+    @Transactional
+    void deleteMemberCard(Long planId, String userId);
 }
