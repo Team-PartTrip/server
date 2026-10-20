@@ -41,6 +41,7 @@ class PlannerInvitationServiceTest {
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private PlannerInviteLinkFactory inviteLinkFactory;
     @Mock private PlannerScheduleLockService plannerScheduleLockService;
+    @Mock private com.example.PartTrip.tripcard.service.TripCardService tripCardService;
     @InjectMocks private PlannerInvitationService plannerInvitationService;
 
     @Test
@@ -109,9 +110,16 @@ class PlannerInvitationServiceTest {
         group.setStatus(GroupStatus.CONFIRMED);
         when(travelGroupRepository.findById(1L)).thenReturn(Optional.of(group));
 
+        GroupTravelPlanEntity plan = new GroupTravelPlanEntity();
+        plan.setPlanId(9L);
+        plan.setStartDate(LocalDate.now().plusDays(3));
+        when(groupTravelPlanRepository.findFirstByGroupIdOrderByCreatedAtDesc(1L))
+                .thenReturn(Optional.of(plan));
+
         plannerInvitationService.removeMember(1L, "member", "member");
 
         verify(groupMemberRepository).delete(member);
+        verify(tripCardService).deleteMemberCard(9L, "member");
     }
 
     @Test
@@ -126,6 +134,7 @@ class PlannerInvitationServiceTest {
                 .hasMessageContaining("나갈 수 없");
 
         verify(groupMemberRepository, never()).delete(owner);
+        verify(tripCardService, never()).deleteMemberCard(any(), any());
     }
 
     @Test
@@ -157,5 +166,28 @@ class PlannerInvitationServiceTest {
 
             verify(groupMemberRepository, never()).delete(member);
         }
+    }
+
+    @Test
+    void 상태가_확정이어도_여행_날짜가_시작됐으면_멤버는_나갈_수_없다() {
+        GroupMemberEntity member = new GroupMemberEntity();
+        member.setRole(GroupRole.MEMBER);
+        when(groupMemberRepository.findByGroupIdAndUserId(1L, "member"))
+                .thenReturn(Optional.of(member));
+        TravelGroupEntity group = new TravelGroupEntity();
+        group.setStatus(GroupStatus.CONFIRMED);
+        when(travelGroupRepository.findById(1L)).thenReturn(Optional.of(group));
+        GroupTravelPlanEntity plan = new GroupTravelPlanEntity();
+        plan.setPlanId(9L);
+        plan.setStartDate(LocalDate.now());
+        when(groupTravelPlanRepository.findFirstByGroupIdOrderByCreatedAtDesc(1L))
+                .thenReturn(Optional.of(plan));
+
+        assertThatThrownBy(() -> plannerInvitationService.removeMember(1L, "member", "member"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("여행이 시작된");
+
+        verify(groupMemberRepository, never()).delete(member);
+        verify(tripCardService, never()).deleteMemberCard(any(), any());
     }
 }

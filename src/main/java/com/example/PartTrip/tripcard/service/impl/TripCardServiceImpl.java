@@ -93,6 +93,18 @@ public class TripCardServiceImpl implements TripCardService {
             }
         }
 
+        removeCards(cardIds);
+        return "삭제 완료";
+    }
+
+    @Transactional
+    @Override
+    public void deleteMemberCard(Long planId, String userId) {
+        tripCardRepository.findByPlanIdAndUserId(planId, userId)
+                .ifPresent(card -> removeCards(Set.of(card.getTripCardId())));
+    }
+
+    private void removeCards(Set<Long> cardIds) {
         // 카드 행만 지우면 업로드된 파일이 계속 남는다. 지울 URL 을 먼저 모은다.
         List<String> imageUrls = tripCardPhotoRepository.findByTripCardIdIn(cardIds).stream()
                 .map(TripCardPhotoEntity::getImageUrl)
@@ -119,8 +131,6 @@ public class TripCardServiceImpl implements TripCardService {
                         }
                     }
                 });
-
-        return "삭제 완료";
     }
 
     /** 확정 장소와 사용자 사진을 한 줄로 섞어 날짜순으로 세운다 */

@@ -32,6 +32,7 @@ class PlannerMemberServiceTest {
     @Mock private GroupTravelPlanRepository groupTravelPlanRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private PlannerScheduleLockService plannerScheduleLockService;
+    @Mock private PlannerConfirmService plannerConfirmService;
     @InjectMocks private PlannerMemberService plannerMemberService;
 
     @Test
@@ -53,6 +54,26 @@ class PlannerMemberServiceTest {
 
         verify(groupMemberRepository).save(any());
         verify(eventPublisher).publishEvent(any(Object.class));
+        verify(plannerConfirmService).createCardsForNewMembers(group);
+    }
+
+    @Test
+    void 확정_전에_참여하면_여행카드를_만들지_않는다() {
+        JoinPlannerRequestDto request = new JoinPlannerRequestDto();
+        request.setInviteCode("invite");
+        TravelGroupEntity group = new TravelGroupEntity();
+        group.setGroupId(1L);
+        group.setHeadcount(3);
+        group.setStatus(GroupStatus.PLANNING);
+        when(travelGroupRepository.findByInviteCodeForUpdate("INVITE"))
+                .thenReturn(Optional.of(group));
+        when(groupMemberRepository.existsByGroupIdAndUserId(1L, "user")).thenReturn(false);
+        when(groupMemberRepository.countByGroupId(1L)).thenReturn(1L);
+
+        plannerMemberService.joinPlanner(request, "user");
+
+        verify(groupMemberRepository).save(any());
+        verifyNoInteractions(plannerConfirmService);
     }
 
     @Test

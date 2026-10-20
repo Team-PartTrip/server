@@ -29,7 +29,11 @@ class TripCardDeleteTest {
     @MockitoBean ImageStorageService imageStorageService;
 
     private Long card(String userId) {
-        TripCardEntity c = TripCardEntity.builder().userId(userId).title("경주")
+        return card(userId, null);
+    }
+
+    private Long card(String userId, Long planId) {
+        TripCardEntity c = TripCardEntity.builder().userId(userId).planId(planId).title("경주")
                 .regionCode("47").startDate(LocalDate.of(2026, 9, 1))
                 .endDate(LocalDate.of(2026, 9, 2)).createdAt(LocalDateTime.of(2026, 9, 1, 9, 0)).build();
         em.persist(c);
@@ -67,5 +71,29 @@ class TripCardDeleteTest {
         assertThat(em.find(TripCardEntity.class, mine)).isNull();
         assertThat(children(mine)).isZero();
         assertThat(children(other)).isEqualTo(2);
+    }
+
+    @Test
+    void 플래너에서_나간_멤버의_카드만_사진과_함께_지워진다() {
+        Long leaving = card("member", 7L);
+        Long stayingOwner = card("owner", 7L);
+        Long otherPlan = card("member", 8L);
+        em.flush();
+        em.clear();
+
+        service.deleteMemberCard(7L, "member");
+        em.flush();
+        em.clear();
+
+        assertThat(em.find(TripCardEntity.class, leaving)).isNull();
+        assertThat(children(leaving)).isZero();
+        assertThat(em.find(TripCardEntity.class, stayingOwner)).isNotNull();
+        assertThat(children(stayingOwner)).isEqualTo(2);
+        assertThat(em.find(TripCardEntity.class, otherPlan)).isNotNull();
+    }
+
+    @Test
+    void 카드가_없는_멤버가_나가도_오류가_나지_않는다() {
+        service.deleteMemberCard(99L, "nobody");
     }
 }

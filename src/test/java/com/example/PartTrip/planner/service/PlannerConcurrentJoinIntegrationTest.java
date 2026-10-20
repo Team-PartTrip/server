@@ -43,6 +43,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class PlannerConcurrentJoinIntegrationTest {
 
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private PlannerConfirmService plannerConfirmService;
+
     @Autowired private PlannerMemberService plannerMemberService;
     @Autowired private PlannerService plannerService;
     @Autowired private PlannerTravelPlanService plannerTravelPlanService;

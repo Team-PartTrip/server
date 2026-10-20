@@ -16,11 +16,14 @@ import com.example.PartTrip.planner.repository.GroupMemberRepository;
 import com.example.PartTrip.planner.repository.GroupTravelPlanRepository;
 import com.example.PartTrip.planner.repository.TravelGroupRepository;
 import com.example.PartTrip.signup.repository.UserRepository;
+import com.example.PartTrip.tripcard.service.TripCardService;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Map;
@@ -41,6 +44,7 @@ public class PlannerInvitationService {
     private final ApplicationEventPublisher eventPublisher;
     private final PlannerInviteLinkFactory inviteLinkFactory;
     private final PlannerScheduleLockService plannerScheduleLockService;
+    private final TripCardService tripCardService;
 
     @Transactional
     public PlannerInviteResponseDto inviteMembers(
@@ -223,13 +227,18 @@ public class PlannerInvitationService {
                     : "플래너 그룹장은 내보낼 수 없습니다.");
         }
         groupMemberRepository.delete(member);
+        groupTravelPlanRepository.findFirstByGroupIdOrderByCreatedAtDesc(plannerId)
+                .ifPresent(plan -> tripCardService.deleteMemberCard(plan.getPlanId(), memberUserId));
     }
 
     private boolean isTravelStarted(Long plannerId) {
-        return travelGroupRepository.findById(plannerId)
+        boolean byStatus = travelGroupRepository.findById(plannerId)
                 .map(TravelGroupEntity::getStatus)
                 .filter(status -> status == GroupStatus.TRAVELING || status == GroupStatus.DONE)
                 .isPresent();
+        return byStatus || groupTravelPlanRepository.findFirstByGroupIdOrderByCreatedAtDesc(plannerId)
+                .map(plan -> plan.getStartDate() != null && !plan.getStartDate().isAfter(LocalDate.now()))
+                .orElse(false);
     }
 
     private GroupInvitationEntity getPendingInvitationForUser(Long invitationId, String userId) {

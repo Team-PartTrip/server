@@ -81,6 +81,17 @@ public class PlannerConfirmService {
                 .build();
     }
 
+    @Transactional
+    public void createCardsForNewMembers(TravelGroupEntity group) {
+        GroupTravelPlanEntity plan = groupTravelPlanRepository
+                .findFirstByGroupIdOrderByCreatedAtDesc(group.getGroupId())
+                .orElse(null);
+        if (plan == null || plan.getRegionCode() == null) {
+            return;
+        }
+        createTripCardsIfAbsent(group, plan, group.getOwnerUserId());
+    }
+
     /** 아직 여행 카드가 없는 그룹 멤버에게 확정 일정을 기반으로 카드를 생성한다. */
     private TripCardEntity createTripCardsIfAbsent(
             TravelGroupEntity group,

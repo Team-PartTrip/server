@@ -26,6 +26,7 @@ public class PlannerMemberService {
     private final GroupTravelPlanRepository groupTravelPlanRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final PlannerScheduleLockService plannerScheduleLockService;
+    private final PlannerConfirmService plannerConfirmService;
 
     @Transactional
     public PlannerJoinResponseDto joinPlanner(
@@ -61,6 +62,10 @@ public class PlannerMemberService {
         member.setJoinedAt(LocalDateTime.now());
         groupMemberRepository.save(member);
 
+        if (isConfirmed(group.getStatus())) {
+            plannerConfirmService.createCardsForNewMembers(group);
+        }
+
         eventPublisher.publishEvent(new GroupInviteAcceptedEvent(group.getGroupId(), userId));
 
         return PlannerJoinResponseDto.builder()
@@ -71,6 +76,12 @@ public class PlannerMemberService {
                 .memberCount(group.getHeadcount())
                 .joinedMemberCount(currentMemberCount + 1)
                 .build();
+    }
+
+    private static boolean isConfirmed(GroupStatus status) {
+        return status == GroupStatus.CONFIRMED
+                || status == GroupStatus.TRAVELING
+                || status == GroupStatus.DONE;
     }
 
     private void validateNoOverlappingPlan(Long groupId, String userId) {
