@@ -2,8 +2,11 @@ package com.example.PartTrip.global.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.CacheControl;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import java.time.Duration;
 
 // 업로드된 이미지를 /uploads/** 로 정적 서빙한다.
 //
@@ -12,6 +15,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 // SecurityConfig 에서 /uploads/** 를 공개 경로로 둔다.
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
+
+    static final CacheControl UPLOAD_CACHE = CacheControl.maxAge(Duration.ofDays(365)).cachePublic().immutable();
 
     private final String rootDir;
 
@@ -22,6 +27,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/uploads/**")
-                .addResourceLocations("file:" + rootDir + "/");
+                .addResourceLocations("file:" + rootDir + "/")
+                .setCacheControl(UPLOAD_CACHE);
     }
 }
