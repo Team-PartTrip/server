@@ -12,9 +12,9 @@
  * private final ApplicationEventPublisher eventPublisher;
  *
  * @Transactional
- * public void vote(Long voteId, String userId) {
- *     voteRecordRepository.save(...);
- *     eventPublisher.publishEvent(new VoteParticipatedEvent(voteId, userId));
+ * public void acceptInvitation(Long groupId, String userId) {
+ *     groupMemberRepository.save(...);
+ *     eventPublisher.publishEvent(new GroupInviteAcceptedEvent(groupId, userId));
  * }
  * }</pre>
  *
@@ -24,7 +24,7 @@
  *
  * <pre>{@code
  * @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
- * public void on(VoteParticipatedEvent event) { ... }
+ * public void on(GroupInviteAcceptedEvent event) { ... }
  * }</pre>
  *
  * {@code AFTER_COMMIT} 이라 원래 작업이 롤백되면 알림도 만들어지지 않는다.
@@ -37,6 +37,6 @@
  *
  * <p>사용자 행동으로 생기는 이벤트는 <b>행동한 사람</b>({@code actorUserId})을 담는다.
  * 알림을 <b>받을</b> 사람이 아니다. 받는 사람은 알림 도메인이 정한다 —
- * 투표 참여는 같은 그룹의 다른 멤버들이 받고, 여행 카드 생성은 만든 본인이 받는 식이다.
+ * 그룹 참여는 같은 그룹의 다른 멤버들이 받고, 여행 카드 생성은 만든 본인이 받는 식이다.
  */
 package com.example.PartTrip.notification.event;

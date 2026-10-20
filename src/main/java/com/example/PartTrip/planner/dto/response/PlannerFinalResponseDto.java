@@ -12,7 +12,8 @@ public class PlannerFinalResponseDto {
 
     private Long plannerId;
     private String title;
-    private String countryName;
+    private String regionCode;
+    private String regionName;
     private String cityName;
     private LocalDate startDate;
     private LocalDate endDate;

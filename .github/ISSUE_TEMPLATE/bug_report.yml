@@ -1,0 +1,91 @@
+name: 버그 리포트
+description: 버그나 오류를 발견하셨나요? 상세히 알려주세요.
+title: "[Bug] "
+labels: ["type: bug"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 버그 리포트 작성 가이드
+        버그를 재현하고 수정하는데 필요한 정보를 자세히 작성해주세요.
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: 발생 위치
+      description: 어디에서 발생했나요?
+      options:
+        - 서버
+        - 앱
+        - 웹
+        - 어디인지 모름
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 버그 설명
+      description: 어떤 문제가 발생했는지 간단히 설명해주세요.
+      placeholder: "예: 투표 페이지에서 투표하면 요청에 실패했다고 뜹니다."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 재현 방법
+      description: 버그를 재현하는 단계를 순서대로 작성해주세요.
+      placeholder: |
+        1. 플래너를 만들고 투표 화면에 들어갑니다
+        2. 장소 오른쪽 투표 버튼을 누릅니다
+        3. "요청에 실패했습니다" 가 뜹니다
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 예상 동작
+      placeholder: "예: 투표가 반영되고 버튼이 투표함으로 바뀌어야 합니다."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 실제 동작
+      placeholder: "예: 경고창이 뜨고 표가 늘지 않습니다."
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: 스크린샷
+      description: 가능하다면 스크린샷이나 화면 녹화를 첨부해주세요.
+      placeholder: 이미지를 드래그하여 첨부할 수 있습니다.
+
+  - type: input
+    id: environment
+    attributes:
+      label: 환경 정보
+      description: |
+        서버는 어느 브랜치를 띄웠는지, 앱은 OS · 기기를 적어주세요.
+        띄운 서버가 오래된 코드라서 나는 오류가 잦습니다
+      placeholder: "예: 서버 develop(2f350b0), iOS 시뮬레이터 iPhone 17"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 로그 및 에러 메시지
+      description: 서버 콘솔 로그, 응답 본문, 스택 트레이스 등
+      render: shell
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 추가 정보
+      description: 이 버그와 관련된 다른 정보가 있나요?

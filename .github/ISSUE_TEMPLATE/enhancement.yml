@@ -1,0 +1,96 @@
+name: 개선 제안
+description: 기존 기능을 개선해주세요!
+title: "[Enhancement] "
+labels: ["type: enhancement"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 개선 제안 가이드
+        기존 기능을 어떻게 개선하면 좋을지 알려주세요.
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: 대상
+      description: 어디를 고쳐야 하나요?
+      options:
+        - 서버
+        - 앱
+        - 웹
+        - 전체
+      multiple: true
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: 개선 분야
+      options:
+        - UI/UX
+        - 성능
+        - 접근성
+        - 보안
+        - 코드 품질
+        - 문서
+        - 기타
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 우선순위
+      options:
+        - "1 (3차 평가에 필요)"
+        - "2 (있으면 좋음)"
+        - "3 (나중에)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: current
+    attributes:
+      label: 현재 상황
+      description: 지금 어떻게 동작하나요. 파일과 줄 번호를 적어주면 찾기 쉽습니다
+      placeholder: "예: 투표 장소 목록이 카테고리별 10개에서 끝나, 고를 게 부족합니다 (TourPlaceService)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: improvement
+    attributes:
+      label: 개선 제안
+      description: 어떻게 개선하면 좋을까요?
+      placeholder: "예: 목록 끝까지 내리면 구글에서 10개씩 더 받아온다"
+    validations:
+      required: true
+
+  - type: textarea
+    id: benefit
+    attributes:
+      label: 기대 효과
+      placeholder: |
+        예:
+        - 고를 수 있는 장소가 늘어난다
+        - 인기 없는 도시에서도 목록이 비지 않는다
+
+  - type: textarea
+    id: open-questions
+    attributes:
+      label: 정해야 할 것
+      description: 혼자 정하면 안 되는 것. 비용이 드는 선택(외부 API 호출 등)이면 꼭 적어주세요
+      placeholder: "예: 구글 API 호출이 늘어나는데 한 요청당 몇 번까지 허용할지"
+
+  - type: textarea
+    id: done
+    attributes:
+      label: 완료 조건
+      value: |
+        - [ ]
+        - [ ]
+    validations:
+      required: true

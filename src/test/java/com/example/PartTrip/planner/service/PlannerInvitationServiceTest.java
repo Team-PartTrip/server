@@ -6,6 +6,7 @@ import com.example.PartTrip.planner.entity.GroupMemberEntity;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
 import com.example.PartTrip.planner.entity.TravelGroupEntity;
 import com.example.PartTrip.planner.enums.GroupRole;
+import com.example.PartTrip.planner.enums.GroupStatus;
 import com.example.PartTrip.planner.enums.InvitationStatus;
 import com.example.PartTrip.planner.repository.GroupInvitationRepository;
 import com.example.PartTrip.planner.repository.GroupMemberRepository;
@@ -96,5 +97,65 @@ class PlannerInvitationServiceTest {
 
         verify(groupMemberRepository, never()).save(any());
         verify(groupInvitationRepository, never()).save(any());
+    }
+
+    @Test
+    void 멤버는_스스로_플래너에서_나갈_수_있다() {
+        GroupMemberEntity member = new GroupMemberEntity();
+        member.setRole(GroupRole.MEMBER);
+        when(groupMemberRepository.findByGroupIdAndUserId(1L, "member"))
+                .thenReturn(Optional.of(member));
+        TravelGroupEntity group = new TravelGroupEntity();
+        group.setStatus(GroupStatus.CONFIRMED);
+        when(travelGroupRepository.findById(1L)).thenReturn(Optional.of(group));
+
+        plannerInvitationService.removeMember(1L, "member", "member");
+
+        verify(groupMemberRepository).delete(member);
+    }
+
+    @Test
+    void 그룹장은_스스로_나갈_수_없다() {
+        GroupMemberEntity owner = new GroupMemberEntity();
+        owner.setRole(GroupRole.OWNER);
+        when(groupMemberRepository.findByGroupIdAndUserId(1L, "owner"))
+                .thenReturn(Optional.of(owner));
+
+        assertThatThrownBy(() -> plannerInvitationService.removeMember(1L, "owner", "owner"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("나갈 수 없");
+
+        verify(groupMemberRepository, never()).delete(owner);
+    }
+
+    @Test
+    void 멤버는_다른_멤버를_내보낼_수_없다() {
+        GroupMemberEntity requester = new GroupMemberEntity();
+        requester.setRole(GroupRole.MEMBER);
+        when(groupMemberRepository.findByGroupIdAndUserId(1L, "member"))
+                .thenReturn(Optional.of(requester));
+
+        assertThatThrownBy(() -> plannerInvitationService.removeMember(1L, "other", "member"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("그룹장만");
+    }
+
+    @Test
+    void 여행이_시작된_뒤에는_멤버도_나갈_수_없다() {
+        for (GroupStatus status : List.of(GroupStatus.TRAVELING, GroupStatus.DONE)) {
+            GroupMemberEntity member = new GroupMemberEntity();
+            member.setRole(GroupRole.MEMBER);
+            when(groupMemberRepository.findByGroupIdAndUserId(1L, "member"))
+                    .thenReturn(Optional.of(member));
+            TravelGroupEntity group = new TravelGroupEntity();
+            group.setStatus(status);
+            when(travelGroupRepository.findById(1L)).thenReturn(Optional.of(group));
+
+            assertThatThrownBy(() -> plannerInvitationService.removeMember(1L, "member", "member"))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("여행이 시작된");
+
+            verify(groupMemberRepository, never()).delete(member);
+        }
     }
 }

@@ -15,7 +15,6 @@ import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import com.example.PartTrip.signup.support.NickNameGenerator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,7 +23,6 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -32,7 +30,6 @@ public class GoogleLoginService {
 
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
-    private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final NickNameGenerator nickNameGenerator;
 
@@ -150,12 +147,10 @@ public class GoogleLoginService {
         user.setUserId(email);                 // PK 로 이메일 사용
         user.setUserMail(email);
         // 구글 로그인은 비밀번호를 쓰지 않지만 컬럼이 NOT NULL 이라 임의값 저장
-        user.setUserPwd(passwordEncoder.encode(UUID.randomUUID().toString()));
         // 구글 이름을 우선 쓰되, 이미 쓰이고 있으면 랜덤 접미사를 붙인다
         user.setNickName(nickNameGenerator.generateFrom(
                 name != null ? name : email.split("@")[0]));
         user.setSignUpDivision("GOOGLE");
-        user.setMyCountry("KR");
         user.setCreateDate(LocalDateTime.now());
         return userRepository.save(user);
     }

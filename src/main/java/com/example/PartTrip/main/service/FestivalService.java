@@ -34,12 +34,11 @@ public class FestivalService {
             throw new IllegalArgumentException("연도는 1900 에서 2100 사이의 값이어야 합니다.");
         }
 
-        // 'yyyy-MM' 형태로 만들어 startDate 접두사와 비교
+        // 'yyyy-MM-dd' 문자열이라 -01 · -31 로 그 달 전체를 덮는다
         String yearMonth = String.format("%04d-%02d", targetYear, targetMonth);
 
-        List<FestivalEntity> festivals =
-                festivalRepository.findByCountryNameAndStartDateStartingWithOrderByStartDateAsc(
-                        countryName, yearMonth);
+        List<FestivalEntity> festivals = festivalRepository.findInMonth(
+                countryName, yearMonth + "-01", yearMonth + "-31");
 
         return festivals.stream()
                 .map(festival -> new FestivalResponseDto(
@@ -50,7 +49,8 @@ public class FestivalService {
                         festival.getStartDate(),
                         festival.getStartTime(),
                         festival.getLocation(),
-                        festival.getImageUrl()
+                        festival.getImageUrl(),
+                        festival.getEndDate()
                 ))
                 .toList();
     }

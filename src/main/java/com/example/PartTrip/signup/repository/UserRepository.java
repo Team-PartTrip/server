@@ -17,9 +17,6 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
 
     List<UserEntity> findAllByUserMailIgnoreCaseOrderByUserIdAsc(String userMail);
 
-    // 아이디 중복 확인
-    boolean existsByUserId(String userId);
-
     boolean existsByUserMailIgnoreCase(String userMail);
 
     boolean existsByNickName(String nickName);

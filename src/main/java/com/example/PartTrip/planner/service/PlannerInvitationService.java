@@ -9,6 +9,7 @@ import com.example.PartTrip.planner.entity.GroupInvitationEntity;
 import com.example.PartTrip.planner.entity.GroupMemberEntity;
 import com.example.PartTrip.planner.entity.TravelGroupEntity;
 import com.example.PartTrip.planner.enums.GroupRole;
+import com.example.PartTrip.planner.enums.GroupStatus;
 import com.example.PartTrip.planner.enums.InvitationStatus;
 import com.example.PartTrip.planner.repository.GroupInvitationRepository;
 import com.example.PartTrip.planner.repository.GroupMemberRepository;
@@ -205,14 +206,30 @@ public class PlannerInvitationService {
 
     @Transactional
     public void removeMember(Long plannerId, String memberUserId, String requesterUserId) {
-        requireOwner(plannerId, requesterUserId);
+        if (!memberUserId.equals(requesterUserId)) {
+            requireOwner(plannerId, requesterUserId);
+        }
         GroupMemberEntity member = groupMemberRepository
                 .findByGroupIdAndUserId(plannerId, memberUserId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 사용자는 플래너 멤버가 아닙니다."));
+        if (memberUserId.equals(requesterUserId)
+                && member.getRole() != GroupRole.OWNER
+                && isTravelStarted(plannerId)) {
+            throw new IllegalArgumentException("여행이 시작된 뒤에는 플래너에서 나갈 수 없습니다.");
+        }
         if (member.getRole() == GroupRole.OWNER) {
-            throw new IllegalArgumentException("플래너 그룹장은 내보낼 수 없습니다.");
+            throw new IllegalArgumentException(memberUserId.equals(requesterUserId)
+                    ? "그룹장은 플래너에서 나갈 수 없습니다."
+                    : "플래너 그룹장은 내보낼 수 없습니다.");
         }
         groupMemberRepository.delete(member);
+    }
+
+    private boolean isTravelStarted(Long plannerId) {
+        return travelGroupRepository.findById(plannerId)
+                .map(TravelGroupEntity::getStatus)
+                .filter(status -> status == GroupStatus.TRAVELING || status == GroupStatus.DONE)
+                .isPresent();
     }
 
     private GroupInvitationEntity getPendingInvitationForUser(Long invitationId, String userId) {

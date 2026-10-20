@@ -1,15 +1,21 @@
 package com.example.PartTrip.global.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Configuration
 public class CorsConfig {
+
+    @Value("${app.frontend-base-url:}")
+    private String frontendBaseUrl;
 
     @Bean
     // CORS 설정 제공 객체를 만들어 반환하는 메서드
@@ -18,11 +24,7 @@ public class CorsConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         // 허용할 프론트 포트
-        config.setAllowedOrigins(List.of(
-                "http://localhost:3000",
-                "http://localhost:8080",
-                "http://localhost:5173"
-        ));
+        config.setAllowedOrigins(allowedOrigins(frontendBaseUrl));
 
         // 허용할 HTTP 메서드
         config.setAllowedMethods(List.of(
@@ -45,5 +47,18 @@ public class CorsConfig {
         source.registerCorsConfiguration("/**", config);
 
         return source;
+    }
+
+    static List<String> allowedOrigins(String frontendBaseUrl) {
+        Set<String> origins = new LinkedHashSet<>(List.of(
+                "http://localhost:3000",
+                "http://localhost:8080",
+                "http://localhost:5173",
+                "https://dandi-trip.vercel.app"
+        ));
+        if (frontendBaseUrl != null && !frontendBaseUrl.isBlank()) {
+            origins.add(frontendBaseUrl.trim().replaceAll("/+$", ""));
+        }
+        return List.copyOf(origins);
     }
 }

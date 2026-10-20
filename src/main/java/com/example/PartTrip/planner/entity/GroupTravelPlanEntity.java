@@ -31,11 +31,15 @@ public class GroupTravelPlanEntity {
     @Column(name = "group_id", nullable = false)
     private Long groupId;
 
+    /** 모든 카드를 삭제한 수동 일정을 기존 미생성 일정과 구분한다. */
+    @Column(name = "schedule_edited")
+    private Boolean scheduleEdited;
+
     @Column(name = "travel_title", length = 100)
     private String travelTitle;
 
-    @Column(name = "country_name", nullable = false, length = 100)
-    private String countryName;
+    @Column(name = "region_code", nullable = false, length = 2)
+    private String regionCode;
 
     @Column(name = "city_name", nullable = false, length = 100)
     private String cityName;
@@ -45,6 +49,15 @@ public class GroupTravelPlanEntity {
 
     @Column(name = "end_date", nullable = false)
     private LocalDate endDate;
+
+    @Column(name = "departure_place_name", length = 255)
+    private String departurePlaceName;
+
+    @Column(name = "departure_latitude")
+    private Double departureLatitude;
+
+    @Column(name = "departure_longitude")
+    private Double departureLongitude;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;

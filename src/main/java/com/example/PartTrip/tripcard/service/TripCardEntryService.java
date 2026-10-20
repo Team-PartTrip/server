@@ -1,5 +1,6 @@
 package com.example.PartTrip.tripcard.service;
 
+import com.example.PartTrip.tripcard.dto.request.UpdateEntryMetadataRequest;
 import com.example.PartTrip.tripcard.dto.response.TripCardEntryResponse;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -12,5 +13,11 @@ public interface TripCardEntryService {
     TripCardEntryResponse updateComment(Long cardId, Long entryId, String comment);
 
     @Transactional
+    TripCardEntryResponse updateMetadata(Long cardId, Long entryId, UpdateEntryMetadataRequest request);
+
+    @Transactional
     void deleteEntry(Long cardId, Long entryId);
+
+    @Transactional
+    void deletePlace(Long cardId, Long placeId);
 }

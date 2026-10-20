@@ -48,13 +48,19 @@ public interface TourPlaceRepository extends JpaRepository<TourPlaceEntity, Long
               from TourPlaceEntity t
               left join GroupTravelPlanEntity p
                      on p.cityName = t.cityName
-                    and p.countryName = t.countryName
              where t.cityName is not null and t.cityName <> ''
                and t.countryName is not null and t.countryName <> ''
              group by t.cityName, t.countryName
              order by count(distinct p.planId) desc, t.cityName asc, t.countryName asc
             """)
     List<PopularCityResponseDto> findPopularCities(Pageable pageable);
+
+    @Query("""
+            select distinct t.cityName from TourPlaceEntity t
+             where t.countryName = :countryName
+               and t.cityName is not null and t.cityName <> ''
+            """)
+    List<String> findCityNames(String countryName);
 
     // 구글 플레이스로 다시 채울 때 그 도시 것만 갈아끼운다
     List<TourPlaceEntity> findByCountryNameAndCityName(String countryName, String cityName);

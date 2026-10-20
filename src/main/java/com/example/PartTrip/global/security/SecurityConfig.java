@@ -4,9 +4,8 @@ import com.example.PartTrip.global.config.CorsConfig;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -50,18 +49,18 @@ public class SecurityConfig {
                                 "/v3/api-docs/**"
                         ).permitAll()
 
-                        // 회원가입 허용
-                        .requestMatchers("/api/auth/signup").permitAll()
-
-                        // 로그인 허용
-                        .requestMatchers("/api/auth/login").permitAll()
-
-                        // 이메일 인증 관련 API 허용
+                        // 구글 · 카카오 로그인, 토큰 갱신, 로그아웃. 토큰이 없거나
+                        // 만료된 상태에서 불러야 하는 것들이다
                         .requestMatchers("/api/auth/**").permitAll()
 
                         // 업로드된 이미지는 인증 없이 조회 가능해야 함
                         // (앱 Image 컴포넌트가 토큰을 붙이지 않음)
                         .requestMatchers("/uploads/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/main/tour-place/*/photo").permitAll()
+
+                        // 오류가 나면 /error 로 다시 보내는데 JWT 필터는 그 요청에 인증을 붙이지 않는다.
+                        // 막으면 404 · 503 이 모두 403 으로 바뀐다. 응답 본문에 메시지는 담지 않는다(기본값)
+                        .requestMatchers("/error").permitAll()
 
                         // 나머지 요청은 로그인 필요
                         .anyRequest().authenticated()
@@ -81,13 +80,5 @@ public class SecurityConfig {
 
         // Security 설정 완료 후 반환
         return http.build();
-    }
-
-    @Bean
-    // 비밀번호 암호화 객체 Bean 등록
-    public PasswordEncoder passwordEncoder() {
-
-        // BCrypt 방식 암호화 사용
-        return new BCryptPasswordEncoder();
     }
 }

@@ -39,8 +39,10 @@ public class TripCardEntity {
     @Column(name = "title", nullable = false, length = 100)
     private String title;
 
-    @Column(name = "country_name", nullable = false, length = 100)
-    private String countryName;
+    // 여행지 시·도 — 대한민국 지도가 이 코드로 칠한다 (#162).
+    // 지도로 바꾸기 전에 만든 해외 카드는 비어 있고, 지도에서는 빠진다.
+    @Column(name = "region_code", length = 2)
+    private String regionCode;
 
     @Column(name = "city_name", length = 100)
     private String cityName;
@@ -69,7 +71,6 @@ public class TripCardEntity {
     private Double distanceKm;
 
     // 여행이 끝났는지. 여행 기간에는 사진을 계속 붙일 수 있고, 끝나면 수정이 막힌다.
-    // 세계지도 국가 획득도 이 값이 true 로 바뀐 뒤에 처리한다.
     @Column(name = "is_date_over", nullable = false)
     private boolean dateOver;
 
