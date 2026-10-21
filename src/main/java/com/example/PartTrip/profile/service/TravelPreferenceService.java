@@ -12,6 +12,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.stream.Collectors;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +38,22 @@ public class TravelPreferenceService {
                         DEFAULT_DAILY_SCHEDULE_COUNT,
                         DEFAULT_CAN_USE_STAIRS
                 ));
+    }
+
+    /** 그룹 재생성에 필요한 구성원 설정을 한 번의 조회로 가져온다. */
+    @Transactional(readOnly = true)
+    public Map<String, TravelPreferenceResponseDto> getPreferences(Collection<String> userIds) {
+        if (userIds == null || userIds.isEmpty()) return Map.of();
+        Map<String, TravelPreferenceEntity> saved = new LinkedHashMap<>();
+        travelPreferenceRepository.findAllById(userIds)
+                .forEach(preference -> saved.put(preference.getUserId(), preference));
+        Map<String, TravelPreferenceResponseDto> result = new LinkedHashMap<>();
+        userIds.stream().distinct().forEach(userId -> result.put(userId,
+                saved.containsKey(userId)
+                        ? TravelPreferenceResponseDto.from(saved.get(userId))
+                        : new TravelPreferenceResponseDto(DEFAULT_TRANSPORT,
+                                DEFAULT_DAILY_SCHEDULE_COUNT, DEFAULT_CAN_USE_STAIRS)));
+        return Map.copyOf(result);
     }
 
     /** 사용자별 여행 편의 설정을 신규 저장하거나 기존 값을 수정한다. */
@@ -63,6 +82,13 @@ public class TravelPreferenceService {
         }
         if (request.getLimitedWalking() != null) {
             preference.setLimitedWalking(request.getLimitedWalking());
+            preference.setMaxWalkingMinutes(request.getMaxWalkingMinutes() != null
+                    ? request.getMaxWalkingMinutes()
+                    : request.getLimitedWalking() ? 30 : null);
+        }
+        if (request.getMaxWalkingMinutes() != null) {
+            preference.setMaxWalkingMinutes(request.getMaxWalkingMinutes());
+            preference.setLimitedWalking(request.getMaxWalkingMinutes() < 60);
         }
         return TravelPreferenceResponseDto.from(travelPreferenceRepository.save(preference));
     }

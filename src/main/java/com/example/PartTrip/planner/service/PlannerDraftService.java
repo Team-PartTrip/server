@@ -9,10 +9,12 @@ import com.example.PartTrip.main.entity.TourPlaceAccessibilityEntity;
 import com.example.PartTrip.main.repository.TourPlaceAccessibilityRepository;
 import com.example.PartTrip.main.repository.TourPlaceRepository;
 import com.example.PartTrip.main.service.TourPlaceImportService;
+import com.example.PartTrip.main.service.TourPlaceRanking;
 import com.example.PartTrip.planner.dto.request.CreatePlannerRequestDto;
 import com.example.PartTrip.region.enums.RegionCode;
 import com.example.PartTrip.planner.dto.request.GeneratePlannerRequestDto;
 import com.example.PartTrip.planner.dto.response.PlannerScheduleResponseDto;
+import com.example.PartTrip.planner.dto.response.PlannerSurveyResponseDto;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
 import com.example.PartTrip.planner.entity.PlannerScheduleSlotEntity;
 import com.example.PartTrip.planner.entity.TravelGroupEntity;
@@ -26,6 +28,7 @@ import com.example.PartTrip.profile.dto.TravelPreferenceResponseDto;
 import com.example.PartTrip.profile.enums.AvoidFood;
 import com.example.PartTrip.profile.service.TravelPreferenceService;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -72,6 +76,7 @@ public class PlannerDraftService {
     static final int MAX_PER_DAY = 6;
     /** 프롬프트가 너무 길어지지 않게 평점 순으로 자른다 */
     static final int MAX_CANDIDATES = 150;
+    private static final long REGENERATION_COOLDOWN_SECONDS = 30;
 
     private static final Pattern NUMBER = Pattern.compile("\\d+");
 
@@ -88,9 +93,25 @@ public class PlannerDraftService {
     private final TransactionTemplate transactionTemplate;
     private final ObjectMapper objectMapper;
 
+    record DepartureDetails(String name, Double latitude, Double longitude) {
+        boolean hasCoordinates() {
+            return latitude != null && longitude != null;
+        }
+    }
+
+    private record GeneratedSchedule(
+            String city,
+            List<LocalDate> dates,
+            List<List<Long>> days,
+            Long lodgingId,
+            DepartureDetails departure
+    ) {}
+
     public PlannerScheduleResponseDto generate(GeneratePlannerRequestDto dto, String userId) {
-        String city = dto.getCityName().trim();
-        List<LocalDate> dates = datesOf(dto.getStartDate(), dto.getEndDate());
+        if (dto.getBlocks() == null || !dto.isBlockSelectionValid()) {
+            throw new IllegalArgumentException("블록 선택값이 올바르지 않습니다. 선택지와 입력 개수를 확인해주세요.");
+        }
+        datesOf(dto.getStartDate(), dto.getEndDate());
         // AI 를 부르기 전에 막는다. 저장할 때 걸리면 AI 비용만 나간다.
         // @NotBlank 는 "99" 같은 없는 코드를 거르지 못한다
         RegionCode.of(dto.getRegionCode());
@@ -99,6 +120,33 @@ public class PlannerDraftService {
             throw new IllegalArgumentException("해당 기간에 이미 등록된 여행 계획이 있습니다.");
         }
 
+        TravelPreferenceResponseDto preference = travelPreferenceService.getPreference(userId);
+        GeneratedSchedule generated = buildSchedule(dto, preference);
+
+        Long plannerId = transactionTemplate.execute(status -> {
+            Long id = plannerService
+                    .createPlanner(toCreateRequest(dto, generated.city()), userId)
+                    .getPlannerId();
+            GroupTravelPlanEntity plan = latestPlan(id);
+            if (generated.departure() != null) {
+                plan.setDeparturePlaceName(generated.departure().name());
+                plan.setDepartureLatitude(generated.departure().latitude());
+                plan.setDepartureLongitude(generated.departure().longitude());
+            }
+            plan.setSurveyResponses(serializeSurvey(dto.getBlocks()));
+            groupTravelPlanRepository.save(plan);
+            slotRepository.saveAll(toEntities(plan.getPlanId(), generated.dates(),
+                    generated.days(), generated.lodgingId()));
+            return id;
+        });
+        return getSchedule(plannerId, userId);
+    }
+
+    private GeneratedSchedule buildSchedule(
+            GeneratePlannerRequestDto dto, TravelPreferenceResponseDto preference) {
+        String city = dto.getCityName().trim();
+        List<LocalDate> dates = datesOf(dto.getStartDate(), dto.getEndDate());
+        RegionCode.of(dto.getRegionCode());
         List<String> mustInclude = values(dto, PlannerBlockType.MUST_INCLUDE);
         List<String> exclude = values(dto, PlannerBlockType.EXCLUDE);
 
@@ -107,22 +155,21 @@ public class PlannerDraftService {
                 .findByCountryNameAndCityName(KOREA, city).stream()
                 .filter(place -> !matchesAny(place.getPlaceName(), exclude))
                 .toList();
-        TravelPreferenceResponseDto preference = travelPreferenceService.getPreference(userId);
-        Set<Long> barrierFree = barrierFreeIds(preference, all);
+        Integer walkingLimit = walkingLimit(dto, preference);
+        Set<Long> barrierFree = barrierFreeIds(preference, all, walkingLimit);
         boolean limitedMobility = Boolean.TRUE.equals(preference.getUsesWheelchair())
-                || Boolean.TRUE.equals(preference.getLimitedWalking());
-        // 반드시 포함할 곳은 평점과 상관없이 후보에 넣는다. 자르고 나서 찾으면 빠질 수 있다
+                || walkingLimit != null && walkingLimit < 60;
         List<TourPlaceEntity> must = all.stream()
                 .filter(place -> place.getCategory() != TourPlaceCategory.ACCOMMODATION)
                 .filter(place -> matchesAny(place.getPlaceName(), mustInclude))
                 .toList();
+        Double globalAverage = tourPlaceRepository.findAverageRating();
         List<TourPlaceEntity> daytime = Stream.concat(must.stream(), all.stream()
                         .filter(place -> place.getCategory() != TourPlaceCategory.ACCOMMODATION)
                         .filter(place -> !limitedMobility
                                 || place.getCategory() != TourPlaceCategory.ACTIVITY
                                 || barrierFree.contains(place.getTourPlaceId()))
-                        .sorted(Comparator.comparing(TourPlaceEntity::getRating,
-                                Comparator.nullsLast(Comparator.reverseOrder()))))
+                        .sorted(TourPlaceRanking.byBayesianRating(globalAverage)))
                 .distinct()
                 .limit(Math.max(MAX_CANDIDATES, must.size()))
                 .toList();
@@ -131,74 +178,38 @@ public class PlannerDraftService {
         }
         boolean needsLodging = dates.size() > 1
                 && !values(dto, PlannerBlockType.LODGING_TYPE).contains("숙박 없음");
-        // 숙소는 후보 자르기와 따로 모은다. 평점 순으로 자르면 숙소가 다 빠질 수 있다
         List<TourPlaceEntity> lodgings = needsLodging
-                ? all.stream()
-                        .filter(place -> place.getCategory() == TourPlaceCategory.ACCOMMODATION)
-                        .toList()
+                ? all.stream().filter(place -> place.getCategory() == TourPlaceCategory.ACCOMMODATION).toList()
                 : List.of();
 
-        int perDay = slotsPerDay(
-                last(values(dto, PlannerBlockType.DAILY_DENSITY)),
+        int perDay = slotsPerDay(last(values(dto, PlannerBlockType.DAILY_DENSITY)),
                 preference.getDailyScheduleCount());
-        // 못 넣을 걸 알면서 AI 를 부르지 않는다. 넣으면 다른 필수 장소를 덮게 된다
         if (must.size() > dates.size() * perDay) {
             throw new IllegalArgumentException("반드시 포함할 곳이 " + must.size()
                     + "곳인데 일정에는 " + dates.size() * perDay + "칸뿐이에요. 일정 밀도를 늘리거나 줄여주세요.");
         }
 
+        DepartureDetails departure = departureDetails(dto, preference);
         JsonNode answer = parse(openAiClient.completeJson(
                 SYSTEM_PROMPT,
-                userPrompt(dto, city, dates, perDay, preference, daytime, lodgings, barrierFree)));
+                userPrompt(dto, city, dates, perDay, preference, daytime, lodgings,
+                        barrierFree, departure, walkingLimit)));
 
         Set<Long> daytimeIds = daytime.stream()
                 .map(TourPlaceEntity::getTourPlaceId).collect(Collectors.toSet());
         List<Long> mustIds = must.stream().map(TourPlaceEntity::getTourPlaceId).toList();
         Map<Long, TourPlaceCategory> categories = new HashMap<>();
         daytime.forEach(place -> categories.put(place.getTourPlaceId(), place.getCategory()));
-        // 미식을 고른 여행은 맛집을 하루 한 곳 더 둔다
         int maxMeals = values(dto, PlannerBlockType.TRAVEL_TYPE).contains("미식") ? 3 : 2;
         List<List<Long>> days = capMeals(toSlots(answer, dates, perDay, daytimeIds, mustIds),
                 maxMeals, daytime, Set.copyOf(mustIds)).stream()
                 .map(day -> spreadMeals(day, categories))
-                .toList();
+                .map(ArrayList::new)
+                .collect(Collectors.toCollection(ArrayList::new));
+        prioritizeFirstDayDeparture(days, daytime, departure);
         Long lodgingId = pickLodging(answer, lodgings.stream()
                 .map(TourPlaceEntity::getTourPlaceId).collect(Collectors.toSet()));
-
-        Long plannerId = transactionTemplate.execute(status -> {
-            Long id = plannerService.createPlanner(toCreateRequest(dto, city), userId).getPlannerId();
-            GroupTravelPlanEntity plan = latestPlan(id);
-            GeneratePlannerRequestDto.DeparturePoint departurePoint = departurePoint(dto);
-            GeneratePlannerRequestDto.Block departureBlock = dto.getBlocks().stream()
-                    .filter(block -> block.getType() == PlannerBlockType.DEPARTURE_PLACE)
-                    .findFirst().orElse(null);
-            String departureName = departurePoint != null
-                    ? departurePoint.getPlaceName().trim()
-                    : departureBlock == null ? null
-                    : departureBlock.getPlaceName() == null || departureBlock.getPlaceName().isBlank()
-                    ? departureBlock.getValue().trim() : departureBlock.getPlaceName().trim();
-            if (departureName != null || dto.getDeparturePoint() != null) {
-                plan.setDeparturePlaceName(departureName);
-            }
-            if (departurePoint != null) {
-                plan.setDepartureLatitude(departurePoint.getLatitude());
-                plan.setDepartureLongitude(departurePoint.getLongitude());
-            } else if (departureBlock != null) {
-                plan.setDepartureLatitude(departureBlock.getLatitude());
-                plan.setDepartureLongitude(departureBlock.getLongitude());
-            }
-            TravelPreferenceResponseDto.Home home = preference.getHome();
-            if (home != null && dto.getDeparturePoint() == null && plan.getDepartureLatitude() == null
-                    && usesHome(departureBlock == null ? null : departureBlock.getValue())) {
-                plan.setDeparturePlaceName(home.name());
-                plan.setDepartureLatitude(home.latitude());
-                plan.setDepartureLongitude(home.longitude());
-            }
-            groupTravelPlanRepository.save(plan);
-            slotRepository.saveAll(toEntities(plan.getPlanId(), dates, days, lodgingId));
-            return id;
-        });
-        return getSchedule(plannerId, userId);
+        return new GeneratedSchedule(city, dates, days, lodgingId, departure);
     }
 
     /** 날짜별 일정 카드 */
@@ -246,6 +257,138 @@ public class PlannerDraftService {
                 plan.getStartDate(), plan.getEndDate(), days, departure);
     }
 
+    /** 저장된 설문 응답. 멤버만 조회할 수 있다. */
+    @Transactional(readOnly = true)
+    public PlannerSurveyResponseDto getSurvey(Long plannerId, String userId) {
+        if (!groupMemberRepository.existsByGroupIdAndUserId(plannerId, userId)) {
+            throw new ForbiddenException("해당 플래너의 멤버가 아닙니다.");
+        }
+        GroupTravelPlanEntity plan = latestPlan(plannerId);
+        return new PlannerSurveyResponseDto(plannerId, deserializeSurvey(plan.getSurveyResponses()));
+    }
+
+    /** 설문 응답을 이용해 일정을 다시 생성한다. 직접 수정한 일정은 덮어쓰지 않는다. */
+    public PlannerScheduleResponseDto regenerate(Long plannerId, String userId) {
+        TravelGroupEntity group = travelGroupRepository.findById(plannerId)
+                .orElseThrow(() -> new NotFoundException("플래너가 존재하지 않습니다."));
+        requireOwner(group, userId);
+        requirePlanning(group);
+        GroupTravelPlanEntity plan = latestPlan(plannerId);
+        if (Boolean.TRUE.equals(plan.getScheduleEdited())) {
+            throw new IllegalArgumentException("직접 수정한 일정은 다시 생성할 수 없습니다.");
+        }
+        List<PlannerSurveyResponseDto.Block> savedBlocks = deserializeSurvey(plan.getSurveyResponses());
+        if (savedBlocks.isEmpty()) {
+            throw new IllegalArgumentException("저장된 설문 응답이 없어 일정을 다시 만들 수 없습니다.");
+        }
+        reserveRegeneration(plannerId, userId, plan.getPlanId());
+
+        GeneratePlannerRequestDto request = requestFromSavedSurvey(group, plan, savedBlocks);
+        List<String> memberIds = groupMemberRepository.findByGroupIdOrderByJoinedAtAsc(plannerId)
+                .stream().map(member -> member.getUserId()).distinct().toList();
+        TravelPreferenceResponseDto preference = TravelPreferenceResponseDto.aggregate(
+                travelPreferenceService.getPreferences(memberIds).values());
+        GeneratedSchedule generated = buildSchedule(request, preference);
+
+        transactionTemplate.executeWithoutResult(status -> {
+            TravelGroupEntity locked = travelGroupRepository.findByIdForUpdate(plannerId)
+                    .orElseThrow(() -> new NotFoundException("플래너가 존재하지 않습니다."));
+            requireOwner(locked, userId);
+            requirePlanning(locked);
+            GroupTravelPlanEntity current = latestPlan(plannerId);
+            if (!Objects.equals(current.getPlanId(), plan.getPlanId())) {
+                throw new IllegalArgumentException("여행 계획이 변경되었습니다. 다시 조회해주세요.");
+            }
+            if (Boolean.TRUE.equals(current.getScheduleEdited())) {
+                throw new IllegalArgumentException("직접 수정한 일정은 다시 생성할 수 없습니다.");
+            }
+            slotRepository.deleteByPlanId(current.getPlanId());
+            slotRepository.saveAll(toEntities(current.getPlanId(), generated.dates(),
+                    generated.days(), generated.lodgingId()));
+        });
+        return getSchedule(plannerId, userId);
+    }
+
+    /** 같은 플래너에서 중복 요청으로 AI 비용이 연속 발생하지 않도록 잠금 안에서 예약한다. */
+    private void reserveRegeneration(Long plannerId, String userId, Long expectedPlanId) {
+        transactionTemplate.executeWithoutResult(status -> {
+            TravelGroupEntity locked = travelGroupRepository.findByIdForUpdate(plannerId)
+                    .orElseThrow(() -> new NotFoundException("플래너가 존재하지 않습니다."));
+            requireOwner(locked, userId);
+            requirePlanning(locked);
+            GroupTravelPlanEntity current = latestPlan(plannerId);
+            if (!Objects.equals(current.getPlanId(), expectedPlanId)) {
+                throw new IllegalArgumentException("여행 계획이 변경되었습니다. 다시 조회해주세요.");
+            }
+            if (Boolean.TRUE.equals(current.getScheduleEdited())) {
+                throw new IllegalArgumentException("직접 수정한 일정은 다시 생성할 수 없습니다.");
+            }
+            LocalDateTime now = LocalDateTime.now();
+            if (current.getRegenerationStartedAt() != null
+                    && current.getRegenerationStartedAt().isAfter(
+                            now.minusSeconds(REGENERATION_COOLDOWN_SECONDS))) {
+                throw new IllegalArgumentException("일정 재생성은 30초에 한 번만 요청할 수 있습니다.");
+            }
+            current.setRegenerationStartedAt(now);
+            groupTravelPlanRepository.save(current);
+        });
+    }
+
+    private GeneratePlannerRequestDto requestFromSavedSurvey(
+            TravelGroupEntity group,
+            GroupTravelPlanEntity plan,
+            List<PlannerSurveyResponseDto.Block> savedBlocks) {
+        GeneratePlannerRequestDto request = new GeneratePlannerRequestDto();
+        request.setTitle(group.getGroupName());
+        request.setMemberCount(group.getHeadcount());
+        request.setIsSolo(group.getHeadcount() != null && group.getHeadcount() == 1);
+        request.setRegionCode(plan.getRegionCode());
+        request.setCityName(plan.getCityName());
+        request.setStartDate(plan.getStartDate());
+        request.setEndDate(plan.getEndDate());
+        request.setBlocks(savedBlocks.stream().map(PlannerSurveyResponseDto.Block::toRequest).toList());
+        if (plan.getDeparturePlaceName() != null) {
+            GeneratePlannerRequestDto.DeparturePoint departure =
+                    new GeneratePlannerRequestDto.DeparturePoint();
+            departure.setPlaceName(plan.getDeparturePlaceName());
+            departure.setLatitude(plan.getDepartureLatitude());
+            departure.setLongitude(plan.getDepartureLongitude());
+            request.setDeparturePoint(departure);
+        }
+        return request;
+    }
+
+    private void requireOwner(TravelGroupEntity group, String userId) {
+        if (!Objects.equals(group.getOwnerUserId(), userId)) {
+            throw new ForbiddenException("플래너 소유자만 일정을 다시 생성할 수 있습니다.");
+        }
+    }
+
+    private void requirePlanning(TravelGroupEntity group) {
+        if (group.getStatus() != GroupStatus.PLANNING) {
+            throw new IllegalArgumentException("확정 전 일정만 다시 생성할 수 있습니다.");
+        }
+    }
+
+    private String serializeSurvey(List<GeneratePlannerRequestDto.Block> blocks) {
+        try {
+            return objectMapper.writeValueAsString(blocks.stream()
+                    .map(PlannerSurveyResponseDto.Block::fromRequest).toList());
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("설문 응답을 저장할 수 없습니다.", exception);
+        }
+    }
+
+    private List<PlannerSurveyResponseDto.Block> deserializeSurvey(String json) {
+        if (json == null || json.isBlank()) return List.of();
+        try {
+            return objectMapper.readValue(json,
+                    new TypeReference<List<PlannerSurveyResponseDto.Block>>() {});
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("저장된 설문 응답을 읽을 수 없습니다.", exception);
+        }
+    }
+
     private PlannerScheduleResponseDto.RouteLeg toRoute(String json) {
         if (json == null || json.isBlank()) return null;
         try {
@@ -255,22 +398,82 @@ public class PlannerDraftService {
         }
     }
 
-    private GeneratePlannerRequestDto.DeparturePoint departurePoint(GeneratePlannerRequestDto dto) {
-        if (dto.getDeparturePoint() != null) return dto.getDeparturePoint();
-        return dto.getBlocks().stream()
-                .filter(block -> block.getType() == PlannerBlockType.DEPARTURE_PLACE)
-                .filter(block -> block.getLatitude() != null && block.getLongitude() != null)
-                .findFirst()
-                .map(block -> {
-                    GeneratePlannerRequestDto.DeparturePoint point =
-                            new GeneratePlannerRequestDto.DeparturePoint();
-                    point.setPlaceName(block.getPlaceName() == null || block.getPlaceName().isBlank()
-                            ? block.getValue() : block.getPlaceName());
-                    point.setLatitude(block.getLatitude());
-                    point.setLongitude(block.getLongitude());
-                    return point;
-                })
-                .orElse(null);
+    private DepartureDetails departureDetails(
+            GeneratePlannerRequestDto dto, TravelPreferenceResponseDto preference) {
+        GeneratePlannerRequestDto.Block block = dto.getBlocks().stream()
+                .filter(item -> item.getType() == PlannerBlockType.DEPARTURE_PLACE)
+                .findFirst().orElse(null);
+        GeneratePlannerRequestDto.DeparturePoint point = dto.getDeparturePoint();
+        if (point == null && block != null
+                && block.getLatitude() != null && block.getLongitude() != null) {
+            point = new GeneratePlannerRequestDto.DeparturePoint();
+            point.setPlaceName(block.getPlaceName() == null || block.getPlaceName().isBlank()
+                    ? block.getValue() : block.getPlaceName());
+            point.setLatitude(block.getLatitude());
+            point.setLongitude(block.getLongitude());
+        }
+        if (point == null && usesHome(block == null ? null : block.getValue())
+                && preference.getHome() != null) {
+            TravelPreferenceResponseDto.Home home = preference.getHome();
+            point = new GeneratePlannerRequestDto.DeparturePoint();
+            point.setPlaceName(home.name());
+            point.setLatitude(home.latitude());
+            point.setLongitude(home.longitude());
+        }
+        if (point != null) {
+            return new DepartureDetails(point.getPlaceName().strip(),
+                    point.getLatitude(), point.getLongitude());
+        }
+        if (block != null) {
+            String name = block.getPlaceName() == null || block.getPlaceName().isBlank()
+                    ? block.getValue().strip() : block.getPlaceName().strip();
+            return new DepartureDetails(name, block.getLatitude(), block.getLongitude());
+        }
+        return null;
+    }
+
+    static Integer walkingLimit(
+            GeneratePlannerRequestDto dto, TravelPreferenceResponseDto preference) {
+        Integer configured = TravelPreferenceResponseDto.walkingLimit(preference);
+        Integer survey = dto.getBlocks().stream()
+                .filter(block -> block.getType() == PlannerBlockType.WALKING)
+                .map(block -> walkingMinutes(block.getValue()))
+                .filter(Objects::nonNull)
+                .min(Integer::compareTo).orElse(null);
+        if (configured == null) return survey;
+        return survey == null ? configured : Math.min(configured, survey);
+    }
+
+    private static Integer walkingMinutes(String value) {
+        if (value == null) return null;
+        return switch (value.strip()) {
+            case "10분 이내", "걷기 최소화" -> 10;
+            case "30분 이내", "조금 걷기" -> 30;
+            case "1시간 이상", "충분히 걷기" -> 60;
+            default -> null;
+        };
+    }
+
+    static void prioritizeFirstDayDeparture(
+            List<List<Long>> days, List<TourPlaceEntity> places, DepartureDetails departure) {
+        if (days.isEmpty() || departure == null || !departure.hasCoordinates()) return;
+        Map<Long, TourPlaceEntity> byId = places.stream().collect(Collectors.toMap(
+                TourPlaceEntity::getTourPlaceId, Function.identity(), (first, ignored) -> first));
+        List<Long> firstDay = days.get(0);
+        int nearestIndex = -1;
+        double nearestDistance = Double.MAX_VALUE;
+        for (int i = 0; i < firstDay.size(); i++) {
+            TourPlaceEntity place = byId.get(firstDay.get(i));
+            if (place == null || place.getLatitude() == null || place.getLongitude() == null) continue;
+            double distance = OdsayTransitRouteClient.distanceMeters(
+                    departure.latitude(), departure.longitude(),
+                    place.getLatitude(), place.getLongitude());
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                nearestIndex = i;
+            }
+        }
+        if (nearestIndex > 0) Collections.swap(firstDay, 0, nearestIndex);
     }
 
     static List<List<Long>> capMeals(List<List<Long>> days, int maxMeals,
@@ -489,7 +692,9 @@ public class PlannerDraftService {
             TravelPreferenceResponseDto preference,
             List<TourPlaceEntity> daytime,
             List<TourPlaceEntity> lodgings,
-            Set<Long> barrierFree
+            Set<Long> barrierFree,
+            DepartureDetails departure,
+            Integer walkingLimit
     ) {
         StringBuilder b = new StringBuilder();
         int people = Boolean.TRUE.equals(dto.getIsSolo()) ? 1 : dto.getMemberCount();
@@ -497,6 +702,17 @@ public class PlannerDraftService {
         b.append("날짜: ").append(dates.stream().map(LocalDate::toString)
                 .collect(Collectors.joining(", "))).append('\n');
         b.append("하루 장소 수: ").append(perDay).append("\n\n");
+        if (departure != null) {
+            b.append("출발지: ").append(departure.name());
+            if (departure.hasCoordinates()) {
+                b.append(" (위도 ").append(departure.latitude())
+                        .append(", 경도 ").append(departure.longitude()).append(")");
+                b.append("\n첫날의 첫 방문지는 이 출발지에서 좌표상 가장 가까운 후보 장소로 정한다.\n");
+            } else {
+                b.append('\n');
+            }
+            b.append('\n');
+        }
 
         b.append("지침:\n");
         Map<PlannerBlockType, List<String>> blocks = new LinkedHashMap<>();
@@ -526,9 +742,14 @@ public class PlannerDraftService {
         if (Boolean.TRUE.equals(preference.getLimitedWalking())) {
             b.append("- 오래 걷기: 어려움 (넓은 공원 · 산 · 긴 산책로처럼 많이 걸어야 하는 곳은 피하고, 가까운 곳끼리 잇는다)\n");
         }
+        if (walkingLimit != null) {
+            b.append("- 한 번에 걸을 수 있는 시간: ")
+                    .append(walkingLimit >= 60 ? "1시간 이상" : walkingLimit + "분 이내")
+                    .append(". 이 기준을 넘게 걷는 구간은 피하고 장소를 가까운 순서로 배치한다.\n");
+        }
         b.append('\n');
 
-        b.append("후보 장소 (id|이름|분류|위도,경도|평점|무장애):\n");
+        b.append("후보 장소 (id|이름|분류|위도,경도|평점|무장애|리뷰 수):\n");
         daytime.forEach(place -> b.append(line(place, barrierFree)));
         b.append("\n숙소 후보:\n");
         if (lodgings.isEmpty()) {
@@ -543,12 +764,15 @@ public class PlannerDraftService {
                 + (place.getCategory() == null ? "" : place.getCategory().getLabel()) + "|"
                 + place.getLatitude() + "," + place.getLongitude() + "|"
                 + (place.getRating() == null ? "" : place.getRating()) + "|"
-                + (barrierFree.contains(place.getTourPlaceId()) ? "무장애" : "") + "\n";
+                + (barrierFree.contains(place.getTourPlaceId()) ? "무장애" : "") + "|"
+                + (place.getUserRatingCount() == null ? 0 : place.getUserRatingCount()) + "\n";
     }
 
-    private Set<Long> barrierFreeIds(TravelPreferenceResponseDto preference, List<TourPlaceEntity> places) {
+    private Set<Long> barrierFreeIds(
+            TravelPreferenceResponseDto preference, List<TourPlaceEntity> places,
+            Integer walkingLimit) {
         if (!Boolean.TRUE.equals(preference.getUsesWheelchair())
-                && !Boolean.TRUE.equals(preference.getLimitedWalking())) return Set.of();
+                && (walkingLimit == null || walkingLimit >= 60)) return Set.of();
         return accessibilityRepository.findAllById(places.stream()
                         .map(TourPlaceEntity::getTourPlaceId).toList())
                 .stream()

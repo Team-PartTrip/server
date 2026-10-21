@@ -3,6 +3,7 @@ package com.example.PartTrip.planner.controller;
 import com.example.PartTrip.planner.dto.request.GeneratePlannerRequestDto;
 import com.example.PartTrip.planner.dto.response.PlannerBlockResponseDto;
 import com.example.PartTrip.planner.dto.response.PlannerScheduleResponseDto;
+import com.example.PartTrip.planner.dto.response.PlannerSurveyResponseDto;
 import com.example.PartTrip.planner.enums.PlannerBlockType;
 import com.example.PartTrip.planner.service.PlannerDraftService;
 import jakarta.validation.Valid;
@@ -51,5 +52,21 @@ public class PlannerDraftController {
     ) {
         return ResponseEntity.ok(
                 plannerDraftService.getSchedule(plannerId, authentication.getName()));
+    }
+
+    @GetMapping("/{plannerId}/survey")
+    public ResponseEntity<PlannerSurveyResponseDto> getSurvey(
+            Authentication authentication,
+            @PathVariable Long plannerId
+    ) {
+        return ResponseEntity.ok(plannerDraftService.getSurvey(plannerId, authentication.getName()));
+    }
+
+    @PostMapping("/{plannerId}/regenerate")
+    public ResponseEntity<PlannerScheduleResponseDto> regenerate(
+            Authentication authentication,
+            @PathVariable Long plannerId
+    ) {
+        return ResponseEntity.ok(plannerDraftService.regenerate(plannerId, authentication.getName()));
     }
 }

@@ -4,6 +4,7 @@ import com.example.PartTrip.global.exception.ForbiddenException;
 import com.example.PartTrip.global.exception.NotFoundException;
 import com.example.PartTrip.main.entity.TourPlaceEntity;
 import com.example.PartTrip.main.repository.TourPlaceRepository;
+import com.example.PartTrip.main.service.TourPlaceRanking;
 import com.example.PartTrip.planner.dto.request.SavePlannerScheduleRequestDto;
 import com.example.PartTrip.planner.dto.response.PlannerScheduleResponseDto;
 import com.example.PartTrip.planner.entity.*;
@@ -114,9 +115,12 @@ public class PlannerScheduleEditService {
             }
         }
         Set<Long> seen = new HashSet<>();
+        Double averageRating = places.findAverageRating();
         return candidates.stream().filter(p -> !used.contains(p.getTourPlaceId()))
                 .filter(p -> p.getPlaceName() != null && p.getPlaceName().toLowerCase(Locale.ROOT).contains(q))
-                .filter(p -> seen.add(p.getTourPlaceId())).map(PlannerDraftService::toPlace).toList();
+                .filter(p -> seen.add(p.getTourPlaceId()))
+                .sorted(TourPlaceRanking.byBayesianRating(averageRating))
+                .map(PlannerDraftService::toPlace).toList();
     }
 
     /** 최신 여행 계획을 찾는다. */

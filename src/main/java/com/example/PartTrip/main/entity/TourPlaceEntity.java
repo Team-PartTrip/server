@@ -54,6 +54,10 @@ public class TourPlaceEntity {
     @Column(name = "rating")
     private Double rating;
 
+    /** Google Places 사용자 리뷰 수. 레거시 장소는 null 이며 정렬 시 0으로 취급한다. */
+    @Column(name = "user_rating_count")
+    private Long userRatingCount;
+
     // 관광지 이미지
     @Column(name = "image_url", length = 1000)
     private String imageUrl;

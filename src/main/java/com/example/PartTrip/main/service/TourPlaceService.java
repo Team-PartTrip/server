@@ -39,7 +39,11 @@ public class TourPlaceService {
             places = tourPlaceRepository.search(countryName, city, tourPlaceCategory);
         }
 
-        return places.stream().map(TourPlaceService::toDto).toList();
+        Double averageRating = tourPlaceRepository.findAverageRating();
+        return places.stream()
+                .sorted(TourPlaceRanking.byBayesianRating(averageRating))
+                .map(TourPlaceService::toDto)
+                .toList();
     }
 
     public MoreTourPlacesResponseDto getMoreTourPlace(String countryName,
@@ -57,8 +61,12 @@ public class TourPlaceService {
 
         TourPlaceImportService.MoreResult result = tourPlaceImportService.fetchMore(
                 countryName, cityName.trim(), tourPlaceCategory, cursor);
+        Double averageRating = tourPlaceRepository.findAverageRating();
         return new MoreTourPlacesResponseDto(
-                result.places().stream().map(TourPlaceService::toDto).toList(),
+                result.places().stream()
+                        .sorted(TourPlaceRanking.byBayesianRating(averageRating))
+                        .map(TourPlaceService::toDto)
+                        .toList(),
                 result.cursor());
     }
 

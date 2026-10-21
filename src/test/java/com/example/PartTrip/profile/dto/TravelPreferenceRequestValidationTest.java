@@ -48,6 +48,24 @@ class TravelPreferenceRequestValidationTest {
                         "계단 이용 가능 여부는 필수입니다.");
     }
 
+    @Test
+    void 한_번에_걸을_수_있는_시간은_10분_30분_60분만_허용한다() {
+        TravelPreferenceRequestDto request = request(3);
+        request.setMaxWalkingMinutes(10);
+        assertThat(validate(request)).isEmpty();
+
+        request.setMaxWalkingMinutes(30);
+        assertThat(validate(request)).isEmpty();
+
+        request.setMaxWalkingMinutes(60);
+        assertThat(validate(request)).isEmpty();
+
+        request.setMaxWalkingMinutes(15);
+        assertThat(validate(request))
+                .extracting(ConstraintViolation::getMessage)
+                .contains("걸을 수 있는 시간은 10분, 30분, 60분 중 하나여야 합니다.");
+    }
+
     /** 유효성 검사에 사용할 정상 요청을 만든다. */
     private TravelPreferenceRequestDto request(int dailyScheduleCount) {
         TravelPreferenceRequestDto request = new TravelPreferenceRequestDto();

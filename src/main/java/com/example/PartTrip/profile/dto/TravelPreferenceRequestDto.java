@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.List;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -31,4 +32,14 @@ public class TravelPreferenceRequestDto {
 
     private Boolean usesWheelchair;
     private Boolean limitedWalking;
+
+    /** 한 번에 걸을 수 있는 시간(분). 60은 1시간 이상을 뜻한다. */
+    @Min(value = 10, message = "걸을 수 있는 시간은 10분, 30분, 60분 중 하나여야 합니다.")
+    @Max(value = 60, message = "걸을 수 있는 시간은 10분, 30분, 60분 중 하나여야 합니다.")
+    private Integer maxWalkingMinutes;
+
+    @jakarta.validation.constraints.AssertTrue(message = "걸을 수 있는 시간은 10분, 30분, 60분 중 하나여야 합니다.")
+    public boolean isMaxWalkingMinutesAllowed() {
+        return maxWalkingMinutes == null || Set.of(10, 30, 60).contains(maxWalkingMinutes);
+    }
 }

@@ -19,6 +19,8 @@ public interface PlannerScheduleSlotRepository
 
     void deleteByPlanIdIn(Collection<Long> planIds);
 
+    void deleteByPlanId(Long planId);
+
     @Query("select distinct p.groupId from GroupTravelPlanEntity p, PlannerScheduleSlotEntity s"
             + " where s.planId = p.planId and s.routeStatus = :status")
     List<Long> findPlannerIdsByRouteStatus(@org.springframework.data.repository.query.Param("status") String status);

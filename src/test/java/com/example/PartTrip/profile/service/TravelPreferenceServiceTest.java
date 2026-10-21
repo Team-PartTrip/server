@@ -129,6 +129,42 @@ class TravelPreferenceServiceTest {
     }
 
     @Test
+    void 걸을_수_있는_시간을_저장하면_기존_오래걷기_표시도_호환되게_갱신한다() {
+        TravelPreferenceEntity preference = new TravelPreferenceEntity();
+        preference.setUserId("user");
+        given(userProfileRepository.findByUserIdForUpdate("user"))
+                .willReturn(Optional.of(new com.example.PartTrip.signup.entity.UserEntity()));
+        given(travelPreferenceRepository.findById("user")).willReturn(Optional.of(preference));
+        given(travelPreferenceRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+        TravelPreferenceRequestDto request = request(PreferredTransport.PUBLIC_TRANSIT, 3, true);
+        request.setMaxWalkingMinutes(10);
+
+        TravelPreferenceResponseDto result = travelPreferenceService.updatePreference("user", request);
+
+        assertThat(result.getMaxWalkingMinutes()).isEqualTo(10);
+        assertThat(result.getLimitedWalking()).isTrue();
+    }
+
+    @Test
+    void 그룹_설정은_접근성은_보수적으로_음식은_합쳐서_적용한다() {
+        TravelPreferenceResponseDto first = new TravelPreferenceResponseDto(
+                PreferredTransport.PUBLIC_TRANSIT, 4, true, null,
+                List.of(AvoidFood.SEAFOOD), false, false, 60);
+        TravelPreferenceResponseDto second = new TravelPreferenceResponseDto(
+                PreferredTransport.TAXI, 2, false, null,
+                List.of(AvoidFood.SPICY), true, true, 10);
+
+        TravelPreferenceResponseDto result = TravelPreferenceResponseDto.aggregate(List.of(first, second));
+
+        assertThat(result.getPreferredTransport()).isEqualTo(PreferredTransport.PUBLIC_TRANSIT);
+        assertThat(result.getDailyScheduleCount()).isEqualTo(2);
+        assertThat(result.getCanUseStairs()).isFalse();
+        assertThat(result.getUsesWheelchair()).isTrue();
+        assertThat(result.getMaxWalkingMinutes()).isEqualTo(10);
+        assertThat(result.getAvoidFoods()).containsExactly(AvoidFood.SEAFOOD, AvoidFood.SPICY);
+    }
+
+    @Test
     void 피하는_음식을_묻지_않았으면_null로_준다() {
         TravelPreferenceEntity preference = new TravelPreferenceEntity();
         preference.setUserId("user");

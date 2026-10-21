@@ -3,6 +3,7 @@ package com.example.PartTrip.planner.service;
 import com.example.PartTrip.main.entity.TourPlaceEntity;
 import com.example.PartTrip.main.enums.TourPlaceCategory;
 import com.example.PartTrip.main.repository.TourPlaceRepository;
+import com.example.PartTrip.main.service.TourPlaceRanking;
 import com.example.PartTrip.planner.dto.response.ConfirmedPlaceResponseDto;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
 import com.example.PartTrip.planner.entity.PlannerCityEntity;
@@ -46,6 +47,7 @@ public class PlannerScheduleService {
                 .getDailyScheduleCount();
         List<PlannerCityEntity> cities = plannerCityRepository
                 .findByPlanIdOrderBySeqAsc(plan.getPlanId());
+        Double averageRating = tourPlaceRepository.findAverageRating();
         if (cities.isEmpty()) {
             cities = List.of(singleCity(plan));
         }
@@ -69,7 +71,7 @@ public class PlannerScheduleService {
                     .toList();
             selected.forEach(place -> alreadyScheduled.add(place.getTourPlaceId()));
             result.addAll(scheduleCity(
-                    city, selected, alreadyScheduled, dailyScheduleCount));
+                    city, selected, alreadyScheduled, dailyScheduleCount, averageRating));
         }
         return result;
     }
@@ -97,12 +99,13 @@ public class PlannerScheduleService {
             PlannerCityEntity city,
             List<TourPlaceEntity> confirmed,
             Set<Long> alreadyScheduled,
-            int dailyScheduleCount
+            int dailyScheduleCount,
+            Double averageRating
     ) {
         int days = validDays(city.getStartDate(), city.getEndDate());
         List<TourPlaceEntity> accommodations = confirmed.stream()
                 .filter(place -> place.getCategory() == TourPlaceCategory.ACCOMMODATION)
-                .sorted(ratingOrder())
+                .sorted(ratingOrder(averageRating))
                 .toList();
         List<TourPlaceEntity> dayPlaces = new ArrayList<>(confirmed.stream()
                 .filter(place -> place.getCategory() != TourPlaceCategory.ACCOMMODATION)
@@ -121,14 +124,14 @@ public class PlannerScheduleService {
             }
         }
 
-        List<TourPlaceEntity> route = nearestNeighbourRoute(dayPlaces);
+        List<TourPlaceEntity> route = nearestNeighbourRoute(dayPlaces, averageRating);
         List<List<TourPlaceEntity>> byDay = splitEvenly(route, days);
         List<ScheduledPlace> scheduled = new ArrayList<>();
         for (int day = 0; day < days; day++) {
             LocalDate date = city.getStartDate().plusDays(day);
             int order = 1;
             List<TourPlaceEntity> places = new ArrayList<>(byDay.get(day));
-            places.sort(ratingOrder());
+            places.sort(ratingOrder(averageRating));
             for (TourPlaceEntity place : places) {
                 scheduled.add(new ScheduledPlace(toResponse(place), place, date, order++));
             }
@@ -143,10 +146,11 @@ public class PlannerScheduleService {
     }
 
     /** 좌표가 있는 장소들을 가까운 순서로 이어 이동 경로를 만든다. */
-    private List<TourPlaceEntity> nearestNeighbourRoute(List<TourPlaceEntity> places) {
+    private List<TourPlaceEntity> nearestNeighbourRoute(
+            List<TourPlaceEntity> places, Double averageRating) {
         if (places.size() < 2) return new ArrayList<>(places);
         List<TourPlaceEntity> remaining = new ArrayList<>(places);
-        remaining.sort(ratingOrder());
+        remaining.sort(ratingOrder(averageRating));
         List<TourPlaceEntity> route = new ArrayList<>();
         TourPlaceEntity current = remaining.remove(0);
         route.add(current);
@@ -192,13 +196,9 @@ public class PlannerScheduleService {
         return 6_371.0 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
-    /** 평점 내림차순과 장소명 오름차순으로 정렬하는 비교기를 반환한다. */
-    private Comparator<TourPlaceEntity> ratingOrder() {
-        return Comparator.comparing(
-                        TourPlaceEntity::getRating,
-                        Comparator.nullsLast(Comparator.reverseOrder()))
-                .thenComparing(TourPlaceEntity::getPlaceName,
-                        Comparator.nullsLast(String::compareTo));
+    /** 리뷰 수를 반영한 Bayesian 평점 내림차순으로 정렬한다. */
+    private Comparator<TourPlaceEntity> ratingOrder(Double averageRating) {
+        return TourPlaceRanking.byBayesianRating(averageRating);
     }
 
     /** 시작일과 종료일을 포함한 유효 여행 일수를 계산한다. */

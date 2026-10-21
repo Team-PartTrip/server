@@ -95,6 +95,7 @@ class PlannerScheduleServiceTest {
         TourPlaceEntity e = place(5L, "대한민국", "강릉", "E", 4.1, 35.02, 136.02);
         TourPlaceEntity f = place(6L, "대한민국", "강릉", "F", 4.7, 34.02, 135.02);
         List<TourPlaceEntity> all = List.of(a, b, c, d, e, f);
+        all.forEach(place -> place.setUserRatingCount(1_000L));
 
         given(plannerCityRepository.findByPlanIdOrderBySeqAsc(10L)).willReturn(List.of());
         given(tourPlaceRepository.findAllById(any())).willReturn(all);

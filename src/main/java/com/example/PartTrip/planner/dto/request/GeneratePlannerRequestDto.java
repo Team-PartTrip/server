@@ -15,7 +15,9 @@ import lombok.Setter;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 /** 블록 지침으로 AI 일정 초안 만들기 (#158). 국내 여행만 받는다 */
 @Getter
@@ -58,6 +60,47 @@ public class GeneratePlannerRequestDto {
     /** 첫 이동 구간을 계산할 실제 출발 지점. 선택하지 않은 기존 클라이언트와 호환된다. */
     @Valid
     private DeparturePoint departurePoint;
+
+    /** 선택지는 서버에서 검증해 프롬프트에 임의 문자열이 들어가지 않게 한다. */
+    @AssertTrue(message = "블록 선택값이 올바르지 않습니다. 선택지와 입력 개수를 확인해주세요.")
+    public boolean isBlockSelectionValid() {
+        if (blocks == null) return true; // @NotNull 이 별도로 처리
+
+        Map<PlannerBlockType, Integer> counts = new EnumMap<>(PlannerBlockType.class);
+        for (Block block : blocks) {
+            if (block == null || block.getType() == null || block.getValue() == null
+                    || block.getValue().isBlank()) return false;
+            PlannerBlockType type = block.getType();
+            String value = block.getValue().strip();
+            if (type == PlannerBlockType.DEPARTURE_PLACE
+                    && ((block.getLatitude() == null) != (block.getLongitude() == null))) return false;
+
+            int count = counts.merge(type, 1, Integer::sum);
+            if (!type.isMultiple() && count > 1) return false;
+            if (!isAllowedValue(type, value)) return false;
+        }
+        return true;
+    }
+
+    private static boolean isAllowedValue(PlannerBlockType type, String value) {
+        if (type == PlannerBlockType.MUST_INCLUDE
+                || type == PlannerBlockType.EXCLUDE
+                || type == PlannerBlockType.DEPARTURE_PLACE) {
+            return true;
+        }
+        if (type == PlannerBlockType.DAILY_DENSITY) {
+            return type.getOptions().contains(value) && !"직접 지정".equals(value)
+                    || value.matches("[1-6]")
+                    || value.matches("하루 [1-6]곳");
+        }
+        if (type == PlannerBlockType.WALKING) {
+            // 구버전 앱과의 연결을 유지하면서 새 응답은 분 단위 선택지로 제공한다.
+            return type.getOptions().contains(value)
+                    || List.of("걷기 최소화", "조금 걷기", "충분히 걷기", "직접 지정")
+                            .contains(value);
+        }
+        return type.getOptions().contains(value);
+    }
 
     @Getter
     @Setter
