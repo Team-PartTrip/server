@@ -47,7 +47,7 @@ public class TourPlaceController {
         return tourPlaceService.getMoreTourPlace(countryName, cityName, category, cursor);
     }
 
-    // 장소 무장애 정보. 공공데이터에 없는 장소는 matched=false 로 온다
+    // 장소 무장애 정보. status: FOUND · NOT_FOUND(공공데이터에 없음) · UNAVAILABLE(조회 못 함)
     @GetMapping("/tour-place/{tourPlaceId}/accessibility")
     public AccessibilityResponseDto getAccessibility(@PathVariable Long tourPlaceId) {
         return accessibilityService.get(tourPlaceId);
