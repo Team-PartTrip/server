@@ -518,7 +518,7 @@ public class PlannerDraftService {
         if (avoidFoods != null && !avoidFoods.isEmpty()) {
             b.append("- 피하는 음식: ").append(avoidFoods.stream().map(AvoidFood::getLabel)
                     .collect(Collectors.joining(", ")))
-                    .append(" (이름으로 보아 이런 음식이 주메뉴인 맛집은 고르지 않는다)\n");
+                    .append(" (이름 · 업종으로 보아 이런 음식이 주메뉴인 맛집은 고르지 않는다)\n");
         }
         if (Boolean.TRUE.equals(preference.getUsesWheelchair())) {
             b.append("- 휠체어 이용: 예 (계단 · 비탈 · 흙길이 많은 곳은 고르지 않는다. 무장애 표시가 있는 곳을 우선한다)\n");
@@ -528,7 +528,7 @@ public class PlannerDraftService {
         }
         b.append('\n');
 
-        b.append("후보 장소 (id|이름|분류|위도,경도|평점|무장애):\n");
+        b.append("후보 장소 (id|이름|분류|업종|위도,경도|평점|무장애):\n");
         daytime.forEach(place -> b.append(line(place, barrierFree)));
         b.append("\n숙소 후보:\n");
         if (lodgings.isEmpty()) {
@@ -541,6 +541,7 @@ public class PlannerDraftService {
     private static String line(TourPlaceEntity place, Set<Long> barrierFree) {
         return place.getTourPlaceId() + "|" + place.getPlaceName() + "|"
                 + (place.getCategory() == null ? "" : place.getCategory().getLabel()) + "|"
+                + (place.getPrimaryTypeLabel() == null ? "" : place.getPrimaryTypeLabel()) + "|"
                 + place.getLatitude() + "," + place.getLongitude() + "|"
                 + (place.getRating() == null ? "" : place.getRating()) + "|"
                 + (barrierFree.contains(place.getTourPlaceId()) ? "무장애" : "") + "\n";

@@ -273,6 +273,27 @@ class PlannerDraftServiceTest {
     }
 
     @Test
+    void 후보_장소에_업종을_같이_보낸다() {
+        TourPlaceEntity noodle = place(1L);
+        noodle.setCategory(TourPlaceCategory.RESTAURANT);
+        noodle.setPrimaryTypeLabel("한식당");
+        given(tourPlaceRepository.findByCountryNameAndCityName("대한민국", "강릉"))
+                .willReturn(List.of(noodle));
+        given(travelPreferenceService.getPreference("user"))
+                .willReturn(new TravelPreferenceResponseDto(PreferredTransport.PUBLIC_TRANSIT, 3, true));
+        given(openAiClient.completeJson(anyString(), anyString()))
+                .willThrow(new AiUnavailableException("실패"));
+
+        assertThatThrownBy(() -> service.generate(request(), "user"));
+
+        ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
+        verify(openAiClient).completeJson(anyString(), prompt.capture());
+        assertThat(prompt.getValue())
+                .contains("(id|이름|분류|업종|위도,경도|평점|무장애)")
+                .contains("1|장소1|맛집|한식당|null,null||");
+    }
+
+    @Test
     void 휠체어와_오래_걷기를_프롬프트에_넣고_무장애_장소를_표시한다() {
         givenCandidates();
         given(travelPreferenceService.getPreference("user"))
@@ -293,7 +314,7 @@ class PlannerDraftServiceTest {
         assertThat(prompt.getValue())
                 .contains("휠체어 이용: 예")
                 .contains("오래 걷기: 어려움")
-                .contains("1|장소1|명소|null,null||무장애");
+                .contains("1|장소1|명소||null,null||무장애");
     }
 
     @Test
