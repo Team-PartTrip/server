@@ -51,6 +51,14 @@ class AccessibilityStatusTest {
     }
 
     @Test
+    void 이미_저장된_본문의_태그도_정리해서_준다() {
+        givenPlace();
+        givenSaved("100", "[{\"key\":\"ROUTE\",\"label\":\"접근로\",\"text\":\"무단차<br/>지하철 연결\"}]");
+
+        assertThat(service.get(1L).items()).extracting(i -> i.text()).containsExactly("무단차\n지하철 연결");
+    }
+
+    @Test
     void 공공데이터에_없으면_NOT_FOUND() {
         givenPlace();
         givenSaved(null, "[]");
