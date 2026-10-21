@@ -6,6 +6,7 @@ import com.example.PartTrip.guardian.entity.GuardianInviteEntity;
 import com.example.PartTrip.guardian.entity.GuardianLinkEntity;
 import com.example.PartTrip.guardian.repository.GuardianInviteRepository;
 import com.example.PartTrip.guardian.repository.GuardianLinkRepository;
+import com.example.PartTrip.notification.event.GuardianLinkedEvent;
 import com.example.PartTrip.planner.service.PlannerDraftService;
 import com.example.PartTrip.planner.service.PlannerListService;
 import com.example.PartTrip.signup.repository.UserRepository;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -37,6 +39,7 @@ class GuardianServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private PlannerListService plannerListService;
     @Mock private PlannerDraftService plannerDraftService;
+    @Mock private ApplicationEventPublisher eventPublisher;
     @InjectMocks private GuardianService service;
 
     private void givenInvite(String code, LocalDateTime expiresAt) {
@@ -50,6 +53,37 @@ class GuardianServiceTest {
 
         assertThat(invite.code()).hasSize(6).doesNotContainPattern("[01OIL]");
         assertThat(invite.expiresAt()).isAfter(LocalDateTime.now().plusHours(23));
+    }
+
+    @Test
+    void 코드를_새로_만들면_이전_코드를_먼저_지운다() {
+        service.createInvite(SENIOR);
+
+        verify(inviteRepository).deleteBySeniorUserId(SENIOR);
+    }
+
+    @Test
+    void 새로_연결되면_시니어에게_알린다() {
+        givenInvite("ABC234", LocalDateTime.now().plusHours(1));
+        given(linkRepository.findBySeniorUserIdAndGuardianUserId(SENIOR, CHILD)).willReturn(Optional.empty());
+        given(linkRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+        service.accept("ABC234", CHILD);
+
+        verify(eventPublisher).publishEvent(any(GuardianLinkedEvent.class));
+    }
+
+    @Test
+    void 보호자가_상한이면_연결하지_않는다() {
+        givenInvite("ABC234", LocalDateTime.now().plusHours(1));
+        given(linkRepository.findBySeniorUserIdAndGuardianUserId(SENIOR, CHILD)).willReturn(Optional.empty());
+        given(linkRepository.countBySeniorUserId(SENIOR)).willReturn((long) GuardianService.MAX_GUARDIANS);
+
+        assertThatThrownBy(() -> service.accept("ABC234", CHILD))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("5명");
+        verify(linkRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
     }
 
     @Test
@@ -74,6 +108,7 @@ class GuardianServiceTest {
         service.accept("ABC234", CHILD);
 
         verify(linkRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
     }
 
     @Test
@@ -132,5 +167,6 @@ class GuardianServiceTest {
         service.unlink(5L, CHILD);
 
         verify(linkRepository, org.mockito.Mockito.times(2)).delete(link);
+        verify(inviteRepository, org.mockito.Mockito.times(2)).deleteBySeniorUserId(SENIOR);
     }
 }

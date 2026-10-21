@@ -3,6 +3,7 @@ package com.example.PartTrip.guardian.repository;
 import com.example.PartTrip.guardian.entity.GuardianInviteEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import jakarta.persistence.LockModeType;
@@ -15,4 +16,8 @@ public interface GuardianInviteRepository extends JpaRepository<GuardianInviteEn
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT i FROM GuardianInviteEntity i WHERE i.code = :code")
     Optional<GuardianInviteEntity> findByCodeForUpdate(String code);
+
+    @Modifying
+    @Query("DELETE FROM GuardianInviteEntity i WHERE i.seniorUserId = :seniorUserId")
+    void deleteBySeniorUserId(String seniorUserId);
 }
