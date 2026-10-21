@@ -11,12 +11,25 @@ public record PlannerScheduleResponseDto(
         LocalDate startDate,
         LocalDate endDate,
         List<Day> days,
-        Departure departure
+        Departure departure,
+        List<Warning> warnings
 ) {
     public PlannerScheduleResponseDto(Long plannerId, String title, String cityName,
             LocalDate startDate, LocalDate endDate, List<Day> days) {
-        this(plannerId, title, cityName, startDate, endDate, days, null);
+        this(plannerId, title, cityName, startDate, endDate, days, null, List.of());
     }
+
+    public PlannerScheduleResponseDto(Long plannerId, String title, String cityName,
+            LocalDate startDate, LocalDate endDate, List<Day> days, Departure departure) {
+        this(plannerId, title, cityName, startDate, endDate, days, departure, List.of());
+    }
+
+    public PlannerScheduleResponseDto withWarnings(List<Warning> warnings) {
+        return new PlannerScheduleResponseDto(plannerId, title, cityName, startDate, endDate,
+                days, departure, warnings);
+    }
+
+    public record Warning(Long tourPlaceId, String message) {}
 
     public record Departure(String name, Double latitude, Double longitude) {}
 

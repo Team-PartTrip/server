@@ -8,6 +8,7 @@ import com.example.PartTrip.main.enums.TourPlaceCategory;
 import com.example.PartTrip.main.entity.TourPlaceAccessibilityEntity;
 import com.example.PartTrip.main.repository.TourPlaceAccessibilityRepository;
 import com.example.PartTrip.main.repository.TourPlaceRepository;
+import com.example.PartTrip.main.service.AccessibilityService;
 import com.example.PartTrip.main.service.TourPlaceImportService;
 import com.example.PartTrip.main.service.TourPlaceRanking;
 import com.example.PartTrip.planner.dto.request.CreatePlannerRequestDto;
@@ -51,6 +52,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -78,11 +83,16 @@ public class PlannerDraftService {
     static final int MAX_CANDIDATES = 150;
     private static final long REGENERATION_COOLDOWN_SECONDS = 30;
 
+    static final int ACCESSIBILITY_PREFETCH_LIMIT = 30;
+    static final int ACCESSIBILITY_PREFETCH_THREADS = 5;
+    static final int ACCESSIBILITY_PREFETCH_TIMEOUT_SECONDS = 20;
+
     private static final Pattern NUMBER = Pattern.compile("\\d+");
 
     private final TourPlaceImportService tourPlaceImportService;
     private final TourPlaceRepository tourPlaceRepository;
     private final TourPlaceAccessibilityRepository accessibilityRepository;
+    private final AccessibilityService accessibilityService;
     private final TravelPreferenceService travelPreferenceService;
     private final OpenAiClient openAiClient;
     private final PlannerService plannerService;
@@ -104,7 +114,8 @@ public class PlannerDraftService {
             List<LocalDate> dates,
             List<List<Long>> days,
             Long lodgingId,
-            DepartureDetails departure
+            DepartureDetails departure,
+            List<PlannerScheduleResponseDto.Warning> warnings
     ) {}
 
     public PlannerScheduleResponseDto generate(GeneratePlannerRequestDto dto, String userId) {
@@ -139,7 +150,7 @@ public class PlannerDraftService {
                     generated.days(), generated.lodgingId()));
             return id;
         });
-        return getSchedule(plannerId, userId);
+        return getSchedule(plannerId, userId).withWarnings(generated.warnings());
     }
 
     private GeneratedSchedule buildSchedule(
@@ -151,21 +162,27 @@ public class PlannerDraftService {
         List<String> exclude = values(dto, PlannerBlockType.EXCLUDE);
 
         tourPlaceImportService.importCityIfEmpty(KOREA, city);
-        List<TourPlaceEntity> all = tourPlaceRepository
-                .findByCountryNameAndCityName(KOREA, city).stream()
-                .filter(place -> !matchesAny(place.getPlaceName(), exclude))
+        List<TourPlaceEntity> inCity = tourPlaceRepository.findByCountryNameAndCityName(KOREA, city);
+        Set<Long> excludedIds = resolve(inCity, exclude).stream()
+                .map(TourPlaceEntity::getTourPlaceId).collect(Collectors.toSet());
+        List<TourPlaceEntity> all = inCity.stream()
+                .filter(place -> !excludedIds.contains(place.getTourPlaceId()))
                 .toList();
         Integer walkingLimit = walkingLimit(dto, preference);
-        Set<Long> barrierFree = barrierFreeIds(preference, all, walkingLimit);
         boolean limitedMobility = Boolean.TRUE.equals(preference.getUsesWheelchair())
                 || walkingLimit != null && walkingLimit < 60;
-        List<TourPlaceEntity> must = all.stream()
+        List<TourPlaceEntity> must = resolve(all.stream()
                 .filter(place -> place.getCategory() != TourPlaceCategory.ACCOMMODATION)
-                .filter(place -> matchesAny(place.getPlaceName(), mustInclude))
-                .toList();
+                .toList(), mustInclude);
+        if (limitedMobility) {
+            prefetchAccessibility(all, must);
+        }
+        Set<Long> barrierFree = barrierFreeIds(preference, all, walkingLimit);
+        boolean noCafe = values(dto, PlannerBlockType.CAFE_SNACK).contains("포함하지 않기");
         Double globalAverage = tourPlaceRepository.findAverageRating();
         List<TourPlaceEntity> daytime = Stream.concat(must.stream(), all.stream()
                         .filter(place -> place.getCategory() != TourPlaceCategory.ACCOMMODATION)
+                        .filter(place -> !noCafe || place.getCategory() != TourPlaceCategory.CAFE)
                         .filter(place -> !limitedMobility
                                 || place.getCategory() != TourPlaceCategory.ACTIVITY
                                 || barrierFree.contains(place.getTourPlaceId()))
@@ -179,7 +196,9 @@ public class PlannerDraftService {
         boolean needsLodging = dates.size() > 1
                 && !values(dto, PlannerBlockType.LODGING_TYPE).contains("숙박 없음");
         List<TourPlaceEntity> lodgings = needsLodging
-                ? all.stream().filter(place -> place.getCategory() == TourPlaceCategory.ACCOMMODATION).toList()
+                ? lodgingsOfType(all.stream()
+                        .filter(place -> place.getCategory() == TourPlaceCategory.ACCOMMODATION)
+                        .toList(), values(dto, PlannerBlockType.LODGING_TYPE))
                 : List.of();
 
         int perDay = slotsPerDay(last(values(dto, PlannerBlockType.DAILY_DENSITY)),
@@ -209,7 +228,18 @@ public class PlannerDraftService {
         prioritizeFirstDayDeparture(days, daytime, departure);
         Long lodgingId = pickLodging(answer, lodgings.stream()
                 .map(TourPlaceEntity::getTourPlaceId).collect(Collectors.toSet()));
-        return new GeneratedSchedule(city, dates, days, lodgingId, departure);
+        List<PlannerScheduleResponseDto.Warning> warnings = limitedMobility
+                ? missingAccessibilityWarnings(must, barrierFree) : List.of();
+        return new GeneratedSchedule(city, dates, days, lodgingId, departure, warnings);
+    }
+
+    static List<PlannerScheduleResponseDto.Warning> missingAccessibilityWarnings(
+            List<TourPlaceEntity> must, Set<Long> barrierFree) {
+        return must.stream()
+                .filter(place -> !barrierFree.contains(place.getTourPlaceId()))
+                .map(place -> new PlannerScheduleResponseDto.Warning(place.getTourPlaceId(),
+                        "무장애 정보가 없는 곳이에요 (" + place.getPlaceName() + ")"))
+                .toList();
     }
 
     /** 날짜별 일정 카드 */
@@ -306,7 +336,7 @@ public class PlannerDraftService {
             slotRepository.saveAll(toEntities(current.getPlanId(), generated.dates(),
                     generated.days(), generated.lodgingId()));
         });
-        return getSchedule(plannerId, userId);
+        return getSchedule(plannerId, userId).withWarnings(generated.warnings());
     }
 
     /** 같은 플래너에서 중복 요청으로 AI 비용이 연속 발생하지 않도록 잠금 안에서 예약한다. */
@@ -654,16 +684,47 @@ public class PlannerDraftService {
         return Math.max(1, Math.min(MAX_PER_DAY, count));
     }
 
-    /** 이름이 서로를 포함하면 같은 곳으로 본다. 공백은 무시한다 */
-    static boolean matchesAny(String placeName, List<String> names) {
-        if (placeName == null) {
-            return false;
+    static List<TourPlaceEntity> resolve(List<TourPlaceEntity> places, List<String> names) {
+        Map<Long, TourPlaceEntity> picked = new LinkedHashMap<>();
+        for (String raw : names) {
+            String name = squash(raw);
+            if (name.length() < 2) {
+                continue;
+            }
+            List<TourPlaceEntity> exact = places.stream()
+                    .filter(place -> squash(place.getPlaceName()).equals(name))
+                    .toList();
+            if (!exact.isEmpty()) {
+                exact.forEach(place -> picked.put(place.getTourPlaceId(), place));
+                continue;
+            }
+            places.stream()
+                    .filter(place -> {
+                        String placeName = squash(place.getPlaceName());
+                        return placeName.contains(name) || (placeName.length() >= 2 && name.contains(placeName));
+                    })
+                    .min(Comparator
+                            .comparing(TourPlaceEntity::getRating, Comparator.nullsLast(Comparator.reverseOrder()))
+                            .thenComparingInt(place -> squash(place.getPlaceName()).length())
+                            .thenComparing(TourPlaceEntity::getTourPlaceId))
+                    .ifPresent(place -> picked.put(place.getTourPlaceId(), place));
         }
-        String place = placeName.replace(" ", "");
-        return names.stream()
-                .map(name -> name.replace(" ", ""))
-                .filter(name -> name.length() >= 2)
-                .anyMatch(name -> place.contains(name) || name.contains(place));
+        return List.copyOf(picked.values());
+    }
+
+    static List<TourPlaceEntity> lodgingsOfType(List<TourPlaceEntity> lodgings, List<String> types) {
+        if (types.isEmpty()) {
+            return lodgings;
+        }
+        List<TourPlaceEntity> matching = lodgings.stream()
+                .filter(place -> place.getPrimaryTypeLabel() != null
+                        && types.stream().anyMatch(type -> place.getPrimaryTypeLabel().contains(type)))
+                .toList();
+        return matching.isEmpty() ? lodgings : matching;
+    }
+
+    private static String squash(String name) {
+        return name == null ? "" : name.replace(" ", "");
     }
 
     // ── 프롬프트 ────────────────────────────────────────────
@@ -734,7 +795,7 @@ public class PlannerDraftService {
         if (avoidFoods != null && !avoidFoods.isEmpty()) {
             b.append("- 피하는 음식: ").append(avoidFoods.stream().map(AvoidFood::getLabel)
                     .collect(Collectors.joining(", ")))
-                    .append(" (이름으로 보아 이런 음식이 주메뉴인 맛집은 고르지 않는다)\n");
+                    .append(" (이름 · 업종으로 보아 이런 음식이 주메뉴인 맛집은 고르지 않는다)\n");
         }
         if (Boolean.TRUE.equals(preference.getUsesWheelchair())) {
             b.append("- 휠체어 이용: 예 (계단 · 비탈 · 흙길이 많은 곳은 고르지 않는다. 무장애 표시가 있는 곳을 우선한다)\n");
@@ -749,7 +810,7 @@ public class PlannerDraftService {
         }
         b.append('\n');
 
-        b.append("후보 장소 (id|이름|분류|위도,경도|평점|무장애|리뷰 수):\n");
+        b.append("후보 장소 (id|이름|분류|업종|위도,경도|평점|무장애|리뷰 수):\n");
         daytime.forEach(place -> b.append(line(place, barrierFree)));
         b.append("\n숙소 후보:\n");
         if (lodgings.isEmpty()) {
@@ -762,14 +823,57 @@ public class PlannerDraftService {
     private static String line(TourPlaceEntity place, Set<Long> barrierFree) {
         return place.getTourPlaceId() + "|" + place.getPlaceName() + "|"
                 + (place.getCategory() == null ? "" : place.getCategory().getLabel()) + "|"
+                + (place.getPrimaryTypeLabel() == null ? "" : place.getPrimaryTypeLabel()) + "|"
                 + place.getLatitude() + "," + place.getLongitude() + "|"
                 + (place.getRating() == null ? "" : place.getRating()) + "|"
                 + (barrierFree.contains(place.getTourPlaceId()) ? "무장애" : "") + "|"
                 + (place.getUserRatingCount() == null ? 0 : place.getUserRatingCount()) + "\n";
     }
 
+    private void prefetchAccessibility(List<TourPlaceEntity> all, List<TourPlaceEntity> must) {
+        List<TourPlaceEntity> places = all.stream()
+                .filter(place -> place.getCategory() != TourPlaceCategory.ACCOMMODATION)
+                .toList();
+        Set<Long> known = accessibilityRepository.findAllById(places.stream()
+                        .map(TourPlaceEntity::getTourPlaceId).toList())
+                .stream().map(TourPlaceAccessibilityEntity::getTourPlaceId).collect(Collectors.toSet());
+        Set<Long> mustIds = must.stream().map(TourPlaceEntity::getTourPlaceId).collect(Collectors.toSet());
+        List<Long> missing = places.stream()
+                .filter(place -> !known.contains(place.getTourPlaceId()))
+                .sorted(Comparator
+                        .comparing((TourPlaceEntity place) -> !mustIds.contains(place.getTourPlaceId()))
+                        .thenComparing(place -> place.getCategory() != TourPlaceCategory.ACTIVITY)
+                        .thenComparing(TourPlaceEntity::getRating,
+                                Comparator.nullsLast(Comparator.reverseOrder())))
+                .map(TourPlaceEntity::getTourPlaceId)
+                .limit(ACCESSIBILITY_PREFETCH_LIMIT)
+                .toList();
+        if (missing.isEmpty()) {
+            return;
+        }
+        ExecutorService pool = Executors.newFixedThreadPool(
+                Math.min(ACCESSIBILITY_PREFETCH_THREADS, missing.size()));
+        try {
+            List<Callable<Object>> tasks = missing.stream()
+                    .<Callable<Object>>map(id -> () -> {
+                        try {
+                            return accessibilityService.get(id);
+                        } catch (Exception e) {
+                            return null;
+                        }
+                    })
+                    .toList();
+            pool.invokeAll(tasks, ACCESSIBILITY_PREFETCH_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
     private Set<Long> barrierFreeIds(
-            TravelPreferenceResponseDto preference, List<TourPlaceEntity> places,
+            TravelPreferenceResponseDto preference,
+            List<TourPlaceEntity> places,
             Integer walkingLimit) {
         if (!Boolean.TRUE.equals(preference.getUsesWheelchair())
                 && (walkingLimit == null || walkingLimit >= 60)) return Set.of();
