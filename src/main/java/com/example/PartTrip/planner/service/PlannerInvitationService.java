@@ -156,6 +156,9 @@ public class PlannerInvitationService {
         if (groupMemberRepository.existsByGroupIdAndUserId(group.getGroupId(), userId)) {
             throw new IllegalArgumentException("이미 참여한 플래너입니다.");
         }
+        if (isStartedByDate(group.getGroupId())) {
+            throw new IllegalArgumentException("여행이 시작된 뒤에는 참여할 수 없습니다.");
+        }
         plannerScheduleLockService.lockUser(userId);
         validateNoOverlappingPlan(group.getGroupId(), userId);
         if (groupMemberRepository.countByGroupId(group.getGroupId()) >= group.getHeadcount()) {
@@ -231,14 +234,18 @@ public class PlannerInvitationService {
                 .ifPresent(plan -> tripCardService.deleteMemberCard(plan.getPlanId(), memberUserId));
     }
 
+    private boolean isStartedByDate(Long plannerId) {
+        return groupTravelPlanRepository.findFirstByGroupIdOrderByCreatedAtDesc(plannerId)
+                .map(plan -> plan.getStartDate() != null && !plan.getStartDate().isAfter(LocalDate.now()))
+                .orElse(false);
+    }
+
     private boolean isTravelStarted(Long plannerId) {
         boolean byStatus = travelGroupRepository.findById(plannerId)
                 .map(TravelGroupEntity::getStatus)
                 .filter(status -> status == GroupStatus.TRAVELING || status == GroupStatus.DONE)
                 .isPresent();
-        return byStatus || groupTravelPlanRepository.findFirstByGroupIdOrderByCreatedAtDesc(plannerId)
-                .map(plan -> plan.getStartDate() != null && !plan.getStartDate().isAfter(LocalDate.now()))
-                .orElse(false);
+        return byStatus || isStartedByDate(plannerId);
     }
 
     private GroupInvitationEntity getPendingInvitationForUser(Long invitationId, String userId) {

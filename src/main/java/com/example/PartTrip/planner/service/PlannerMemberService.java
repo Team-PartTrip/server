@@ -15,6 +15,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Service
@@ -46,6 +47,8 @@ public class PlannerMemberService {
         if (groupMemberRepository.existsByGroupIdAndUserId(group.getGroupId(), userId)) {
             throw new IllegalArgumentException("이미 참여한 플래너입니다.");
         }
+
+        validateNotStarted(group.getGroupId());
 
         plannerScheduleLockService.lockUser(userId);
         validateNoOverlappingPlan(group.getGroupId(), userId);
@@ -82,6 +85,14 @@ public class PlannerMemberService {
         return status == GroupStatus.CONFIRMED
                 || status == GroupStatus.TRAVELING
                 || status == GroupStatus.DONE;
+    }
+
+    private void validateNotStarted(Long groupId) {
+        groupTravelPlanRepository.findFirstByGroupIdOrderByCreatedAtDesc(groupId)
+                .filter(plan -> plan.getStartDate() != null && !plan.getStartDate().isAfter(LocalDate.now()))
+                .ifPresent(plan -> {
+                    throw new IllegalArgumentException("여행이 시작된 뒤에는 참여할 수 없습니다.");
+                });
     }
 
     private void validateNoOverlappingPlan(Long groupId, String userId) {

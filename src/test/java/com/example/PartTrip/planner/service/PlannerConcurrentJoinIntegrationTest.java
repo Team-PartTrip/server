@@ -58,8 +58,8 @@ class PlannerConcurrentJoinIntegrationTest {
     void concurrentJoinsToOverlappingPlannersAllowOnlyOne() throws Exception {
         String userId = "concurrent-user";
         userRepository.saveAndFlush(user(userId));
-        savePlanner("owner-a", "INVITEA", LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 10));
-        savePlanner("owner-b", "INVITEB", LocalDate.of(2026, 9, 5), LocalDate.of(2026, 9, 15));
+        savePlanner("owner-a", "INVITEA", LocalDate.now().plusDays(30), LocalDate.now().plusDays(39));
+        savePlanner("owner-b", "INVITEB", LocalDate.now().plusDays(34), LocalDate.now().plusDays(44));
 
         CountDownLatch ready = new CountDownLatch(2);
         CountDownLatch start = new CountDownLatch(1);
