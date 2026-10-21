@@ -103,19 +103,20 @@ public class PlannerDraftService {
         List<String> exclude = values(dto, PlannerBlockType.EXCLUDE);
 
         tourPlaceImportService.importCityIfEmpty(KOREA, city);
-        List<TourPlaceEntity> all = tourPlaceRepository
-                .findByCountryNameAndCityName(KOREA, city).stream()
-                .filter(place -> !matchesAny(place.getPlaceName(), exclude))
+        List<TourPlaceEntity> inCity = tourPlaceRepository.findByCountryNameAndCityName(KOREA, city);
+        Set<Long> excludedIds = resolve(inCity, exclude).stream()
+                .map(TourPlaceEntity::getTourPlaceId).collect(Collectors.toSet());
+        List<TourPlaceEntity> all = inCity.stream()
+                .filter(place -> !excludedIds.contains(place.getTourPlaceId()))
                 .toList();
         TravelPreferenceResponseDto preference = travelPreferenceService.getPreference(userId);
         Set<Long> barrierFree = barrierFreeIds(preference, all);
         boolean limitedMobility = Boolean.TRUE.equals(preference.getUsesWheelchair())
                 || Boolean.TRUE.equals(preference.getLimitedWalking());
         // 반드시 포함할 곳은 평점과 상관없이 후보에 넣는다. 자르고 나서 찾으면 빠질 수 있다
-        List<TourPlaceEntity> must = all.stream()
+        List<TourPlaceEntity> must = resolve(all.stream()
                 .filter(place -> place.getCategory() != TourPlaceCategory.ACCOMMODATION)
-                .filter(place -> matchesAny(place.getPlaceName(), mustInclude))
-                .toList();
+                .toList(), mustInclude);
         List<TourPlaceEntity> daytime = Stream.concat(must.stream(), all.stream()
                         .filter(place -> place.getCategory() != TourPlaceCategory.ACCOMMODATION)
                         .filter(place -> !limitedMobility
@@ -451,16 +452,36 @@ public class PlannerDraftService {
         return Math.max(1, Math.min(MAX_PER_DAY, count));
     }
 
-    /** 이름이 서로를 포함하면 같은 곳으로 본다. 공백은 무시한다 */
-    static boolean matchesAny(String placeName, List<String> names) {
-        if (placeName == null) {
-            return false;
+    static List<TourPlaceEntity> resolve(List<TourPlaceEntity> places, List<String> names) {
+        Map<Long, TourPlaceEntity> picked = new LinkedHashMap<>();
+        for (String raw : names) {
+            String name = squash(raw);
+            if (name.length() < 2) {
+                continue;
+            }
+            List<TourPlaceEntity> exact = places.stream()
+                    .filter(place -> squash(place.getPlaceName()).equals(name))
+                    .toList();
+            if (!exact.isEmpty()) {
+                exact.forEach(place -> picked.put(place.getTourPlaceId(), place));
+                continue;
+            }
+            places.stream()
+                    .filter(place -> {
+                        String placeName = squash(place.getPlaceName());
+                        return placeName.contains(name) || (placeName.length() >= 2 && name.contains(placeName));
+                    })
+                    .min(Comparator
+                            .comparing(TourPlaceEntity::getRating, Comparator.nullsLast(Comparator.reverseOrder()))
+                            .thenComparingInt(place -> squash(place.getPlaceName()).length())
+                            .thenComparing(TourPlaceEntity::getTourPlaceId))
+                    .ifPresent(place -> picked.put(place.getTourPlaceId(), place));
         }
-        String place = placeName.replace(" ", "");
-        return names.stream()
-                .map(name -> name.replace(" ", ""))
-                .filter(name -> name.length() >= 2)
-                .anyMatch(name -> place.contains(name) || name.contains(place));
+        return List.copyOf(picked.values());
+    }
+
+    private static String squash(String name) {
+        return name == null ? "" : name.replace(" ", "");
     }
 
     // ── 프롬프트 ────────────────────────────────────────────

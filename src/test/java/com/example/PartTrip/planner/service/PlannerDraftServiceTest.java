@@ -191,12 +191,48 @@ class PlannerDraftServiceTest {
         assertThat(PlannerDraftService.slotsPerDay("하루 20곳", 3)).isEqualTo(PlannerDraftService.MAX_PER_DAY);
     }
 
+    private TourPlaceEntity named(long id, String name, Double rating) {
+        TourPlaceEntity p = place(id);
+        p.setPlaceName(name);
+        p.setRating(rating);
+        return p;
+    }
+
     @Test
-    void 장소_이름은_띄어쓰기를_무시하고_포함으로_맞춘다() {
-        assertThat(PlannerDraftService.matchesAny("경포 해수욕장", List.of("경포해수욕장"))).isTrue();
-        assertThat(PlannerDraftService.matchesAny("오죽헌", List.of("오죽헌 시립박물관"))).isTrue();
-        // 한 글자는 거의 모든 이름에 들어가서 무시한다
-        assertThat(PlannerDraftService.matchesAny("경포대", List.of("경"))).isFalse();
+    void 이름이_정확히_같은_장소를_먼저_찾고_띄어쓰기는_무시한다() {
+        List<TourPlaceEntity> places = List.of(
+                named(1L, "경포 해수욕장", 4.5), named(2L, "경포해수욕장 주차장", 4.9));
+
+        assertThat(PlannerDraftService.resolve(places, List.of("경포해수욕장")))
+                .extracting(TourPlaceEntity::getTourPlaceId).containsExactly(1L);
+    }
+
+    @Test
+    void 짧게_적으면_포함하는_장소_중_평점이_가장_높은_한_곳만_고른다() {
+        List<TourPlaceEntity> places = List.of(
+                named(1L, "강릉중앙시장", 4.3), named(2L, "주문진수산시장", 4.6),
+                named(3L, "강릉성남시장", 4.1), named(4L, "경포대", 4.8));
+
+        assertThat(PlannerDraftService.resolve(places, List.of("시장")))
+                .extracting(TourPlaceEntity::getTourPlaceId).containsExactly(2L);
+    }
+
+    @Test
+    void 적은_이름이_더_길어도_장소_이름을_포함하면_찾는다() {
+        List<TourPlaceEntity> places = List.of(named(1L, "오죽헌", 4.4), named(2L, "경포대", 4.8));
+
+        assertThat(PlannerDraftService.resolve(places, List.of("오죽헌 시립박물관")))
+                .extracting(TourPlaceEntity::getTourPlaceId).containsExactly(1L);
+    }
+
+    @Test
+    void 한_글자와_없는_이름은_찾지_않고_여러_이름은_각각_찾는다() {
+        List<TourPlaceEntity> places = List.of(named(1L, "오죽헌", 4.4), named(2L, "경포대", 4.8));
+
+        assertThat(PlannerDraftService.resolve(places, List.of("경"))).isEmpty();
+        assertThat(PlannerDraftService.resolve(places, List.of("할머니댁"))).isEmpty();
+        assertThat(PlannerDraftService.resolve(places, List.of("오죽헌", "경포대")))
+                .extracting(TourPlaceEntity::getTourPlaceId).containsExactly(1L, 2L);
     }
 
     // ── 전체 흐름 ────────────────────────────────────────────
@@ -465,8 +501,11 @@ class PlannerDraftServiceTest {
         density.setValue("하루 1곳");
         GeneratePlannerRequestDto.Block must = new GeneratePlannerRequestDto.Block();
         must.setType(PlannerBlockType.MUST_INCLUDE);
-        must.setValue("장소");
-        dto.setBlocks(List.of(density, must));
+        must.setValue("장소1");
+        GeneratePlannerRequestDto.Block must2 = new GeneratePlannerRequestDto.Block();
+        must2.setType(PlannerBlockType.MUST_INCLUDE);
+        must2.setValue("장소2");
+        dto.setBlocks(List.of(density, must, must2));
         given(tourPlaceRepository.findByCountryNameAndCityName("대한민국", "강릉"))
                 .willReturn(List.of(place(1L), place(2L)));
         given(travelPreferenceService.getPreference("user"))
