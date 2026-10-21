@@ -6,6 +6,7 @@ import com.example.PartTrip.main.enums.TourPlaceCategory;
 import com.example.PartTrip.main.entity.TourPlaceAccessibilityEntity;
 import com.example.PartTrip.main.repository.TourPlaceAccessibilityRepository;
 import com.example.PartTrip.main.repository.TourPlaceRepository;
+import com.example.PartTrip.main.service.AccessibilityService;
 import com.example.PartTrip.main.service.TourPlaceImportService;
 import com.example.PartTrip.planner.dto.request.GeneratePlannerRequestDto;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
@@ -42,10 +43,12 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class PlannerDraftServiceTest {
@@ -57,6 +60,7 @@ class PlannerDraftServiceTest {
     @Mock private TourPlaceImportService tourPlaceImportService;
     @Mock private TourPlaceRepository tourPlaceRepository;
     @Mock private TourPlaceAccessibilityRepository accessibilityRepository;
+    @Mock private AccessibilityService accessibilityService;
     @Mock private TravelPreferenceService travelPreferenceService;
     @Mock private OpenAiClient openAiClient;
     @Mock private PlannerService plannerService;
@@ -381,6 +385,81 @@ class PlannerDraftServiceTest {
                 .contains("1|장소1|")
                 .doesNotContain("2|장소2|")
                 .contains("3|장소3|");
+    }
+
+    private void givenLimitedWalking() {
+        given(travelPreferenceService.getPreference("user"))
+                .willReturn(new TravelPreferenceResponseDto(PreferredTransport.PUBLIC_TRANSIT, 3, true,
+                        null, null, null, true));
+        given(openAiClient.completeJson(anyString(), anyString()))
+                .willThrow(new AiUnavailableException("실패"));
+    }
+
+    @Test
+    void 이동이_불편하면_무장애_정보를_조회한_적_없는_장소는_미리_받아서_판단한다() {
+        TourPlaceEntity museum = place(1L);
+        TourPlaceEntity yacht = place(2L);
+        yacht.setCategory(TourPlaceCategory.ACTIVITY);
+        TourPlaceEntity pottery = place(3L);
+        pottery.setCategory(TourPlaceCategory.ACTIVITY);
+        given(tourPlaceRepository.findByCountryNameAndCityName("대한민국", "강릉"))
+                .willReturn(List.of(museum, yacht, pottery));
+        givenLimitedWalking();
+        TourPlaceAccessibilityEntity fetched = new TourPlaceAccessibilityEntity();
+        fetched.setTourPlaceId(3L);
+        fetched.setContentId("1");
+        fetched.setItemsJson("[{\"key\":\"ROUTE\",\"label\":\"접근로\",\"text\":\"경사로\"}]");
+        given(accessibilityRepository.findAllById(any()))
+                .willReturn(List.of())
+                .willReturn(List.of(fetched));
+
+        assertThatThrownBy(() -> service.generate(request(), "user"));
+
+        verify(accessibilityService).get(2L);
+        verify(accessibilityService).get(3L);
+        ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
+        verify(openAiClient).completeJson(anyString(), prompt.capture());
+        assertThat(prompt.getValue()).doesNotContain("2|장소2|").contains("3|장소3|");
+    }
+
+    @Test
+    void 이동이_불편하지_않으면_무장애_정보를_미리_받지_않는다() {
+        givenCandidates();
+        given(travelPreferenceService.getPreference("user"))
+                .willReturn(new TravelPreferenceResponseDto(PreferredTransport.PUBLIC_TRANSIT, 3, true));
+        given(openAiClient.completeJson(anyString(), anyString()))
+                .willThrow(new AiUnavailableException("실패"));
+
+        assertThatThrownBy(() -> service.generate(request(), "user"));
+
+        verifyNoInteractions(accessibilityService);
+    }
+
+    @Test
+    void 미리_받는_장소는_상한까지만이고_반드시_포함할_곳이_먼저다() {
+        GeneratePlannerRequestDto dto = request();
+        GeneratePlannerRequestDto.Block must = new GeneratePlannerRequestDto.Block();
+        must.setType(PlannerBlockType.MUST_INCLUDE);
+        must.setValue("할머니댁");
+        dto.setBlocks(List.of(must));
+        List<TourPlaceEntity> places = new java.util.ArrayList<>();
+        for (long id = 1; id <= 60; id++) {
+            TourPlaceEntity p = place(id);
+            p.setRating(4.5);
+            places.add(p);
+        }
+        TourPlaceEntity grandma = place(900L);
+        grandma.setPlaceName("할머니댁");
+        grandma.setRating(1.0);
+        places.add(grandma);
+        given(tourPlaceRepository.findByCountryNameAndCityName("대한민국", "강릉")).willReturn(places);
+        givenLimitedWalking();
+
+        assertThatThrownBy(() -> service.generate(dto, "user"));
+
+        verify(accessibilityService).get(900L);
+        verify(accessibilityService, org.mockito.Mockito.times(PlannerDraftService.ACCESSIBILITY_PREFETCH_LIMIT))
+                .get(anyLong());
     }
 
     @Test

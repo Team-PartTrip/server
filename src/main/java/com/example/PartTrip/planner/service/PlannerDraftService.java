@@ -8,6 +8,7 @@ import com.example.PartTrip.main.enums.TourPlaceCategory;
 import com.example.PartTrip.main.entity.TourPlaceAccessibilityEntity;
 import com.example.PartTrip.main.repository.TourPlaceAccessibilityRepository;
 import com.example.PartTrip.main.repository.TourPlaceRepository;
+import com.example.PartTrip.main.service.AccessibilityService;
 import com.example.PartTrip.main.service.TourPlaceImportService;
 import com.example.PartTrip.planner.dto.request.CreatePlannerRequestDto;
 import com.example.PartTrip.region.enums.RegionCode;
@@ -47,6 +48,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -73,11 +78,16 @@ public class PlannerDraftService {
     /** 프롬프트가 너무 길어지지 않게 평점 순으로 자른다 */
     static final int MAX_CANDIDATES = 150;
 
+    static final int ACCESSIBILITY_PREFETCH_LIMIT = 30;
+    static final int ACCESSIBILITY_PREFETCH_THREADS = 5;
+    static final int ACCESSIBILITY_PREFETCH_TIMEOUT_SECONDS = 20;
+
     private static final Pattern NUMBER = Pattern.compile("\\d+");
 
     private final TourPlaceImportService tourPlaceImportService;
     private final TourPlaceRepository tourPlaceRepository;
     private final TourPlaceAccessibilityRepository accessibilityRepository;
+    private final AccessibilityService accessibilityService;
     private final TravelPreferenceService travelPreferenceService;
     private final OpenAiClient openAiClient;
     private final PlannerService plannerService;
@@ -110,13 +120,16 @@ public class PlannerDraftService {
                 .filter(place -> !excludedIds.contains(place.getTourPlaceId()))
                 .toList();
         TravelPreferenceResponseDto preference = travelPreferenceService.getPreference(userId);
-        Set<Long> barrierFree = barrierFreeIds(preference, all);
         boolean limitedMobility = Boolean.TRUE.equals(preference.getUsesWheelchair())
                 || Boolean.TRUE.equals(preference.getLimitedWalking());
         // 반드시 포함할 곳은 평점과 상관없이 후보에 넣는다. 자르고 나서 찾으면 빠질 수 있다
         List<TourPlaceEntity> must = resolve(all.stream()
                 .filter(place -> place.getCategory() != TourPlaceCategory.ACCOMMODATION)
                 .toList(), mustInclude);
+        if (limitedMobility) {
+            prefetchAccessibility(all, must);
+        }
+        Set<Long> barrierFree = barrierFreeIds(preference, all);
         List<TourPlaceEntity> daytime = Stream.concat(must.stream(), all.stream()
                         .filter(place -> place.getCategory() != TourPlaceCategory.ACCOMMODATION)
                         .filter(place -> !limitedMobility
@@ -566,6 +579,47 @@ public class PlannerDraftService {
                 + place.getLatitude() + "," + place.getLongitude() + "|"
                 + (place.getRating() == null ? "" : place.getRating()) + "|"
                 + (barrierFree.contains(place.getTourPlaceId()) ? "무장애" : "") + "\n";
+    }
+
+    private void prefetchAccessibility(List<TourPlaceEntity> all, List<TourPlaceEntity> must) {
+        List<TourPlaceEntity> places = all.stream()
+                .filter(place -> place.getCategory() != TourPlaceCategory.ACCOMMODATION)
+                .toList();
+        Set<Long> known = accessibilityRepository.findAllById(places.stream()
+                        .map(TourPlaceEntity::getTourPlaceId).toList())
+                .stream().map(TourPlaceAccessibilityEntity::getTourPlaceId).collect(Collectors.toSet());
+        Set<Long> mustIds = must.stream().map(TourPlaceEntity::getTourPlaceId).collect(Collectors.toSet());
+        List<Long> missing = places.stream()
+                .filter(place -> !known.contains(place.getTourPlaceId()))
+                .sorted(Comparator
+                        .comparing((TourPlaceEntity place) -> !mustIds.contains(place.getTourPlaceId()))
+                        .thenComparing(place -> place.getCategory() != TourPlaceCategory.ACTIVITY)
+                        .thenComparing(TourPlaceEntity::getRating,
+                                Comparator.nullsLast(Comparator.reverseOrder())))
+                .map(TourPlaceEntity::getTourPlaceId)
+                .limit(ACCESSIBILITY_PREFETCH_LIMIT)
+                .toList();
+        if (missing.isEmpty()) {
+            return;
+        }
+        ExecutorService pool = Executors.newFixedThreadPool(
+                Math.min(ACCESSIBILITY_PREFETCH_THREADS, missing.size()));
+        try {
+            List<Callable<Object>> tasks = missing.stream()
+                    .<Callable<Object>>map(id -> () -> {
+                        try {
+                            return accessibilityService.get(id);
+                        } catch (Exception e) {
+                            return null;
+                        }
+                    })
+                    .toList();
+            pool.invokeAll(tasks, ACCESSIBILITY_PREFETCH_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            pool.shutdownNow();
+        }
     }
 
     private Set<Long> barrierFreeIds(TravelPreferenceResponseDto preference, List<TourPlaceEntity> places) {
