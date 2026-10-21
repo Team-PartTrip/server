@@ -76,6 +76,8 @@ import java.util.stream.Stream;
 @RequiredArgsConstructor
 public class PlannerDraftService {
 
+    private final jakarta.persistence.EntityManager entityManager;
+
     static final String KOREA = "대한민국";
     static final int MAX_DAYS = 14;
     static final int MAX_PER_DAY = 6;
@@ -308,10 +310,13 @@ public class PlannerDraftService {
             throw new IllegalArgumentException("직접 수정한 일정은 다시 생성할 수 없습니다.");
         }
         List<PlannerSurveyResponseDto.Block> savedBlocks = deserializeSurvey(plan.getSurveyResponses());
-        if (savedBlocks.isEmpty()) {
+        if (plan.getSurveyResponses() == null || plan.getSurveyResponses().isBlank()) {
             throw new IllegalArgumentException("저장된 설문 응답이 없어 일정을 다시 만들 수 없습니다.");
         }
-        reserveRegeneration(plannerId, userId, plan.getPlanId());
+        // PostgreSQL timestamps retain microsecond precision. Keep a stable reservation
+        // token so an older AI request cannot overwrite a newer regeneration result.
+        LocalDateTime reservation = LocalDateTime.now().truncatedTo(ChronoUnit.MICROS);
+        reserveRegeneration(plannerId, userId, plan.getPlanId(), reservation);
 
         GeneratePlannerRequestDto request = requestFromSavedSurvey(group, plan, savedBlocks);
         List<String> memberIds = groupMemberRepository.findByGroupIdOrderByJoinedAtAsc(plannerId)
@@ -323,14 +328,27 @@ public class PlannerDraftService {
         transactionTemplate.executeWithoutResult(status -> {
             TravelGroupEntity locked = travelGroupRepository.findByIdForUpdate(plannerId)
                     .orElseThrow(() -> new NotFoundException("플래너가 존재하지 않습니다."));
+            // OSIV may retain entities loaded before the AI call. A locking query
+            // alone does not refresh those cached fields after another request edits them.
+            entityManager.refresh(locked);
             requireOwner(locked, userId);
             requirePlanning(locked);
             GroupTravelPlanEntity current = latestPlan(plannerId);
+            entityManager.refresh(current);
             if (!Objects.equals(current.getPlanId(), plan.getPlanId())) {
                 throw new IllegalArgumentException("여행 계획이 변경되었습니다. 다시 조회해주세요.");
             }
             if (Boolean.TRUE.equals(current.getScheduleEdited())) {
                 throw new IllegalArgumentException("직접 수정한 일정은 다시 생성할 수 없습니다.");
+            }
+            if (!Objects.equals(current.getRegenerationStartedAt(), reservation)) {
+                throw new IllegalArgumentException("새로운 일정 재생성 요청이 있습니다. 다시 조회해주세요.");
+            }
+            if (!Objects.equals(current.getStartDate(), request.getStartDate())
+                    || !Objects.equals(current.getEndDate(), request.getEndDate())
+                    || !Objects.equals(current.getRegionCode(), request.getRegionCode())
+                    || !Objects.equals(current.getCityName(), request.getCityName())) {
+                throw new IllegalArgumentException("여행 정보가 변경되었습니다. 다시 생성해주세요.");
             }
             slotRepository.deleteByPlanId(current.getPlanId());
             slotRepository.saveAll(toEntities(current.getPlanId(), generated.dates(),
@@ -340,13 +358,16 @@ public class PlannerDraftService {
     }
 
     /** 같은 플래너에서 중복 요청으로 AI 비용이 연속 발생하지 않도록 잠금 안에서 예약한다. */
-    private void reserveRegeneration(Long plannerId, String userId, Long expectedPlanId) {
+    private void reserveRegeneration(Long plannerId, String userId, Long expectedPlanId,
+                                     LocalDateTime reservation) {
         transactionTemplate.executeWithoutResult(status -> {
             TravelGroupEntity locked = travelGroupRepository.findByIdForUpdate(plannerId)
                     .orElseThrow(() -> new NotFoundException("플래너가 존재하지 않습니다."));
+            entityManager.refresh(locked);
             requireOwner(locked, userId);
             requirePlanning(locked);
             GroupTravelPlanEntity current = latestPlan(plannerId);
+            entityManager.refresh(current);
             if (!Objects.equals(current.getPlanId(), expectedPlanId)) {
                 throw new IllegalArgumentException("여행 계획이 변경되었습니다. 다시 조회해주세요.");
             }
@@ -359,7 +380,7 @@ public class PlannerDraftService {
                             now.minusSeconds(REGENERATION_COOLDOWN_SECONDS))) {
                 throw new IllegalArgumentException("일정 재생성은 30초에 한 번만 요청할 수 있습니다.");
             }
-            current.setRegenerationStartedAt(now);
+            current.setRegenerationStartedAt(reservation);
             groupTravelPlanRepository.save(current);
         });
     }

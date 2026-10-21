@@ -89,7 +89,7 @@ public class GeneratePlannerRequestDto {
             return true;
         }
         if (type == PlannerBlockType.DAILY_DENSITY) {
-            return type.getOptions().contains(value) && !"직접 지정".equals(value)
+            return type.getOptions().contains(value)
                     || value.matches("[1-6]")
                     || value.matches("하루 [1-6]곳");
         }

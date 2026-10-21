@@ -40,6 +40,8 @@ class GeneratePlannerBlockValidationTest {
     void 일정밀도는_선택지_또는_1부터_6까지의_숫자만_허용한다() {
         assertThat(request(block(PlannerBlockType.DAILY_DENSITY, "하루 1~2곳"))
                 .isBlockSelectionValid()).isTrue();
+        assertThat(request(block(PlannerBlockType.DAILY_DENSITY, "직접 지정"))
+                .isBlockSelectionValid()).isTrue();
         assertThat(request(block(PlannerBlockType.DAILY_DENSITY, "6"))
                 .isBlockSelectionValid()).isTrue();
         assertThat(request(block(PlannerBlockType.DAILY_DENSITY, "7"))

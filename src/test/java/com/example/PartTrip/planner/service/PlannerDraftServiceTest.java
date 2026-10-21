@@ -74,6 +74,7 @@ class PlannerDraftServiceTest {
     @Mock private GroupTravelPlanRepository groupTravelPlanRepository;
     @Mock private PlannerScheduleSlotRepository slotRepository;
     @Mock private TransactionTemplate transactionTemplate;
+    @Mock private jakarta.persistence.EntityManager entityManager;
     @Spy private ObjectMapper objectMapper = new ObjectMapper();
     @InjectMocks private PlannerDraftService service;
 
@@ -437,7 +438,32 @@ class PlannerDraftServiceTest {
     }
 
     @Test
-    void 저장된_설문과_구성원_설정을_사용해_수정하지_않은_일정을_재생성한다() throws Exception {
+    void 재생성_쿨다운_중에는_AI를_다시_호출하지_않는다() {
+        TravelGroupEntity group = new TravelGroupEntity();
+        group.setOwnerUserId("owner");
+        group.setStatus(GroupStatus.PLANNING);
+        GroupTravelPlanEntity plan = new GroupTravelPlanEntity();
+        plan.setPlanId(70L);
+        plan.setSurveyResponses("[]");
+        plan.setRegenerationStartedAt(java.time.LocalDateTime.now());
+        given(travelGroupRepository.findById(7L)).willReturn(Optional.of(group));
+        given(travelGroupRepository.findByIdForUpdate(7L)).willReturn(Optional.of(group));
+        given(groupTravelPlanRepository.findFirstByGroupIdOrderByCreatedAtDesc(7L))
+                .willReturn(Optional.of(plan));
+        doAnswer(invocation -> {
+            java.util.function.Consumer<TransactionStatus> action = invocation.getArgument(0);
+            action.accept(org.mockito.Mockito.mock(TransactionStatus.class));
+            return null;
+        }).when(transactionTemplate).executeWithoutResult(any());
+
+        assertThatThrownBy(() -> service.regenerate(7L, "owner"))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("30초");
+        verifyNoInteractions(openAiClient, slotRepository);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"normal", "empty", "newer", "edited", "dates", "confirmed"})
+    void 재생성은_저장된_설문을_사용하고_생성중_변경된_일정을_보호한다(String scenario) throws Exception {
         TravelGroupEntity group = new TravelGroupEntity();
         group.setGroupId(7L);
         group.setOwnerUserId("owner");
@@ -454,6 +480,7 @@ class PlannerDraftServiceTest {
         plan.setSurveyResponses(JSON.writeValueAsString(List.of(
                 new PlannerSurveyResponseDto.Block(PlannerBlockType.TRAVEL_TYPE,
                         "미식", null, null, null))));
+        if (scenario.equals("empty")) plan.setSurveyResponses("[]");
         GroupMemberEntity member = new GroupMemberEntity();
         member.setUserId("owner");
         member.setGroupId(7L);
@@ -462,21 +489,39 @@ class PlannerDraftServiceTest {
         given(groupTravelPlanRepository.findFirstByGroupIdOrderByCreatedAtDesc(7L))
                 .willReturn(Optional.of(plan));
         given(groupMemberRepository.findByGroupIdOrderByJoinedAtAsc(7L)).willReturn(List.of(member));
-        given(groupMemberRepository.existsByGroupIdAndUserId(7L, "owner")).willReturn(true);
+        boolean succeeds = scenario.equals("normal") || scenario.equals("empty");
+        if (succeeds) {
+            given(groupMemberRepository.existsByGroupIdAndUserId(7L, "owner")).willReturn(true);
+            given(slotRepository.findByPlanIdOrderByVisitDateAscSortOrderAsc(70L)).willReturn(List.of());
+        }
         given(travelPreferenceService.getPreferences(List.of("owner"))).willReturn(Map.of("owner",
                 new TravelPreferenceResponseDto(PreferredTransport.PUBLIC_TRANSIT, 2, false,
                         null, List.of(AvoidFood.SEAFOOD), false, false)));
         given(tourPlaceRepository.findByCountryNameAndCityName("대한민국", "강릉"))
                 .willReturn(List.of(place(1L)));
-        given(openAiClient.completeJson(anyString(), anyString())).willReturn(
-                "{\"days\":[{\"date\":\"2026-10-10\",\"placeIds\":[1]}],\"lodgingId\":null}");
-        given(slotRepository.findByPlanIdOrderByVisitDateAscSortOrderAsc(70L)).willReturn(List.of());
+        given(openAiClient.completeJson(anyString(), anyString())).willAnswer(invocation -> {
+            switch (scenario) {
+                case "newer" -> plan.setRegenerationStartedAt(plan.getRegenerationStartedAt().plusSeconds(31));
+                case "edited" -> plan.setScheduleEdited(true);
+                case "dates" -> plan.setEndDate(D2);
+                case "confirmed" -> group.setStatus(GroupStatus.CONFIRMED);
+                default -> { }
+            }
+            return "{\"days\":[{\"date\":\"2026-10-10\",\"placeIds\":[1]}],\"lodgingId\":null}";
+        });
         doAnswer(invocation -> {
             java.util.function.Consumer<TransactionStatus> action = invocation.getArgument(0);
             action.accept(org.mockito.Mockito.mock(TransactionStatus.class));
             return null;
         }).when(transactionTemplate).executeWithoutResult(any());
 
+        if (!succeeds) {
+            assertThatThrownBy(() -> service.regenerate(7L, "owner"))
+                    .isInstanceOf(IllegalArgumentException.class);
+            verify(slotRepository, never()).deleteByPlanId(anyLong());
+            verify(slotRepository, never()).saveAll(any());
+            return;
+        }
         var result = service.regenerate(7L, "owner");
 
         assertThat(result.plannerId()).isEqualTo(7L);
