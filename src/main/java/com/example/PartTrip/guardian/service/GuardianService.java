@@ -47,6 +47,7 @@ public class GuardianService {
     /** 시니어가 보호자 초대 코드를 만든다. 24시간 동안 한 번 쓸 수 있고, 새로 만들면 이전 코드는 못 쓴다 */
     @Transactional
     public InviteResponse createInvite(String seniorUserId) {
+        lockSenior(seniorUserId);
         inviteRepository.deleteBySeniorUserId(seniorUserId);
         LocalDateTime expiresAt = LocalDateTime.now().plusHours(INVITE_HOURS);
         for (int attempt = 0; attempt < 10; attempt++) {
@@ -62,8 +63,11 @@ public class GuardianService {
     /** 보호자가 코드를 넣어 연결한다. 이미 연결돼 있으면 그 연결을 돌려준다 */
     @Transactional
     public LinkResponse accept(String code, String guardianUserId) {
+        String normalized = code.trim().toUpperCase(Locale.ROOT);
+        inviteRepository.findById(normalized)
+                .ifPresent(found -> lockSenior(found.getSeniorUserId()));
         GuardianInviteEntity invite = inviteRepository
-                .findByCodeForUpdate(code.trim().toUpperCase(Locale.ROOT))
+                .findByCodeForUpdate(normalized)
                 .orElseThrow(() -> new IllegalArgumentException("초대 코드가 맞지 않아요. 다시 확인해주세요."));
         if (invite.getExpiresAt().isBefore(LocalDateTime.now())) {
             inviteRepository.delete(invite);
@@ -88,6 +92,10 @@ public class GuardianService {
         }
         inviteRepository.delete(invite);
         return toResponse(link, seniorUserId);
+    }
+
+    private void lockSenior(String seniorUserId) {
+        userRepository.findAllByUserIdInForUpdate(List.of(seniorUserId));
     }
 
     /** 내가 보호하는 시니어들 */

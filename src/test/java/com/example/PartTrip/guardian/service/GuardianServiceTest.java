@@ -43,8 +43,9 @@ class GuardianServiceTest {
     @InjectMocks private GuardianService service;
 
     private void givenInvite(String code, LocalDateTime expiresAt) {
-        given(inviteRepository.findByCodeForUpdate(code))
-                .willReturn(Optional.of(new GuardianInviteEntity(code, SENIOR, expiresAt)));
+        GuardianInviteEntity invite = new GuardianInviteEntity(code, SENIOR, expiresAt);
+        given(inviteRepository.findById(code)).willReturn(Optional.of(invite));
+        given(inviteRepository.findByCodeForUpdate(code)).willReturn(Optional.of(invite));
     }
 
     @Test
@@ -60,6 +61,21 @@ class GuardianServiceTest {
         service.createInvite(SENIOR);
 
         verify(inviteRepository).deleteBySeniorUserId(SENIOR);
+        verify(userRepository).findAllByUserIdInForUpdate(java.util.List.of(SENIOR));
+    }
+
+    @Test
+    void 연결할_때_코드보다_시니어를_먼저_잠근다() {
+        givenInvite("ABC234", LocalDateTime.now().plusHours(1));
+        given(linkRepository.findBySeniorUserIdAndGuardianUserId(SENIOR, CHILD)).willReturn(Optional.empty());
+        given(linkRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+        service.accept("ABC234", CHILD);
+
+        var order = org.mockito.Mockito.inOrder(userRepository, inviteRepository, linkRepository);
+        order.verify(userRepository).findAllByUserIdInForUpdate(java.util.List.of(SENIOR));
+        order.verify(inviteRepository).findByCodeForUpdate("ABC234");
+        order.verify(linkRepository).countBySeniorUserId(SENIOR);
     }
 
     @Test
