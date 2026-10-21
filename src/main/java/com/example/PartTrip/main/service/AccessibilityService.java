@@ -145,12 +145,29 @@ public class AccessibilityService {
     static List<AccessibilityResponseDto.Item> items(JsonNode detail) {
         List<AccessibilityResponseDto.Item> items = new ArrayList<>();
         for (String[] f : FIELDS) {
-            String text = detail.path(f[1]).asText("").strip();
+            String text = clean(detail.path(f[1]).asText(""));
             if (!text.isEmpty()) {
                 items.add(new AccessibilityResponseDto.Item(f[0], f[2], text));
             }
         }
         return items;
+    }
+
+    /** 원본에 섞여 오는 HTML 을 걷어낸다. 줄바꿈 태그는 줄바꿈으로 남긴다 */
+    static String clean(String html) {
+        if (html == null) {
+            return "";
+        }
+        return html.replaceAll("(?i)<br\\s*/?>", "\n")
+                .replaceAll("<[^>]*>", "")
+                .replace("&nbsp;", " ")
+                .replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replace("&quot;", "\"")
+                .replace("&amp;", "&")
+                .replaceAll("[ \\t]*\\n[ \\t]*", "\n")
+                .replaceAll("\\n{2,}", "\n")
+                .strip();
     }
 
     static String normalize(String name) {
@@ -197,8 +214,12 @@ public class AccessibilityService {
         }
         try {
             List<AccessibilityResponseDto.Item> items = objectMapper.readValue(
-                    row.getItemsJson(), new TypeReference<>() {});
-            return AccessibilityResponseDto.found(items);
+                    row.getItemsJson(), new TypeReference<List<AccessibilityResponseDto.Item>>() {});
+            // 이미 저장된 행에도 태그가 남아 있어 내보낼 때 한 번 더 정리한다
+            return AccessibilityResponseDto.found(items.stream()
+                    .map(i -> new AccessibilityResponseDto.Item(i.key(), i.label(), clean(i.text())))
+                    .filter(i -> !i.text().isEmpty())
+                    .toList());
         } catch (Exception e) {
             return AccessibilityResponseDto.unavailable();
         }

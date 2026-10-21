@@ -51,6 +51,15 @@ class AccessibilityServiceTest {
     }
 
     @Test
+    void 본문의_HTML_태그를_줄바꿈과_글자로_정리한다() {
+        String raw = "출입구까지 단차가 없어 휠체어 접근 가능함(무단차)<br/>\n지하철 입구 연결 됨<BR />잠실역 <b>2번출구</b>&nbsp;앞 &amp; 엘리베이터";
+
+        assertThat(AccessibilityService.clean(raw)).isEqualTo(
+                "출입구까지 단차가 없어 휠체어 접근 가능함(무단차)\n지하철 입구 연결 됨\n잠실역 2번출구 앞 & 엘리베이터");
+        assertThat(AccessibilityService.clean(null)).isEmpty();
+    }
+
+    @Test
     void 이름으로_찾은_장소의_거리를_직접_잰다() {
         double m = AccessibilityService.meters(35.2303279, 128.6615089, 35.2302537352, 128.6617775588);
         assertThat(m).isBetween(20.0, 30.0);
