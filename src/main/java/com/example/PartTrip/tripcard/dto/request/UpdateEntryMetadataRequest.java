@@ -31,4 +31,6 @@ public class UpdateEntryMetadataRequest {
     // 촬영 시각. 앱이 날짜만 고르게 한다면 00:00 으로 보내면 된다.
     // 서버가 올린 시각을 대신 넣는 일은 없다 (TripCardEntryServiceImpl.addEntry 주석 참고).
     private LocalDateTime takenAt;
+
+    private boolean fromCamera;
 }

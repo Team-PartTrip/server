@@ -80,6 +80,27 @@ class TripCardEntryMetadataTest {
     }
 
     @Test
+    void 카메라로_찍은_값은_CAMERA_로_기록하고_이후에_못_고친다() {
+        TripCardPhotoEntity photo = photo(10L);
+        givenCard(closedCard(), photo);
+        UpdateEntryMetadataRequest first = request(33.45, 126.94, null, LocalDateTime.of(2026, 8, 15, 9, 0));
+        first.setFromCamera(true);
+
+        service.updateMetadata(1L, 10L, first);
+
+        assertThat(photo.getLocationSource()).isEqualTo(MetadataSource.CAMERA);
+        assertThat(photo.getTakenAtSource()).isEqualTo(MetadataSource.CAMERA);
+        assertThatThrownBy(() -> service.updateMetadata(1L, 10L, request(35.0, 127.0, null, null)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("촬영 위치");
+        assertThatThrownBy(() -> service.updateMetadata(1L, 10L,
+                request(null, null, null, LocalDateTime.of(2026, 8, 15, 18, 0))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("촬영 시각");
+        assertThat(photo.getLatitude()).isEqualTo(33.45);
+    }
+
+    @Test
     void 촬영_시각을_채우면_그_날짜_묶음의_순번을_새로_받는다() {
         TripCardPhotoEntity photo = photo(10L);
         photo.setSortOrder(1);

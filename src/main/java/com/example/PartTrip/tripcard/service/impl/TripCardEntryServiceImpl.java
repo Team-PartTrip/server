@@ -117,6 +117,7 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
         TripCardEntity tripCard = getOwnedCard(cardId);
         requireWithinTripDates(tripCard, takenAt);
         TripCardPhotoEntity photo = getCardPhoto(cardId, entryId);
+        MetadataSource source = request.isFromCamera() ? MetadataSource.CAMERA : MetadataSource.MANUAL;
 
         if (hasLocation) {
             requireEditable(photo.getLocationSource(), "촬영 위치");
@@ -125,7 +126,7 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
             // 이름 없이 좌표만 다시 고르면 이름도 지운다. 옮긴 좌표에 예전 장소 이름이
             // 남아 있는 쪽이 더 나쁘다.
             photo.setPlaceName(placeName);
-            photo.setLocationSource(MetadataSource.MANUAL);
+            photo.setLocationSource(source);
         }
         if (takenAt != null) {
             requireEditable(photo.getTakenAtSource(), "촬영 시각");
@@ -135,7 +136,7 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
                 photo.setSortOrder(nextSortOrder(cardId, takenAt.toLocalDate()));
             }
             photo.setTakenAt(takenAt);
-            photo.setTakenAtSource(MetadataSource.MANUAL);
+            photo.setTakenAtSource(source);
         }
 
         return TripCardEntryResponse.from(photo);
@@ -276,9 +277,9 @@ public class TripCardEntryServiceImpl implements TripCardEntryService {
         return !date.isBefore(startDate) && !date.isAfter(endDate);
     }
 
-    /** 사진이 이미 들고 있던 EXIF 값은 고치지 못한다. 비어 있거나 직접 고른 값만 다시 고른다. */
+    /** 사진에 기록된 값(EXIF · 카메라)은 고치지 못한다. 비어 있거나 직접 고른 값만 다시 고른다. */
     private void requireEditable(MetadataSource source, String label) {
-        if (source == MetadataSource.EXIF) {
+        if (source == MetadataSource.EXIF || source == MetadataSource.CAMERA) {
             throw new IllegalArgumentException(
                     "사진에 기록된 " + label + " 정보는 바꿀 수 없습니다.");
         }
