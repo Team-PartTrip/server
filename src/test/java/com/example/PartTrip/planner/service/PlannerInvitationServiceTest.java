@@ -80,8 +80,8 @@ class PlannerInvitationServiceTest {
         group.setGroupId(1L);
         group.setHeadcount(2);
         GroupTravelPlanEntity plan = new GroupTravelPlanEntity();
-        plan.setStartDate(LocalDate.of(2026, 9, 1));
-        plan.setEndDate(LocalDate.of(2026, 9, 30));
+        plan.setStartDate(LocalDate.now().plusDays(10));
+        plan.setEndDate(LocalDate.now().plusDays(40));
 
         when(groupInvitationRepository.findByIdForUpdate(10L))
                 .thenReturn(Optional.of(invitation));

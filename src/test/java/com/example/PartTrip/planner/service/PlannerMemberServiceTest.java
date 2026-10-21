@@ -92,6 +92,49 @@ class PlannerMemberServiceTest {
         verifyNoInteractions(groupMemberRepository, eventPublisher);
     }
 
+    private void givenPlanStarting(TravelGroupEntity group, LocalDate start) {
+        GroupTravelPlanEntity plan = new GroupTravelPlanEntity();
+        plan.setStartDate(start);
+        plan.setEndDate(start.plusDays(3));
+        when(travelGroupRepository.findByInviteCodeForUpdate("INVITE")).thenReturn(Optional.of(group));
+        when(groupTravelPlanRepository.findFirstByGroupIdOrderByCreatedAtDesc(1L))
+                .thenReturn(Optional.of(plan));
+    }
+
+    private TravelGroupEntity confirmedGroup() {
+        TravelGroupEntity group = new TravelGroupEntity();
+        group.setGroupId(1L);
+        group.setHeadcount(3);
+        group.setStatus(GroupStatus.CONFIRMED);
+        return group;
+    }
+
+    @Test
+    void 여행_시작일부터는_참여할_수_없다() {
+        JoinPlannerRequestDto request = new JoinPlannerRequestDto();
+        request.setInviteCode("invite");
+        givenPlanStarting(confirmedGroup(), LocalDate.now());
+
+        assertThatThrownBy(() -> plannerMemberService.joinPlanner(request, "user"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("여행이 시작된 뒤에는 참여할 수 없습니다.");
+
+        verify(groupMemberRepository, never()).save(any());
+        verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    void 여행_시작_전날까지는_참여할_수_있다() {
+        JoinPlannerRequestDto request = new JoinPlannerRequestDto();
+        request.setInviteCode("invite");
+        givenPlanStarting(confirmedGroup(), LocalDate.now().plusDays(1));
+        when(groupMemberRepository.countByGroupId(1L)).thenReturn(1L);
+
+        plannerMemberService.joinPlanner(request, "user");
+
+        verify(groupMemberRepository).save(any());
+    }
+
     @Test
     void 기간이_겹치는_플래너에는_초대코드로_참여할_수_없다() {
         JoinPlannerRequestDto request = new JoinPlannerRequestDto();
@@ -100,8 +143,8 @@ class PlannerMemberServiceTest {
         group.setGroupId(1L);
         group.setStatus(GroupStatus.PLANNING);
         GroupTravelPlanEntity plan = new GroupTravelPlanEntity();
-        plan.setStartDate(LocalDate.of(2026, 9, 1));
-        plan.setEndDate(LocalDate.of(2026, 9, 30));
+        plan.setStartDate(LocalDate.now().plusDays(10));
+        plan.setEndDate(LocalDate.now().plusDays(15));
 
         when(travelGroupRepository.findByInviteCodeForUpdate("INVITE"))
                 .thenReturn(Optional.of(group));
