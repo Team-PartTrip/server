@@ -8,6 +8,7 @@ import com.example.PartTrip.guardian.entity.GuardianInviteEntity;
 import com.example.PartTrip.guardian.entity.GuardianLinkEntity;
 import com.example.PartTrip.guardian.repository.GuardianInviteRepository;
 import com.example.PartTrip.guardian.repository.GuardianLinkRepository;
+import com.example.PartTrip.notification.event.GuardianLinkedEvent;
 import com.example.PartTrip.planner.dto.response.PlannerListResponseDto;
 import com.example.PartTrip.planner.dto.response.PlannerScheduleResponseDto;
 import com.example.PartTrip.planner.service.PlannerDraftService;
@@ -15,6 +16,7 @@ import com.example.PartTrip.planner.service.PlannerListService;
 import com.example.PartTrip.signup.entity.UserEntity;
 import com.example.PartTrip.signup.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +31,7 @@ import java.util.function.Function;
 public class GuardianService {
 
     static final int INVITE_HOURS = 24;
+    static final int MAX_GUARDIANS = 5;
     // 헷갈리는 글자(0 · O · 1 · I · L)를 뺐다. 어르신이 불러주고 받아 적는다
     private static final String CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
     private static final int CODE_LENGTH = 6;
@@ -39,10 +42,13 @@ public class GuardianService {
     private final UserRepository userRepository;
     private final PlannerListService plannerListService;
     private final PlannerDraftService plannerDraftService;
+    private final ApplicationEventPublisher eventPublisher;
 
-    /** 시니어가 보호자 초대 코드를 만든다. 24시간 동안 한 번 쓸 수 있다 */
+    /** 시니어가 보호자 초대 코드를 만든다. 24시간 동안 한 번 쓸 수 있고, 새로 만들면 이전 코드는 못 쓴다 */
     @Transactional
     public InviteResponse createInvite(String seniorUserId) {
+        lockSenior(seniorUserId);
+        inviteRepository.deleteBySeniorUserId(seniorUserId);
         LocalDateTime expiresAt = LocalDateTime.now().plusHours(INVITE_HOURS);
         for (int attempt = 0; attempt < 10; attempt++) {
             String code = randomCode();
@@ -57,8 +63,11 @@ public class GuardianService {
     /** 보호자가 코드를 넣어 연결한다. 이미 연결돼 있으면 그 연결을 돌려준다 */
     @Transactional
     public LinkResponse accept(String code, String guardianUserId) {
+        String normalized = code.trim().toUpperCase(Locale.ROOT);
+        inviteRepository.findById(normalized)
+                .ifPresent(found -> lockSenior(found.getSeniorUserId()));
         GuardianInviteEntity invite = inviteRepository
-                .findByCodeForUpdate(code.trim().toUpperCase(Locale.ROOT))
+                .findByCodeForUpdate(normalized)
                 .orElseThrow(() -> new IllegalArgumentException("초대 코드가 맞지 않아요. 다시 확인해주세요."));
         if (invite.getExpiresAt().isBefore(LocalDateTime.now())) {
             inviteRepository.delete(invite);
@@ -70,11 +79,23 @@ public class GuardianService {
         }
 
         GuardianLinkEntity link = linkRepository
-                .findBySeniorUserIdAndGuardianUserId(seniorUserId, guardianUserId)
-                .orElseGet(() -> linkRepository.save(
-                        new GuardianLinkEntity(seniorUserId, guardianUserId, LocalDateTime.now())));
+                .findBySeniorUserIdAndGuardianUserId(seniorUserId, guardianUserId).orElse(null);
+        if (link == null) {
+            if (linkRepository.countBySeniorUserId(seniorUserId) >= MAX_GUARDIANS) {
+                throw new IllegalArgumentException(
+                        "이 분에게는 보호자를 " + MAX_GUARDIANS + "명까지 연결할 수 있어요.");
+            }
+            link = linkRepository.save(
+                    new GuardianLinkEntity(seniorUserId, guardianUserId, LocalDateTime.now()));
+            eventPublisher.publishEvent(
+                    new GuardianLinkedEvent(seniorUserId, guardianUserId, link.getLinkId()));
+        }
         inviteRepository.delete(invite);
         return toResponse(link, seniorUserId);
+    }
+
+    private void lockSenior(String seniorUserId) {
+        userRepository.findAllByUserIdInForUpdate(List.of(seniorUserId));
     }
 
     /** 내가 보호하는 시니어들 */
@@ -102,6 +123,7 @@ public class GuardianService {
             throw new ForbiddenException("내 연결만 끊을 수 있습니다.");
         }
         linkRepository.delete(link);
+        inviteRepository.deleteBySeniorUserId(link.getSeniorUserId());
     }
 
     /** 시니어의 플래너 목록 */

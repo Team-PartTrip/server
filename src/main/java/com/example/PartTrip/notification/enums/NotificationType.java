@@ -39,7 +39,9 @@ public enum NotificationType {
     // notification_category_check 에 걸리는 데다, 앱이 모르는 탭 값이라
     // 어느 탭에도 안 보이게 된다. 탭 이름은 앱과 함께 정리한다
     TRIP_DAY_BEFORE("여행 하루 전", NotificationCategory.VOTE),
-    TODAY_SCHEDULE("오늘 일정", NotificationCategory.VOTE);
+    TODAY_SCHEDULE("오늘 일정", NotificationCategory.VOTE),
+
+    GUARDIAN_LINKED("보호자 연결", NotificationCategory.VOTE);
 
     // 설정 화면 토글 이름. 서버가 내려주면 앱이 한글 문구를 따로 들고 있지 않아도 된다.
     private final String label;

@@ -14,5 +14,7 @@ public interface GuardianLinkRepository extends JpaRepository<GuardianLinkEntity
 
     Optional<GuardianLinkEntity> findBySeniorUserIdAndGuardianUserId(String seniorUserId, String guardianUserId);
 
+    long countBySeniorUserId(String seniorUserId);
+
     boolean existsBySeniorUserIdAndGuardianUserId(String seniorUserId, String guardianUserId);
 }

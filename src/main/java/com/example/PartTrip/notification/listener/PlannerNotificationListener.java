@@ -3,6 +3,7 @@ package com.example.PartTrip.notification.listener;
 import com.example.PartTrip.notification.enums.NotificationType;
 import com.example.PartTrip.notification.event.GroupInviteAcceptedEvent;
 import com.example.PartTrip.notification.event.GroupInvitedEvent;
+import com.example.PartTrip.notification.event.GuardianLinkedEvent;
 import com.example.PartTrip.notification.service.NotificationWriter;
 import com.example.PartTrip.planner.entity.TravelGroupEntity;
 import com.example.PartTrip.planner.repository.GroupMemberRepository;
@@ -77,6 +78,21 @@ public class PlannerNotificationListener {
                     group.getGroupId());
         } catch (Exception e) {
             log.warn("그룹 초대 알림 생성 실패 groupId={}", event.groupId(), e);
+        }
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void on(GuardianLinkedEvent event) {
+        try {
+            notificationWriter.write(
+                    event.seniorUserId(),
+                    NotificationType.GUARDIAN_LINKED,
+                    NotificationType.GUARDIAN_LINKED.getLabel(),
+                    nickNameOf(event.guardianUserId()) + "님이 보호자로 연결됐어요.",
+                    "GUARDIAN_LINK",
+                    event.linkId());
+        } catch (Exception e) {
+            log.warn("보호자 연결 알림 생성 실패 linkId={}", event.linkId(), e);
         }
     }
 
