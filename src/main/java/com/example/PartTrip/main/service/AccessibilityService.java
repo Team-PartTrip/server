@@ -71,7 +71,7 @@ public class AccessibilityService {
         }
         if (serviceKey == null || serviceKey.isBlank()
                 || place.getLatitude() == null || place.getLongitude() == null) {
-            return AccessibilityResponseDto.none();
+            return AccessibilityResponseDto.unavailable();
         }
 
         TourPlaceAccessibilityEntity row;
@@ -79,7 +79,7 @@ public class AccessibilityService {
             row = fetch(place);
         } catch (Exception e) {
             log.warn("무장애 정보 받기 실패 tourPlaceId={}: {}", tourPlaceId, e.getMessage());
-            return saved.map(this::toDto).orElse(AccessibilityResponseDto.none());
+            return saved.map(this::toDto).orElse(AccessibilityResponseDto.unavailable());
         }
         accessibilityRepository.save(row);
         return toDto(row);
@@ -193,14 +193,14 @@ public class AccessibilityService {
 
     private AccessibilityResponseDto toDto(TourPlaceAccessibilityEntity row) {
         if (row.getContentId() == null) {
-            return AccessibilityResponseDto.none();
+            return AccessibilityResponseDto.notFound();
         }
         try {
             List<AccessibilityResponseDto.Item> items = objectMapper.readValue(
                     row.getItemsJson(), new TypeReference<>() {});
-            return new AccessibilityResponseDto(true, items);
+            return AccessibilityResponseDto.found(items);
         } catch (Exception e) {
-            return AccessibilityResponseDto.none();
+            return AccessibilityResponseDto.unavailable();
         }
     }
 }
