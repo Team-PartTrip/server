@@ -22,11 +22,14 @@ public interface TourPlaceRepository extends JpaRepository<TourPlaceEntity, Long
             WHERE p.countryName = :countryName
               AND (:cityName IS NULL OR p.cityName = :cityName)
               AND (:category IS NULL OR p.category = :category)
-            ORDER BY p.rating DESC NULLS LAST, p.placeName ASC
+            ORDER BY p.placeName ASC
             """)
     List<TourPlaceEntity> search(String countryName,
                                  String cityName,
                                  TourPlaceCategory category);
+
+    @Query("select avg(p.rating) from TourPlaceEntity p where p.rating is not null")
+    Double findAverageRating();
 
     /**
      * 인기 여행지 (API-005-11).

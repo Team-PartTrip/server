@@ -52,6 +52,7 @@ public class TourPlaceImportService {
             "places.displayName",
             "places.formattedAddress",
             "places.rating",
+            "places.userRatingCount",
             "places.location",
             "places.editorialSummary",
             "places.primaryTypeDisplayName",
@@ -85,6 +86,7 @@ public class TourPlaceImportService {
             "places.displayName",
             "places.formattedAddress",
             "places.rating",
+            "places.userRatingCount",
             "places.location",
             "places.primaryTypeDisplayName",
             "places.photos",
@@ -392,6 +394,9 @@ public class TourPlaceImportService {
                 cut(place.path("primaryTypeDisplayName").path("text").asText(""), 100));
         entity.setRating(place.path("rating").isNumber()
                 ? place.path("rating").asDouble()
+                : null);
+        entity.setUserRatingCount(place.path("userRatingCount").canConvertToLong()
+                ? place.path("userRatingCount").asLong()
                 : null);
         entity.setLatitude(place.path("location").path("latitude").isNumber()
                 ? place.path("location").path("latitude").asDouble()

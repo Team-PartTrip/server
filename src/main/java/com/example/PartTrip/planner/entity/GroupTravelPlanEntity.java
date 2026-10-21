@@ -35,6 +35,14 @@ public class GroupTravelPlanEntity {
     @Column(name = "schedule_edited")
     private Boolean scheduleEdited;
 
+    /** 재생성을 위해 보존하는 블록 설문 JSON. 기존 계획은 null일 수 있다. */
+    @Column(name = "survey_responses", columnDefinition = "text")
+    private String surveyResponses;
+
+    /** 중복 클릭으로 AI 재생성이 연속 호출되는 것을 막기 위한 예약 시각. */
+    @Column(name = "regeneration_started_at")
+    private LocalDateTime regenerationStartedAt;
+
     @Column(name = "travel_title", length = 100)
     private String travelTitle;
 

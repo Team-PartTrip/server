@@ -1,6 +1,7 @@
 package com.example.PartTrip.planner.service;
 
 import com.example.PartTrip.global.exception.AiUnavailableException;
+import com.example.PartTrip.global.exception.ForbiddenException;
 import com.example.PartTrip.main.entity.TourPlaceEntity;
 import com.example.PartTrip.main.enums.TourPlaceCategory;
 import com.example.PartTrip.main.entity.TourPlaceAccessibilityEntity;
@@ -9,6 +10,8 @@ import com.example.PartTrip.main.repository.TourPlaceRepository;
 import com.example.PartTrip.main.service.AccessibilityService;
 import com.example.PartTrip.main.service.TourPlaceImportService;
 import com.example.PartTrip.planner.dto.request.GeneratePlannerRequestDto;
+import com.example.PartTrip.planner.dto.response.PlannerSurveyResponseDto;
+import com.example.PartTrip.planner.entity.GroupMemberEntity;
 import com.example.PartTrip.planner.entity.GroupTravelPlanEntity;
 import com.example.PartTrip.planner.entity.PlannerScheduleSlotEntity;
 import com.example.PartTrip.planner.entity.TravelGroupEntity;
@@ -32,6 +35,7 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.TransactionStatus;
 
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -47,6 +51,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -69,6 +74,7 @@ class PlannerDraftServiceTest {
     @Mock private GroupTravelPlanRepository groupTravelPlanRepository;
     @Mock private PlannerScheduleSlotRepository slotRepository;
     @Mock private TransactionTemplate transactionTemplate;
+    @Mock private jakarta.persistence.EntityManager entityManager;
     @Spy private ObjectMapper objectMapper = new ObjectMapper();
     @InjectMocks private PlannerDraftService service;
 
@@ -329,7 +335,7 @@ class PlannerDraftServiceTest {
         ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
         verify(openAiClient).completeJson(anyString(), prompt.capture());
         assertThat(prompt.getValue())
-                .contains("(id|이름|분류|업종|위도,경도|평점|무장애)")
+                .contains("(id|이름|분류|업종|위도,경도|평점|무장애|리뷰 수)")
                 .contains("1|장소1|맛집|한식당|null,null||");
     }
 
@@ -355,6 +361,175 @@ class PlannerDraftServiceTest {
                 .contains("휠체어 이용: 예")
                 .contains("오래 걷기: 어려움")
                 .contains("1|장소1|명소||null,null||무장애");
+    }
+
+    @Test
+    void 출발지_좌표와_걷기_시간을_AI_프롬프트에_전달한다() {
+        givenCandidates();
+        GeneratePlannerRequestDto dto = request();
+        GeneratePlannerRequestDto.DeparturePoint departure =
+                new GeneratePlannerRequestDto.DeparturePoint();
+        departure.setPlaceName("강릉역");
+        departure.setLatitude(37.7640);
+        departure.setLongitude(128.8990);
+        dto.setDeparturePoint(departure);
+        GeneratePlannerRequestDto.Block walking = new GeneratePlannerRequestDto.Block();
+        walking.setType(PlannerBlockType.WALKING);
+        walking.setValue("10분 이내");
+        dto.setBlocks(List.of(walking));
+        given(openAiClient.completeJson(anyString(), anyString()))
+                .willThrow(new AiUnavailableException("의도된 테스트 실패"));
+
+        assertThatThrownBy(() -> service.generate(dto, "user"));
+
+        ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
+        verify(openAiClient).completeJson(anyString(), prompt.capture());
+        assertThat(prompt.getValue())
+                .contains("출발지: 강릉역 (위도 37.764, 경도 128.899)")
+                .contains("첫날의 첫 방문지는 이 출발지에서 좌표상 가장 가까운 후보 장소")
+                .contains("한 번에 걸을 수 있는 시간: 10분 이내");
+    }
+
+    @Test
+    void 출발지와_가장_가까운_선택_장소를_첫날_첫_순서에_둔다() {
+        TourPlaceEntity far = place(1L);
+        far.setLatitude(37.80);
+        far.setLongitude(128.95);
+        TourPlaceEntity near = place(2L);
+        near.setLatitude(37.76);
+        near.setLongitude(128.90);
+        List<List<Long>> days = new java.util.ArrayList<>(List.of(
+                new java.util.ArrayList<>(java.util.Arrays.asList(1L, 2L, null))));
+        var departure = new PlannerDraftService.DepartureDetails("강릉역", 37.764, 128.899);
+
+        PlannerDraftService.prioritizeFirstDayDeparture(days, List.of(far, near), departure);
+
+        assertThat(days.get(0)).containsExactly(2L, 1L, null);
+    }
+
+    @Test
+    void 일정_소유자가_아니면_재생성할_수_없다() {
+        TravelGroupEntity group = new TravelGroupEntity();
+        group.setOwnerUserId("owner");
+        group.setStatus(GroupStatus.PLANNING);
+        given(travelGroupRepository.findById(7L)).willReturn(Optional.of(group));
+
+        assertThatThrownBy(() -> service.regenerate(7L, "member"))
+                .isInstanceOf(ForbiddenException.class);
+        verify(openAiClient, never()).completeJson(anyString(), anyString());
+    }
+
+    @Test
+    void 직접_수정한_일정은_재생성으로_덮어쓰지_않는다() {
+        TravelGroupEntity group = new TravelGroupEntity();
+        group.setOwnerUserId("owner");
+        group.setStatus(GroupStatus.PLANNING);
+        GroupTravelPlanEntity plan = new GroupTravelPlanEntity();
+        plan.setPlanId(70L);
+        plan.setScheduleEdited(true);
+        given(travelGroupRepository.findById(7L)).willReturn(Optional.of(group));
+        given(groupTravelPlanRepository.findFirstByGroupIdOrderByCreatedAtDesc(7L))
+                .willReturn(Optional.of(plan));
+
+        assertThatThrownBy(() -> service.regenerate(7L, "owner"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("직접 수정한 일정");
+        verify(openAiClient, never()).completeJson(anyString(), anyString());
+    }
+
+    @Test
+    void 재생성_쿨다운_중에는_AI를_다시_호출하지_않는다() {
+        TravelGroupEntity group = new TravelGroupEntity();
+        group.setOwnerUserId("owner");
+        group.setStatus(GroupStatus.PLANNING);
+        GroupTravelPlanEntity plan = new GroupTravelPlanEntity();
+        plan.setPlanId(70L);
+        plan.setSurveyResponses("[]");
+        plan.setRegenerationStartedAt(java.time.LocalDateTime.now());
+        given(travelGroupRepository.findById(7L)).willReturn(Optional.of(group));
+        given(travelGroupRepository.findByIdForUpdate(7L)).willReturn(Optional.of(group));
+        given(groupTravelPlanRepository.findFirstByGroupIdOrderByCreatedAtDesc(7L))
+                .willReturn(Optional.of(plan));
+        doAnswer(invocation -> {
+            java.util.function.Consumer<TransactionStatus> action = invocation.getArgument(0);
+            action.accept(org.mockito.Mockito.mock(TransactionStatus.class));
+            return null;
+        }).when(transactionTemplate).executeWithoutResult(any());
+
+        assertThatThrownBy(() -> service.regenerate(7L, "owner"))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("30초");
+        verifyNoInteractions(openAiClient, slotRepository);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"normal", "empty", "newer", "edited", "dates", "confirmed"})
+    void 재생성은_저장된_설문을_사용하고_생성중_변경된_일정을_보호한다(String scenario) throws Exception {
+        TravelGroupEntity group = new TravelGroupEntity();
+        group.setGroupId(7L);
+        group.setOwnerUserId("owner");
+        group.setGroupName("강릉 여행");
+        group.setHeadcount(2);
+        group.setStatus(GroupStatus.PLANNING);
+        GroupTravelPlanEntity plan = new GroupTravelPlanEntity();
+        plan.setPlanId(70L);
+        plan.setGroupId(7L);
+        plan.setRegionCode("51");
+        plan.setCityName("강릉");
+        plan.setStartDate(D1);
+        plan.setEndDate(D1);
+        plan.setSurveyResponses(JSON.writeValueAsString(List.of(
+                new PlannerSurveyResponseDto.Block(PlannerBlockType.TRAVEL_TYPE,
+                        "미식", null, null, null))));
+        if (scenario.equals("empty")) plan.setSurveyResponses("[]");
+        GroupMemberEntity member = new GroupMemberEntity();
+        member.setUserId("owner");
+        member.setGroupId(7L);
+        given(travelGroupRepository.findById(7L)).willReturn(Optional.of(group));
+        given(travelGroupRepository.findByIdForUpdate(7L)).willReturn(Optional.of(group));
+        given(groupTravelPlanRepository.findFirstByGroupIdOrderByCreatedAtDesc(7L))
+                .willReturn(Optional.of(plan));
+        given(groupMemberRepository.findByGroupIdOrderByJoinedAtAsc(7L)).willReturn(List.of(member));
+        boolean succeeds = scenario.equals("normal") || scenario.equals("empty");
+        if (succeeds) {
+            given(groupMemberRepository.existsByGroupIdAndUserId(7L, "owner")).willReturn(true);
+            given(slotRepository.findByPlanIdOrderByVisitDateAscSortOrderAsc(70L)).willReturn(List.of());
+        }
+        given(travelPreferenceService.getPreferences(List.of("owner"))).willReturn(Map.of("owner",
+                new TravelPreferenceResponseDto(PreferredTransport.PUBLIC_TRANSIT, 2, false,
+                        null, List.of(AvoidFood.SEAFOOD), false, false)));
+        given(tourPlaceRepository.findByCountryNameAndCityName("대한민국", "강릉"))
+                .willReturn(List.of(place(1L)));
+        given(openAiClient.completeJson(anyString(), anyString())).willAnswer(invocation -> {
+            switch (scenario) {
+                case "newer" -> plan.setRegenerationStartedAt(plan.getRegenerationStartedAt().plusSeconds(31));
+                case "edited" -> plan.setScheduleEdited(true);
+                case "dates" -> plan.setEndDate(D2);
+                case "confirmed" -> group.setStatus(GroupStatus.CONFIRMED);
+                default -> { }
+            }
+            return "{\"days\":[{\"date\":\"2026-10-10\",\"placeIds\":[1]}],\"lodgingId\":null}";
+        });
+        doAnswer(invocation -> {
+            java.util.function.Consumer<TransactionStatus> action = invocation.getArgument(0);
+            action.accept(org.mockito.Mockito.mock(TransactionStatus.class));
+            return null;
+        }).when(transactionTemplate).executeWithoutResult(any());
+
+        if (!succeeds) {
+            assertThatThrownBy(() -> service.regenerate(7L, "owner"))
+                    .isInstanceOf(IllegalArgumentException.class);
+            verify(slotRepository, never()).deleteByPlanId(anyLong());
+            verify(slotRepository, never()).saveAll(any());
+            return;
+        }
+        var result = service.regenerate(7L, "owner");
+
+        assertThat(result.plannerId()).isEqualTo(7L);
+        verify(slotRepository).deleteByPlanId(70L);
+        verify(slotRepository).saveAll(any());
+        ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
+        verify(openAiClient).completeJson(anyString(), prompt.capture());
+        assertThat(prompt.getValue()).contains("피하는 음식: 해산물");
     }
 
     @Test
@@ -429,8 +604,10 @@ class PlannerDraftServiceTest {
                 .willReturn(new TravelPreferenceResponseDto(PreferredTransport.PUBLIC_TRANSIT, 3, true));
         given(openAiClient.completeJson(anyString(), anyString()))
                 .willThrow(new AiUnavailableException("실패"));
+        GeneratePlannerRequestDto dto = request();
+        dto.setBlocks(List.of());
 
-        assertThatThrownBy(() -> service.generate(request(), "user"));
+        assertThatThrownBy(() -> service.generate(dto, "user"));
 
         verifyNoInteractions(accessibilityService);
     }

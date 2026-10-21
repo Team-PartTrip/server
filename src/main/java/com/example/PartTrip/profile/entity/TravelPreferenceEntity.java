@@ -52,4 +52,7 @@ public class TravelPreferenceEntity {
 
     @Column(name = "limited_walking")
     private Boolean limitedWalking;
+
+    @Column(name = "max_walking_minutes")
+    private Integer maxWalkingMinutes;
 }
