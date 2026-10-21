@@ -130,8 +130,10 @@ public class PlannerDraftService {
             prefetchAccessibility(all, must);
         }
         Set<Long> barrierFree = barrierFreeIds(preference, all);
+        boolean noCafe = values(dto, PlannerBlockType.CAFE_SNACK).contains("포함하지 않기");
         List<TourPlaceEntity> daytime = Stream.concat(must.stream(), all.stream()
                         .filter(place -> place.getCategory() != TourPlaceCategory.ACCOMMODATION)
+                        .filter(place -> !noCafe || place.getCategory() != TourPlaceCategory.CAFE)
                         .filter(place -> !limitedMobility
                                 || place.getCategory() != TourPlaceCategory.ACTIVITY
                                 || barrierFree.contains(place.getTourPlaceId()))
@@ -147,9 +149,9 @@ public class PlannerDraftService {
                 && !values(dto, PlannerBlockType.LODGING_TYPE).contains("숙박 없음");
         // 숙소는 후보 자르기와 따로 모은다. 평점 순으로 자르면 숙소가 다 빠질 수 있다
         List<TourPlaceEntity> lodgings = needsLodging
-                ? all.stream()
+                ? lodgingsOfType(all.stream()
                         .filter(place -> place.getCategory() == TourPlaceCategory.ACCOMMODATION)
-                        .toList()
+                        .toList(), values(dto, PlannerBlockType.LODGING_TYPE))
                 : List.of();
 
         int perDay = slotsPerDay(
@@ -501,6 +503,17 @@ public class PlannerDraftService {
                     .ifPresent(place -> picked.put(place.getTourPlaceId(), place));
         }
         return List.copyOf(picked.values());
+    }
+
+    static List<TourPlaceEntity> lodgingsOfType(List<TourPlaceEntity> lodgings, List<String> types) {
+        if (types.isEmpty()) {
+            return lodgings;
+        }
+        List<TourPlaceEntity> matching = lodgings.stream()
+                .filter(place -> place.getPrimaryTypeLabel() != null
+                        && types.stream().anyMatch(type -> place.getPrimaryTypeLabel().contains(type)))
+                .toList();
+        return matching.isEmpty() ? lodgings : matching;
     }
 
     private static String squash(String name) {

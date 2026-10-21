@@ -490,6 +490,51 @@ class PlannerDraftServiceTest {
     }
 
     @Test
+    void 카페_포함하지_않기를_고르면_카페를_후보에서_빼고_직접_넣은_카페는_둔다() {
+        GeneratePlannerRequestDto dto = request();
+        GeneratePlannerRequestDto.Block noCafe = new GeneratePlannerRequestDto.Block();
+        noCafe.setType(PlannerBlockType.CAFE_SNACK);
+        noCafe.setValue("포함하지 않기");
+        GeneratePlannerRequestDto.Block must = new GeneratePlannerRequestDto.Block();
+        must.setType(PlannerBlockType.MUST_INCLUDE);
+        must.setValue("바다뷰카페");
+        dto.setBlocks(List.of(noCafe, must));
+        TourPlaceEntity museum = named(1L, "오죽헌", 4.4);
+        TourPlaceEntity cafe = named(2L, "초당커피", 4.9);
+        cafe.setCategory(TourPlaceCategory.CAFE);
+        TourPlaceEntity wanted = named(3L, "바다뷰카페", 4.0);
+        wanted.setCategory(TourPlaceCategory.CAFE);
+        given(tourPlaceRepository.findByCountryNameAndCityName("대한민국", "강릉"))
+                .willReturn(List.of(museum, cafe, wanted));
+        given(travelPreferenceService.getPreference("user"))
+                .willReturn(new TravelPreferenceResponseDto(PreferredTransport.PUBLIC_TRANSIT, 3, true));
+        given(openAiClient.completeJson(anyString(), anyString()))
+                .willThrow(new AiUnavailableException("실패"));
+
+        assertThatThrownBy(() -> service.generate(dto, "user"));
+
+        ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
+        verify(openAiClient).completeJson(anyString(), prompt.capture());
+        assertThat(prompt.getValue()).contains("1|오죽헌|").contains("3|바다뷰카페|").doesNotContain("2|초당커피|");
+    }
+
+    @Test
+    void 숙박_유형은_업종_이름으로_먼저_거르고_맞는_곳이_없으면_전체를_둔다() {
+        TourPlaceEntity hotel = named(1L, "A 호텔", 4.0);
+        hotel.setPrimaryTypeLabel("호텔");
+        TourPlaceEntity pension = named(2L, "B 펜션", 4.0);
+        pension.setPrimaryTypeLabel("펜션");
+        TourPlaceEntity noType = named(3L, "C", 4.0);
+
+        assertThat(PlannerDraftService.lodgingsOfType(List.of(hotel, pension, noType), List.of("펜션")))
+                .extracting(TourPlaceEntity::getTourPlaceId).containsExactly(2L);
+        assertThat(PlannerDraftService.lodgingsOfType(List.of(hotel, pension, noType), List.of("한옥")))
+                .hasSize(3);
+        assertThat(PlannerDraftService.lodgingsOfType(List.of(hotel, pension), List.of()))
+                .hasSize(2);
+    }
+
+    @Test
     void 하루_맛집이_넘치면_가까운_다른_후보로_바꾼다() {
         TourPlaceEntity meal1 = located(1L, TourPlaceCategory.RESTAURANT, 35.0);
         TourPlaceEntity meal2 = located(2L, TourPlaceCategory.RESTAURANT, 35.1);
