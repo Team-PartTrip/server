@@ -212,7 +212,17 @@ public class PlannerDraftService {
             slotRepository.saveAll(toEntities(plan.getPlanId(), dates, days, lodgingId));
             return id;
         });
-        return getSchedule(plannerId, userId);
+        return getSchedule(plannerId, userId)
+                .withWarnings(limitedMobility ? missingAccessibilityWarnings(must, barrierFree) : List.of());
+    }
+
+    static List<PlannerScheduleResponseDto.Warning> missingAccessibilityWarnings(
+            List<TourPlaceEntity> must, Set<Long> barrierFree) {
+        return must.stream()
+                .filter(place -> !barrierFree.contains(place.getTourPlaceId()))
+                .map(place -> new PlannerScheduleResponseDto.Warning(place.getTourPlaceId(),
+                        "무장애 정보가 없는 곳이에요 (" + place.getPlaceName() + ")"))
+                .toList();
     }
 
     /** 날짜별 일정 카드 */

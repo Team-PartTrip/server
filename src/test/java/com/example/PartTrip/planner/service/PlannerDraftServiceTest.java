@@ -463,6 +463,33 @@ class PlannerDraftServiceTest {
     }
 
     @Test
+    void 직접_넣은_곳에_무장애_정보가_없으면_경고를_담는다() {
+        TourPlaceEntity ramped = named(1L, "오죽헌", 4.4);
+        TourPlaceEntity unknown = named(2L, "경포대", 4.8);
+
+        var warnings = PlannerDraftService.missingAccessibilityWarnings(
+                List.of(ramped, unknown), Set.of(1L));
+
+        assertThat(warnings).hasSize(1);
+        assertThat(warnings.get(0).tourPlaceId()).isEqualTo(2L);
+        assertThat(warnings.get(0).message()).contains("무장애 정보가 없는 곳이에요").contains("경포대");
+        assertThat(PlannerDraftService.missingAccessibilityWarnings(List.of(ramped), Set.of(1L))).isEmpty();
+    }
+
+    @Test
+    void 응답에_경고를_붙여도_나머지는_그대로이고_조회_응답은_경고가_비어_있다() {
+        var plain = new com.example.PartTrip.planner.dto.response.PlannerScheduleResponseDto(
+                1L, "여행", "강릉", D1, D1, List.of());
+        var warned = plain.withWarnings(List.of(
+                new com.example.PartTrip.planner.dto.response.PlannerScheduleResponseDto.Warning(2L, "경고")));
+
+        assertThat(plain.warnings()).isEmpty();
+        assertThat(warned.warnings()).hasSize(1);
+        assertThat(warned.plannerId()).isEqualTo(1L);
+        assertThat(warned.cityName()).isEqualTo("강릉");
+    }
+
+    @Test
     void 하루_맛집이_넘치면_가까운_다른_후보로_바꾼다() {
         TourPlaceEntity meal1 = located(1L, TourPlaceCategory.RESTAURANT, 35.0);
         TourPlaceEntity meal2 = located(2L, TourPlaceCategory.RESTAURANT, 35.1);
