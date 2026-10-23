@@ -12,6 +12,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -27,8 +28,11 @@ public class OpenAiClient {
     private String apiKey;
 
     // 모델을 바꿀 때 코드를 고치지 않도록 설정으로 뺀다
-    @Value("${openai.model:gpt-4.1-mini}")
+    @Value("${openai.model:gpt-5-mini}")
     private String model;
+
+    @Value("${openai.reasoning-effort:minimal}")
+    private String reasoningEffort;
 
     // 후보 수십 개를 보고 며칠치를 짜면 수십 초가 걸린다
     private final RestClient restClient = RestClient.builder()
@@ -37,6 +41,25 @@ public class OpenAiClient {
                             .withConnectTimeout(Duration.ofSeconds(5))
                             .withReadTimeout(Duration.ofSeconds(90))))
             .build();
+
+    static Map<String, Object> requestBody(String model, String reasoningEffort, String system, String user) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("model", model);
+        if (isReasoningModel(model)) {
+            body.put("reasoning_effort", reasoningEffort);
+        } else {
+            body.put("temperature", 0.3);
+        }
+        body.put("response_format", Map.of("type", "json_object"));
+        body.put("messages", List.of(
+                Map.of("role", "system", "content", system),
+                Map.of("role", "user", "content", user)));
+        return body;
+    }
+
+    static boolean isReasoningModel(String model) {
+        return model.startsWith("gpt-5") || model.matches("o\\d.*");
+    }
 
     /** 답의 content(JSON 문자열)를 돌려준다 */
     public String completeJson(String system, String user) {
@@ -48,13 +71,7 @@ public class OpenAiClient {
                     .uri(URL)
                     .header("Authorization", "Bearer " + apiKey)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(Map.of(
-                            "model", model,
-                            "temperature", 0.3,
-                            "response_format", Map.of("type", "json_object"),
-                            "messages", List.of(
-                                    Map.of("role", "system", "content", system),
-                                    Map.of("role", "user", "content", user))))
+                    .body(requestBody(model, reasoningEffort, system, user))
                     .retrieve()
                     .body(JsonNode.class);
             String content = body == null ? null
